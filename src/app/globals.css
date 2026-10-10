@@ -147,6 +147,7 @@
   --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", var(--font-inter),
     system-ui, sans-serif;
   --font-heading: var(--font-sans);
+  --font-serif: ui-serif, "New York", Georgia, serif;
   --font-mono: ui-monospace, "SF Mono", var(--font-code), monospace;
 
   --radius-sm: calc(var(--radius) * 0.6);
@@ -261,14 +262,30 @@
   }
 }
 
-/* Frosted material: blur and saturate what's behind, light top edge, soft drop */
+/* Shadows go through --tw-shadow so focus rings still stack on top of them */
 @utility glass {
   -webkit-backdrop-filter: blur(28px) saturate(180%);
   backdrop-filter: blur(28px) saturate(180%);
-  box-shadow:
+  --tw-shadow:
     inset 0 1px 0 0 var(--glass-highlight),
     0 0 0 0.5px var(--glass-edge),
     var(--glass-drop);
+  box-shadow:
+    var(--tw-inset-shadow, 0 0 #0000), var(--tw-inset-ring-shadow, 0 0 #0000),
+    var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
+}
+
+/* Raised button: light from above, a top highlight, and a soft glow in the button's own color */
+@utility raised {
+  background-image: linear-gradient(to bottom, rgb(255 255 255 / 0.2), rgb(255 255 255 / 0) 55%);
+  --tw-shadow:
+    inset 0 1px 0 0 rgb(255 255 255 / 0.3),
+    inset 0 -1px 0 0 rgb(0 0 0 / 0.12),
+    0 1px 2px 0 rgb(0 0 0 / 0.14),
+    0 6px 14px -6px color-mix(in srgb, var(--raised-glow, var(--primary)) 75%, transparent);
+  box-shadow:
+    var(--tw-inset-shadow, 0 0 #0000), var(--tw-inset-ring-shadow, 0 0 #0000),
+    var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
 }
 
 /* "Reduce transparency" turns the glass solid */
