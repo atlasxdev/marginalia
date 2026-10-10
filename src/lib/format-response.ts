@@ -25,7 +25,13 @@ export function formatResponse(raw: string, sources: Source[], streaming = false
     text = text.replace(pattern, (m) => "****" + m.slice(-4));
   }
 
-  // 3. Citations: valid [n] → link, invalid [n] → removed
+  // 3. Citations: grouped [3, 5] → [3][5], then valid [n] → link, invalid [n] → removed
+  text = text.replace(/\[(\d+(?:\s*,\s*\d+)+)\](?!\()/g, (_, list: string) =>
+    list
+      .split(",")
+      .map((n) => `[${n.trim()}]`)
+      .join("")
+  );
   const cited = new Set<number>();
   text = text.replace(/\[(\d+)\](?!\()/g, (_, n) => {
     const i = Number(n);
