@@ -9,7 +9,7 @@ import { signOut } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
-import { conversationsQuery, documentsQuery } from "@/lib/queries";
+import { conversationsQuery, documentsQuery, meQuery } from "@/lib/queries";
 import { useHydrated } from "@/lib/use-hydrated";
 import { cn } from "@/lib/utils";
 import { Wordmark } from "./logo";
@@ -68,6 +68,7 @@ function Sidebar() {
   const isPending = !hydrated || conversationsResult.isPending;
   const readyCount = documents?.filter((d) => d.status === "ready").length;
   const libraryActive = pathname === "/library";
+  const email = useQuery(meQuery).data?.email;
 
   return (
     <nav className="flex h-full flex-col">
@@ -122,7 +123,7 @@ function Sidebar() {
       </ul>
 
       <div className="flex items-center gap-1 border-t border-glass-divider px-3 py-2">
-        <span className="min-w-0 flex-1 truncate px-2 text-sm text-muted-foreground">ace@example.com</span>
+        <span className="min-w-0 flex-1 truncate px-2 text-sm text-muted-foreground">{email}</span>
         <ThemeToggle />
         <form action={signOut}>
           <Button type="submit" variant="ghost" size="sm">

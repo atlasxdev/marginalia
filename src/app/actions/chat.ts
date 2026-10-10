@@ -2,11 +2,13 @@
 
 import { z } from "zod";
 import { questionSchema } from "@/lib/schemas";
+import { createClient } from "@/lib/supabase/server";
 import type { ActionState } from "@/lib/types";
-import * as store from "@/server/mock-store";
 
 // `question` is echoed back on errors so the composer can restore what was typed.
 export type AskState = ActionState & { conversationId?: string; question?: string };
+
+const TITLE_CHARS = 80;
 
 // Saves the question. The answer streams separately from /api/conversations/[id]/answer.
 export async function askQuestion(_prev: AskState, formData: FormData): Promise<AskState> {
@@ -22,18 +24,29 @@ export async function askQuestion(_prev: AskState, formData: FormData): Promise<
     };
   }
 
-  const { question, conversationId } = parsed.data;
+  const { question } = parsed.data;
+  let { conversationId } = parsed.data;
+  const supabase = await createClient();
+
   if (!conversationId) {
-    const conv = await store.createConversation(question);
-    return { ok: true, conversationId: conv.id };
+    const title =
+      question.length > TITLE_CHARS ? question.slice(0, TITLE_CHARS - 1).trimEnd() + "…" : question;
+    const { data, error } = await supabase.from("conversations").insert({ title }).select("id").single();
+    if (error) return { ok: false, message: "Couldn't start a conversation. Try again.", question };
+    conversationId = data.id as string;
   }
 
-  const message = await store.addUserMessage(conversationId, question);
-  if (!message) return { ok: false, message: "This conversation was deleted.", question };
+  // RLS rejects the insert if the conversation isn't this user's or no longer exists
+  const { error } = await supabase
+    .from("messages")
+    .insert({ conversation_id: conversationId, role: "user", content: question });
+  if (error) return { ok: false, message: "This conversation was deleted.", question };
+
   return { ok: true, conversationId };
 }
 
 export async function deleteConversation(id: string): Promise<ActionState> {
-  await store.deleteConversation(z.string().parse(id));
+  const supabase = await createClient();
+  await supabase.from("conversations").delete().eq("id", z.uuid().parse(id));
   return { ok: true };
 }

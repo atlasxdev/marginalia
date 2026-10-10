@@ -29,6 +29,11 @@ export function SignInForm() {
         <Button type="submit" disabled={pending} className="h-12 rounded-xl text-[17px]">
           {pending ? "Signing in…" : "Sign in"}
         </Button>
+        {state.message && (
+          <p role={state.ok ? "status" : "alert"} className={state.ok ? "text-sm text-success" : "text-sm text-destructive"}>
+            {state.message}
+          </p>
+        )}
       </form>
 
       <p className="mt-6 text-sm text-muted-foreground">

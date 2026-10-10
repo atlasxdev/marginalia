@@ -1,4 +1,5 @@
 import { queryOptions } from "@tanstack/react-query";
+import { getBrowserClient } from "./supabase/client";
 import type { Conversation, ConversationSummary, DocumentItem } from "./types";
 
 async function getJson<T>(url: string): Promise<T> {
@@ -10,7 +11,7 @@ async function getJson<T>(url: string): Promise<T> {
 export const documentsQuery = queryOptions({
   queryKey: ["documents"],
   queryFn: () => getJson<DocumentItem[]>("/api/documents"),
-  // Poll while anything is still ingesting. Supabase Realtime replaces this later.
+  // Poll while anything is still ingesting
   refetchInterval: (query) =>
     query.state.data?.some((d) => d.status === "pending" || d.status === "processing")
       ? 1500
@@ -27,3 +28,9 @@ export const conversationQuery = (id: string) =>
     queryKey: ["conversations", id],
     queryFn: () => getJson<Conversation>(`/api/conversations/${id}`),
   });
+
+export const meQuery = queryOptions({
+  queryKey: ["me"],
+  queryFn: async () => (await getBrowserClient().auth.getUser()).data.user,
+  staleTime: Infinity,
+});

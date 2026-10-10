@@ -1,25 +1,48 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useEffect, useRef, useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { PlusIcon } from "lucide-react";
-import { uploadDocument } from "@/app/actions/documents";
+import { registerDocument } from "@/app/actions/documents";
 import { Button } from "@/components/ui/button";
-import { ACCEPTED_TYPES } from "@/lib/schemas";
+import { ACCEPTED_TYPES, uploadSchema } from "@/lib/schemas";
+import { getBrowserClient } from "@/lib/supabase/client";
 
 const ACCEPT = Object.values(ACCEPTED_TYPES).join(",");
 
+/* The file goes straight from the browser to Supabase Storage, so it never hits
+   the server's request size limit. The server action then records it and starts
+   ingestion. */
+async function upload(file: File) {
+  const parsed = uploadSchema.safeParse({ file });
+  if (!parsed.success) throw new Error(parsed.error.issues[0].message);
+
+  const supabase = getBrowserClient();
+  const { data } = await supabase.auth.getUser();
+  if (!data.user) throw new Error("Sign in again to upload.");
+
+  const id = crypto.randomUUID();
+  // Storage keys reject some characters; the original name is kept in the database
+  const safeName = file.name.replace(/[^\w.\- ()]/g, "_");
+  const storagePath = `${data.user.id}/${id}/${safeName}`;
+  const { error } = await supabase.storage.from("documents").upload(storagePath, file);
+  if (error) throw new Error("Couldn't upload that file. Try again.");
+
+  const result = await registerDocument({ id, filename: file.name, sizeBytes: file.size, storagePath });
+  if (!result.ok) throw new Error(result.message);
+  return result.message;
+}
+
 // An Upload button, plus drag-and-drop anywhere on the page.
 export function UploadForm() {
-  const [state, formAction, pending] = useActionState(uploadDocument, { ok: false });
   const queryClient = useQueryClient();
-  const formRef = useRef<HTMLFormElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
-
-  useEffect(() => {
-    if (state.ok) queryClient.invalidateQueries({ queryKey: ["documents"] });
-  }, [state, queryClient]);
+  const mutation = useMutation({
+    mutationFn: upload,
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ["documents"] }),
+  });
+  const { mutate } = mutation;
 
   useEffect(() => {
     const over = (e: DragEvent) => {
@@ -34,12 +57,7 @@ export function UploadForm() {
       e.preventDefault();
       setDragging(false);
       const file = e.dataTransfer?.files[0];
-      const input = inputRef.current;
-      if (!file || !input) return;
-      const dt = new DataTransfer();
-      dt.items.add(file);
-      input.files = dt.files;
-      formRef.current?.requestSubmit();
+      if (file) mutate(file);
     };
     window.addEventListener("dragover", over);
     window.addEventListener("dragleave", leave);
@@ -49,12 +67,10 @@ export function UploadForm() {
       window.removeEventListener("dragleave", leave);
       window.removeEventListener("drop", drop);
     };
-  }, []);
-
-  const error = state.fieldErrors?.file?.[0];
+  }, [mutate]);
 
   return (
-    <form ref={formRef} action={formAction} className="contents">
+    <>
       <input
         ref={inputRef}
         id="file"
@@ -63,18 +79,22 @@ export function UploadForm() {
         accept={ACCEPT}
         className="sr-only"
         tabIndex={-1}
-        onChange={(e) => e.currentTarget.files?.length && formRef.current?.requestSubmit()}
+        onChange={(e) => {
+          const file = e.currentTarget.files?.[0];
+          if (file) mutate(file);
+          e.currentTarget.value = "";
+        }}
       />
-      <Button type="button" disabled={pending} onClick={() => inputRef.current?.click()}>
+      <Button type="button" disabled={mutation.isPending} onClick={() => inputRef.current?.click()}>
         <PlusIcon />
-        {pending ? "Uploading…" : "Upload"}
+        {mutation.isPending ? "Uploading…" : "Upload"}
       </Button>
 
       <p role="status" className="col-span-full text-sm empty:hidden">
-        {error ? (
-          <span className="text-destructive">{error}</span>
-        ) : state.ok ? (
-          <span className="text-muted-foreground">{state.message} It&apos;ll be ready to search in a moment.</span>
+        {mutation.isError ? (
+          <span className="text-destructive">{mutation.error.message}</span>
+        ) : mutation.isSuccess ? (
+          <span className="text-muted-foreground">{mutation.data} It&apos;ll be ready to search in a moment.</span>
         ) : null}
       </p>
 
@@ -86,6 +106,6 @@ export function UploadForm() {
           </div>
         </div>
       )}
-    </form>
+    </>
   );
 }

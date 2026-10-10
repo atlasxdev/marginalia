@@ -1,5 +1,6 @@
-import { listConversations } from "@/server/mock-store";
+import { createClient } from "@/lib/supabase/server";
+import { listConversations } from "@/server/data";
 
 export async function GET() {
-  return Response.json(await listConversations());
+  return Response.json(await listConversations(await createClient()));
 }

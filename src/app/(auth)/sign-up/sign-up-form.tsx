@@ -37,6 +37,11 @@ export function SignUpForm() {
         <Button type="submit" disabled={pending} className="h-12 rounded-xl text-[17px]">
           {pending ? "Creating account…" : "Create account"}
         </Button>
+        {state.message && (
+          <p role={state.ok ? "status" : "alert"} className={state.ok ? "text-sm text-success" : "text-sm text-destructive"}>
+            {state.message}
+          </p>
+        )}
       </form>
 
       <p className="mt-6 text-sm text-muted-foreground">
