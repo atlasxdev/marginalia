@@ -38,6 +38,22 @@ export const uploadSchema = z.object({
     ),
 });
 
+// Notes are saved through a server action, so they stay well under its 1 MB body limit.
+export const MAX_NOTE_CHARS = 200_000;
+
+export const noteSchema = z.object({
+  id: z.uuid().optional(),
+  title: z
+    .string()
+    .trim()
+    .transform((t) => t.replace(/\.md$/i, "").trim())
+    .pipe(z.string().min(1, "Give it a title.").max(120, "Keep titles under 120 characters.")),
+  content: z
+    .string()
+    .refine((c) => c.trim().length > 0, "Write something first.")
+    .refine((c) => c.length <= MAX_NOTE_CHARS, "This document is too long to edit here."),
+});
+
 export const questionSchema = z.object({
   question: z
     .string()

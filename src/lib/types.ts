@@ -11,6 +11,13 @@ export type DocumentItem = {
   createdAt: string;
 };
 
+// A Markdown document opened in the editor
+export type EditableDocument = {
+  id: string;
+  title: string;
+  content: string;
+};
+
 export type Source = {
   chunkId: string;
   documentId: string;

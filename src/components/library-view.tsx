@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { FileTextIcon, Loader2Icon, Trash2Icon } from "lucide-react";
+import { FilePlusIcon, FileTextIcon, Loader2Icon, PencilIcon, Trash2Icon } from "lucide-react";
 import { deleteDocument, retryDocument } from "@/app/actions/documents";
 import {
   AlertDialog,
@@ -63,12 +64,19 @@ export function LibraryView() {
   return (
     <div className="h-full overflow-y-auto">
       <div className="mx-auto max-w-3xl px-4 pt-10 pb-12 sm:px-6">
-        <div className="grid grid-cols-[1fr_auto] items-center gap-x-4 gap-y-3">
+        <div className="grid grid-cols-[1fr_auto_auto] items-center gap-x-2 gap-y-3">
           <h1 className="text-3xl font-bold tracking-tight">Library</h1>
+          <Button asChild variant="glass">
+            <Link href="/library/new">
+              <FilePlusIcon />
+              New
+            </Link>
+          </Button>
           <UploadForm />
         </div>
         <p className="mt-1 text-muted-foreground">
-          Markdown, PDF, and Word files. Drop a file anywhere on this page to upload it.
+          Markdown, PDF, and Word files. Drop a file anywhere on this page to upload it, or write a new
+          one in Markdown.
         </p>
 
         <section aria-label="Documents" className="mt-6">
@@ -93,6 +101,7 @@ export function LibraryView() {
             <ul className="glass border border-glass-border bg-glass divide-y divide-glass-divider overflow-hidden rounded-xl">
               {documents.map((doc) => {
                 const kind = KIND[doc.mimeType] ?? { label: "File", color: "bg-[#8e8e93]" };
+                const editable = doc.mimeType === "text/markdown";
                 return (
                   <li key={doc.id} className="group flex items-center gap-3 px-4 py-3">
                     <span className={cn("grid size-9 shrink-0 place-items-center rounded-lg text-white", kind.color)}>
@@ -100,7 +109,13 @@ export function LibraryView() {
                     </span>
 
                     <div className="min-w-0 flex-1">
-                      <p className="truncate font-medium">{doc.filename}</p>
+                      {editable ? (
+                        <Link href={`/library/${doc.id}`} className="block truncate font-medium hover:underline">
+                          {doc.filename}
+                        </Link>
+                      ) : (
+                        <p className="truncate font-medium">{doc.filename}</p>
+                      )}
                       <p className="truncate text-sm text-muted-foreground">
                         {doc.error ??
                           `${kind.label}, ${formatSize(doc.sizeBytes)}, ${dateFormat.format(new Date(doc.createdAt))}`}
@@ -108,6 +123,19 @@ export function LibraryView() {
                     </div>
 
                     <Status doc={doc} onRetry={() => retry.mutate(doc.id)} retrying={retry.isPending && retry.variables === doc.id} />
+
+                    {editable && (
+                      <Button
+                        asChild
+                        variant="ghost"
+                        size="icon-sm"
+                        className="-mr-2 text-muted-foreground opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+                      >
+                        <Link href={`/library/${doc.id}`} aria-label={`Edit ${doc.filename}`}>
+                          <PencilIcon />
+                        </Link>
+                      </Button>
+                    )}
 
                     <AlertDialog>
                       <AlertDialogTrigger asChild>

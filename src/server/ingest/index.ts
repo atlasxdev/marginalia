@@ -42,8 +42,17 @@ export async function ingestDocument(documentId: string) {
       "RETRIEVAL_DOCUMENT"
     );
 
-    // Replace any chunks from an earlier attempt
-    await admin.from("chunks").delete().eq("document_id", documentId);
+    /* Replace chunks from an earlier version or attempt. The new ones go in first,
+       so an edited document stays searchable throughout; ids only grow, so
+       everything at or below the old maximum is the previous version. */
+    const { data: last } = await admin
+      .from("chunks")
+      .select("id")
+      .eq("document_id", documentId)
+      .order("id", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const previousMaxId = last?.id ?? 0;
     for (let i = 0; i < chunks.length; i += INSERT_BATCH) {
       const rows = chunks.slice(i, i + INSERT_BATCH).map((c, j) => ({
         document_id: documentId,
@@ -54,8 +63,12 @@ export async function ingestDocument(documentId: string) {
         embedding: JSON.stringify(vectors[i + j]),
       }));
       const { error: insertError } = await admin.from("chunks").insert(rows);
-      if (insertError) throw insertError;
+      if (insertError) {
+        await admin.from("chunks").delete().eq("document_id", documentId).gt("id", previousMaxId);
+        throw insertError;
+      }
     }
+    await admin.from("chunks").delete().eq("document_id", documentId).lte("id", previousMaxId);
 
     await setStatus({ status: "ready", chunk_count: chunks.length });
   } catch (error) {

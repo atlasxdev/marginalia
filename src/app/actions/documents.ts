@@ -2,7 +2,7 @@
 
 import { after } from "next/server";
 import { z } from "zod";
-import { ACCEPTED_TYPES, MAX_FILE_BYTES } from "@/lib/schemas";
+import { ACCEPTED_TYPES, MAX_FILE_BYTES, noteSchema } from "@/lib/schemas";
 import { admin } from "@/lib/supabase/admin";
 import { createClient, getUserId } from "@/lib/supabase/server";
 import type { ActionState } from "@/lib/types";
@@ -47,6 +47,77 @@ export async function registerDocument(input: z.input<typeof registerSchema>): P
 
   after(() => ingestDocument(id));
   return { ok: true, message: `Uploaded ${filename}.` };
+}
+
+export type SaveState = ActionState & { id?: string };
+
+/* Saves a Markdown document from the editor: a new one is created in the user's
+   folder, an existing one has its file overwritten. Either way it's re-indexed;
+   the old chunks stay searchable until the new ones replace them. */
+export async function saveDocument(input: z.input<typeof noteSchema>): Promise<SaveState> {
+  const parsed = noteSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, fieldErrors: z.flattenError(parsed.error).fieldErrors };
+  const { id, title, content } = parsed.data;
+  const filename = `${title}.md`;
+  const file = new Blob([content], { type: "text/markdown" });
+
+  const supabase = await createClient();
+  const userId = await getUserId(supabase);
+  if (!userId) return { ok: false, message: "Sign in again to save." };
+
+  if (!id) {
+    const newId = crypto.randomUUID();
+    const storagePath = `${userId}/${newId}/${filename.replace(/[^\w.\- ()]/g, "_")}`;
+    const { error: uploadError } = await supabase.storage.from("documents").upload(storagePath, file);
+    if (uploadError) return { ok: false, message: "Couldn't save. Try again." };
+    const { error } = await supabase.from("documents").insert({
+      id: newId,
+      filename,
+      mime_type: "text/markdown",
+      size_bytes: file.size,
+      storage_path: storagePath,
+    });
+    if (error) {
+      await supabase.storage.from("documents").remove([storagePath]);
+      return { ok: false, message: "Couldn't save. Try again." };
+    }
+    after(() => ingestDocument(newId));
+    return { ok: true, id: newId, message: "Saved." };
+  }
+
+  // Reading through RLS confirms the document belongs to this user
+  const { data: doc } = await supabase
+    .from("documents")
+    .select("storage_path, mime_type, status, error")
+    .eq("id", id)
+    .maybeSingle();
+  if (!doc) return { ok: false, message: "This document no longer exists." };
+  if (doc.mime_type !== "text/markdown") return { ok: false, message: "Only Markdown documents can be edited." };
+
+  // Users can't update rows or overwrite files under RLS, so the writes use the secret key.
+  // Claiming the row first means two saves can't index the same document at once.
+  const { data: claimed } = await admin
+    .from("documents")
+    .update({ status: "pending", error: null })
+    .eq("id", id)
+    .in("status", ["ready", "failed"])
+    .select("id");
+  if (!claimed?.length) return { ok: false, message: "Wait for indexing to finish, then save again." };
+
+  const { error: uploadError } = await admin.storage
+    .from("documents")
+    .upload(doc.storage_path, file, { upsert: true, contentType: "text/markdown" });
+  if (uploadError) {
+    await admin.from("documents").update({ status: doc.status, error: doc.error }).eq("id", id);
+    return { ok: false, message: "Couldn't save. Try again." };
+  }
+
+  await admin
+    .from("documents")
+    .update({ filename, size_bytes: file.size, updated_at: new Date().toISOString() })
+    .eq("id", id);
+  after(() => ingestDocument(id));
+  return { ok: true, id, message: "Saved." };
 }
 
 export async function retryDocument(id: string): Promise<ActionState> {

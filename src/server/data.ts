@@ -1,6 +1,14 @@
 import "server-only";
 import type { createClient } from "@/lib/supabase/server";
-import type { Conversation, ConversationSummary, DocumentItem, Message, Source } from "@/lib/types";
+import type {
+  Conversation,
+  ConversationSummary,
+  DocumentItem,
+  EditableDocument,
+  Message,
+  Source,
+} from "@/lib/types";
+import { documentTitle } from "@/server/ingest";
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
 
@@ -22,6 +30,19 @@ export async function listDocuments(supabase: Supabase): Promise<DocumentItem[]>
     chunkCount: d.chunk_count,
     createdAt: d.created_at,
   }));
+}
+
+// Only Markdown documents can be edited; the text comes from the original file in Storage.
+export async function getEditableDocument(supabase: Supabase, id: string): Promise<EditableDocument | null> {
+  const { data: doc } = await supabase
+    .from("documents")
+    .select("id, filename, mime_type, storage_path")
+    .eq("id", id)
+    .maybeSingle();
+  if (!doc || doc.mime_type !== "text/markdown") return null;
+  const { data: file } = await supabase.storage.from("documents").download(doc.storage_path);
+  if (!file) return null;
+  return { id: doc.id, title: documentTitle(doc.filename), content: await file.text() };
 }
 
 export async function listConversations(supabase: Supabase): Promise<ConversationSummary[]> {

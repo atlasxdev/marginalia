@@ -1,6 +1,6 @@
 import { queryOptions } from "@tanstack/react-query";
 import { getBrowserClient } from "./supabase/client";
-import type { Conversation, ConversationSummary, DocumentItem } from "./types";
+import type { Conversation, ConversationSummary, DocumentItem, EditableDocument } from "./types";
 
 async function getJson<T>(url: string): Promise<T> {
   const res = await fetch(url);
@@ -34,3 +34,12 @@ export const meQuery = queryOptions({
   queryFn: async () => (await getBrowserClient().auth.getUser()).data.user,
   staleTime: Infinity,
 });
+
+export const documentQuery = (id: string) =>
+  queryOptions({
+    queryKey: ["document", id],
+    queryFn: () => getJson<EditableDocument>(`/api/documents/${id}`),
+    // The editor keeps its own copy while open, so don't refetch underneath it
+    staleTime: Infinity,
+    refetchOnWindowFocus: false,
+  });

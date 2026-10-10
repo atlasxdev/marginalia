@@ -67,7 +67,7 @@ function Sidebar() {
   const documents = hydrated ? documentsResult.data : undefined;
   const isPending = !hydrated || conversationsResult.isPending;
   const readyCount = documents?.filter((d) => d.status === "ready").length;
-  const libraryActive = pathname === "/library";
+  const libraryActive = pathname === "/library" || pathname.startsWith("/library/");
   const email = useQuery(meQuery).data?.email;
 
   return (
