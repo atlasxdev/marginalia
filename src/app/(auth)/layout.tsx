@@ -1,33 +1,28 @@
-import { Card } from "@/components/ui/card";
+import { SparkleIcon } from "lucide-react";
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
-    <main className="grid min-h-dvh lg:grid-cols-[1fr_minmax(0,34rem)]">
-      <section className="hidden flex-col justify-between p-12 lg:flex">
-        <p className="text-lg font-semibold tracking-tight">Marginalia</p>
-        <Card className="max-w-xl -rotate-1 gap-4 px-10 py-9">
-          <blockquote className="font-serif text-[1.6rem] leading-[1.45]">
-            “Customers may request a full refund{" "}
-            <span className="mark" data-active="true">
-              within 30 days of purchase
-            </span>
-            , provided the item is unused.”
-          </blockquote>
-          <p className="text-sm text-muted-foreground">Refund policy › Eligibility › Time limits</p>
-        </Card>
-        <p className="max-w-sm text-sm text-muted-foreground">
-          Upload your documents, ask questions in plain language, and see the exact passage behind every
-          answer.
+    <main className="relative isolate grid min-h-dvh place-items-center overflow-hidden px-4 py-16">
+      <AuthGlow />
+      <div className="w-full max-w-lg">
+        <p className="mx-auto mb-8 flex w-fit items-center gap-1.5 rounded-lg bg-card/70 px-3 py-1 text-sm shadow-lift-1 backdrop-blur">
+          <span className="font-semibold tracking-tight">Marginalia</span>
+          <SparkleIcon className="size-3.5 fill-highlight text-highlight" aria-hidden />
+          <span className="text-muted-foreground">answers with sources</span>
         </p>
-      </section>
-      <section className="flex items-center justify-center px-4 py-12 sm:px-10">
-        <div className="w-full max-w-md">
-          <p className="mb-8 text-lg font-semibold tracking-tight lg:hidden">Marginalia</p>
-          <Card className="gap-6 py-8 [--card-spacing:--spacing(6)] sm:[--card-spacing:--spacing(9)]">
-            {children}
-          </Card>
-        </div>
-      </section>
+        {children}
+      </div>
     </main>
+  );
+}
+
+// Soft light bleeding in from the edges: highlighter yellow and ballpoint blue
+function AuthGlow() {
+  return (
+    <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
+      <div className="absolute -bottom-1/3 -left-1/4 size-[60rem] animate-drift rounded-full bg-highlight opacity-35 blur-[120px] dark:opacity-15" />
+      <div className="absolute -right-1/4 -bottom-1/2 size-[55rem] animate-drift rounded-full bg-ring opacity-25 blur-[140px] [animation-delay:-9s] dark:opacity-40" />
+      <div className="absolute -top-1/2 left-1/3 size-[40rem] animate-drift rounded-full bg-ring opacity-10 blur-[120px] [animation-delay:-4s] dark:opacity-20" />
+    </div>
   );
 }

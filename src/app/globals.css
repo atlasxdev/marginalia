@@ -158,6 +158,11 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 
   --animate-sweep: sweep 1.3s ease-in-out infinite;
+  --animate-drift: drift 18s ease-in-out infinite alternate;
+  @keyframes drift {
+    from { transform: translate(0, 0) scale(1); }
+    to { transform: translate(6%, -8%) scale(1.12); }
+  }
   @keyframes sweep {
     from { transform: translateX(-100%); }
     to { transform: translateX(250%); }
@@ -236,7 +241,7 @@
     font-size: 0.85rem;
     background: var(--muted);
     box-shadow: var(--recess);
-    border-radius: 6px;
+    border-radius: var(--radius-md);
     padding: 0.9em 1em;
     overflow-x: auto;
   }
@@ -278,4 +283,5 @@
   .caret *::after { animation: none; }
   *, *::before, *::after { transition-duration: 0ms !important; }
   .animate-sweep { animation: none; width: 100%; opacity: 0.6; }
+  .animate-drift { animation: none; }
 }

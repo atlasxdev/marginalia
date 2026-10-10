@@ -8,6 +8,7 @@ export function ThemeToggle() {
   const { resolvedTheme, setTheme } = useTheme();
   return (
     <Button
+      type="button"
       variant="ghost"
       size="icon-sm"
       aria-label="Switch light or dark theme"

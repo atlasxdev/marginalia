@@ -8,10 +8,10 @@ const cardVariants = cva(
     variants: {
       variant: {
         // A sheet of paper lifted off the desk
-        sheet: "rounded-[3px] shadow-lift-2",
+        sheet: "rounded-lg shadow-lift-2",
         // An index card: tilted by --tilt, straightens and lifts when data-active
         index:
-          "relative overflow-visible rounded-[2px] shadow-lift-1 transition-[transform,box-shadow] duration-150 rotate-[var(--tilt,0deg)] data-[active=true]:z-10 data-[active=true]:-translate-y-[3px] data-[active=true]:rotate-0 data-[active=true]:shadow-lift-3",
+          "relative overflow-visible rounded-lg shadow-lift-1 transition-[transform,box-shadow] duration-150 rotate-[var(--tilt,0deg)] data-[active=true]:z-10 data-[active=true]:-translate-y-[3px] data-[active=true]:rotate-0 data-[active=true]:shadow-lift-3",
         flat: "rounded-xl ring-1 ring-foreground/10",
       },
     },

@@ -78,7 +78,7 @@ function Sidebar() {
         <Link
           href="/library"
           aria-current={pathname === "/library" ? "page" : undefined}
-          className="flex items-center justify-between rounded-md px-3 py-2 text-sm hover:bg-sidebar-accent aria-[current=page]:bg-sidebar-accent aria-[current=page]:font-medium aria-[current=page]:shadow-lift-1"
+          className="flex items-center justify-between rounded-lg px-3 py-2 text-sm hover:bg-sidebar-accent aria-[current=page]:bg-sidebar-accent aria-[current=page]:font-medium aria-[current=page]:shadow-lift-1"
         >
           Library
           {readyCount !== undefined && (
@@ -105,7 +105,7 @@ function Sidebar() {
               <Link
                 href={href}
                 aria-current={pathname === href ? "page" : undefined}
-                className="block truncate rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-sidebar-accent hover:text-foreground aria-[current=page]:bg-sidebar-accent aria-[current=page]:text-foreground aria-[current=page]:shadow-lift-1"
+                className="block truncate rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-sidebar-accent hover:text-foreground aria-[current=page]:bg-sidebar-accent aria-[current=page]:text-foreground aria-[current=page]:shadow-lift-1"
               >
                 {c.title}
               </Link>
@@ -114,13 +114,15 @@ function Sidebar() {
         })}
       </ul>
 
-      <form action={signOut} className="flex items-center gap-1 border-t px-3 py-2.5">
+      <div className="flex items-center gap-1 border-t px-3 py-2.5">
         <span className="min-w-0 flex-1 truncate px-2 text-sm">ace@example.com</span>
         <ThemeToggle />
-        <Button type="submit" variant="ghost" size="sm" className="text-muted-foreground">
-          Sign out
-        </Button>
-      </form>
+        <form action={signOut}>
+          <Button type="submit" variant="ghost" size="sm" className="text-muted-foreground">
+            Sign out
+          </Button>
+        </form>
+      </div>
     </nav>
   );
 }

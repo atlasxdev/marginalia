@@ -48,7 +48,7 @@ export function UploadForm() {
         }}
         data-dragging={dragging}
         // A tray set into the desk: files get dropped in
-        className="group flex cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl bg-muted px-6 py-9 text-center inset-shadow-recess transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-ring data-[dragging=true]:bg-highlight-soft"
+        className="group flex cursor-pointer flex-col items-center justify-center gap-3 rounded-lg bg-muted px-6 py-9 text-center inset-shadow-recess transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-ring data-[dragging=true]:bg-highlight-soft"
       >
         <input
           ref={inputRef}

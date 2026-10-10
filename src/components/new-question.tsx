@@ -68,7 +68,7 @@ export function NewQuestion() {
                     type="button"
                     variant="paper"
                     onClick={() => applySuggestion(s)}
-                    className="h-auto rounded-full px-3.5 py-1.5 text-left whitespace-normal"
+                    className="h-auto px-3.5 py-1.5 text-left whitespace-normal"
                   >
                     {s}
                   </Button>

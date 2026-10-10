@@ -35,7 +35,7 @@ export function Composer({ conversationId, busy = false, textareaRef }: Composer
       <label htmlFor="question" className="sr-only">
         Ask a question about your documents
       </label>
-      <InputGroup className="rounded-2xl">
+      <InputGroup>
         <InputGroupTextarea
           ref={ref}
           id="question"
@@ -57,7 +57,7 @@ export function Composer({ conversationId, busy = false, textareaRef }: Composer
           <span className="hidden text-xs font-normal sm:inline">
             Enter to send, Shift + Enter for a new line
           </span>
-          <InputGroupButton type="submit" variant="default" size="sm" disabled={disabled} className="ml-auto px-4 shadow-press">
+          <InputGroupButton type="submit" variant="default" size="sm" disabled={disabled} className="ml-auto rounded-md px-4 shadow-press">
             {pending ? "Sending…" : "Ask"}
           </InputGroupButton>
         </InputGroupAddon>

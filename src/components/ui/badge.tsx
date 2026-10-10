@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils"
 import { Slot } from "radix-ui"
 
 const badgeVariants = cva(
-  "group/badge inline-flex h-5 w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-4xl border border-transparent px-2 py-0.5 text-xs font-medium whitespace-nowrap transition-all focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&>svg]:pointer-events-none [&>svg]:size-3!",
+  "group/badge inline-flex h-5 w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-md border border-transparent px-2 py-0.5 text-xs font-medium whitespace-nowrap transition-all focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&>svg]:pointer-events-none [&>svg]:size-3!",
   {
     variants: {
       variant: {
@@ -22,7 +22,7 @@ const badgeVariants = cva(
         pending: "bg-highlight-soft text-foreground",
         // Rubber stamp, for documents that couldn't be read
         stamp:
-          "h-auto -rotate-3 overflow-visible rounded-[3px] border-2 border-destructive bg-transparent px-1.5 py-0 font-bold tracking-wide text-destructive opacity-90 outline outline-destructive outline-offset-2",
+          "h-auto -rotate-3 overflow-visible rounded-sm border-2 border-destructive bg-transparent px-1.5 py-0 font-bold tracking-wide text-destructive opacity-90 outline outline-destructive outline-offset-2",
       },
     },
     defaultVariants: {
