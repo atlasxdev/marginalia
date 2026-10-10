@@ -3,42 +3,45 @@
 import Link from "next/link";
 import { useActionState } from "react";
 import { signIn } from "@/app/actions/auth";
-import { Field } from "@/components/field";
+import { FieldGroup, GroupedInput } from "@/components/field";
 import { Button } from "@/components/ui/button";
 
 export function SignInForm() {
   const [state, formAction, pending] = useActionState(signIn, { ok: false });
+  const errors = state.fieldErrors ?? {};
 
   return (
-    <div className="text-center">
-      <h1 className="text-5xl leading-[0.95] font-semibold tracking-[-0.045em] text-balance sm:text-6xl">
-        Welcome back.
-      </h1>
-      <p className="mx-auto mt-4 max-w-xs text-muted-foreground">
-        Sign in to pick up where you left off with your documents.
-      </p>
+    <>
+      <h1 className="text-3xl font-semibold tracking-tight">Sign in to Marginalia</h1>
+      <p className="mt-2 text-muted-foreground">Ask questions about your documents.</p>
 
-      <form action={formAction} className="mx-auto mt-8 grid max-w-sm gap-3" noValidate>
-        <Field label="Email" name="email" type="email" autoComplete="email" hideLabel errors={state.fieldErrors?.email} />
-        <Field
-          label="Password"
-          name="password"
-          type="password"
-          autoComplete="current-password"
-          hideLabel
-          errors={state.fieldErrors?.password}
-        />
-        <Button type="submit" size="lg" disabled={pending} className="mt-1 h-11 text-[15px]">
+      <form action={formAction} className="mt-8 grid gap-4" noValidate>
+        <FieldGroup
+          errors={[
+            { name: "email", message: errors.email?.[0] },
+            { name: "password", message: errors.password?.[0] },
+          ]}
+        >
+          <GroupedInput label="Email" name="email" type="email" autoComplete="email" invalid={!!errors.email} />
+          <GroupedInput
+            label="Password"
+            name="password"
+            type="password"
+            autoComplete="current-password"
+            invalid={!!errors.password}
+          />
+        </FieldGroup>
+        <Button type="submit" disabled={pending} className="h-12 rounded-xl text-[17px]">
           {pending ? "Signing in…" : "Sign in"}
         </Button>
       </form>
 
       <p className="mt-6 text-sm text-muted-foreground">
-        New here?{" "}
-        <Link href="/sign-up" className="font-medium text-foreground underline underline-offset-4 hover:text-ring">
-          Create an account
+        Don&apos;t have an account?{" "}
+        <Link href="/sign-up" className="text-primary hover:underline">
+          Create one
         </Link>
       </p>
-    </div>
+    </>
   );
 }

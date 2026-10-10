@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { FileTextIcon, Loader2Icon, Trash2Icon } from "lucide-react";
 import { deleteDocument, retryDocument } from "@/app/actions/documents";
 import {
   AlertDialog,
@@ -13,20 +14,18 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { documentsQuery } from "@/lib/queries";
-import type { DocumentItem, DocumentStatus } from "@/lib/types";
+import type { DocumentItem } from "@/lib/types";
 import { useHydrated } from "@/lib/use-hydrated";
 import { cn } from "@/lib/utils";
 import { UploadForm } from "./upload-form";
 
-const KIND: Record<string, string> = {
-  "text/markdown": "Markdown",
-  "application/pdf": "PDF",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "Word",
+const KIND: Record<string, { label: string; color: string }> = {
+  "text/markdown": { label: "Markdown", color: "bg-[#8e8e93]" },
+  "application/pdf": { label: "PDF", color: "bg-[#ff3b30]" },
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": { label: "Word", color: "bg-[#007aff]" },
 };
 
 function formatSize(bytes: number) {
@@ -62,114 +61,83 @@ export function LibraryView() {
   });
 
   return (
-    <div className="h-full overflow-y-auto">
-      <div className="mx-auto max-w-4xl px-4 py-10 sm:px-8 lg:py-14">
-        <h1 className="font-serif text-3xl">Library</h1>
-        <p className="mt-2 text-muted-foreground">
-          Every file here is converted to text, split into sections, and indexed for search.
-        </p>
-
-        <div className="mt-8">
+    <div className="h-full overflow-y-auto bg-muted dark:bg-background">
+      <div className="mx-auto max-w-3xl px-4 pt-10 pb-12 sm:px-6">
+        <div className="grid grid-cols-[1fr_auto] items-center gap-x-4 gap-y-3">
+          <h1 className="text-3xl font-bold tracking-tight">Library</h1>
           <UploadForm />
         </div>
+        <p className="mt-1 text-muted-foreground">
+          Markdown, PDF, and Word files. Drop a file anywhere on this page to upload it.
+        </p>
 
-        <section aria-labelledby="docs-heading" className="mt-6">
-          <h2 id="docs-heading" className="sr-only">
-            Documents
-          </h2>
-
-          {error && (
-            <p className="text-destructive">Couldn&apos;t load your documents. Refresh to try again.</p>
-          )}
+        <section aria-label="Documents" className="mt-6">
+          {error && <p className="text-destructive">Couldn&apos;t load your documents. Refresh to try again.</p>}
 
           {isPending && (
-            <ul className="grid gap-3" aria-label="Loading documents">
+            <ul className="divide-y overflow-hidden rounded-xl bg-card" aria-label="Loading documents">
               {[0, 1, 2].map((i) => (
-                <li key={i}>
-                  <Card className="flex-row items-center px-5 py-5">
-                    <Skeleton className="h-4 w-1/2" />
-                    <Skeleton className="ml-auto h-4 w-16" />
-                  </Card>
+                <li key={i} className="flex items-center gap-3 px-4 py-3">
+                  <Skeleton className="size-9 rounded-lg" />
+                  <Skeleton className="h-4 w-1/2" />
                 </li>
               ))}
             </ul>
           )}
 
           {documents?.length === 0 && (
-            <p className="py-8 text-center text-muted-foreground">
-              No documents yet. Upload one above to start asking questions.
-            </p>
+            <p className="rounded-xl bg-card px-4 py-10 text-center text-muted-foreground">No documents yet</p>
           )}
 
           {documents && documents.length > 0 && (
-            <ul className="grid gap-3">
-              {documents.map((doc) => (
-                <li key={doc.id}>
-                  <Card
-                    className={cn(
-                      "relative grid grid-cols-[1fr_auto] items-start gap-x-4 gap-y-1 px-5 py-4",
-                      doc.status === "failed" && "-rotate-[0.3deg]"
-                    )}
-                  >
-                    <div className="min-w-0">
-                      <p className="truncate text-[15px] font-medium">{doc.filename}</p>
-                      <p className="mt-0.5 text-sm text-muted-foreground">
-                        {KIND[doc.mimeType] ?? "File"}, {formatSize(doc.sizeBytes)}, added{" "}
-                        {dateFormat.format(new Date(doc.createdAt))}
-                        {doc.status === "ready" && `, ${doc.chunkCount} sections`}
+            <ul className="divide-y overflow-hidden rounded-xl bg-card">
+              {documents.map((doc) => {
+                const kind = KIND[doc.mimeType] ?? { label: "File", color: "bg-[#8e8e93]" };
+                return (
+                  <li key={doc.id} className="group flex items-center gap-3 px-4 py-3">
+                    <span className={cn("grid size-9 shrink-0 place-items-center rounded-lg text-white", kind.color)}>
+                      <FileTextIcon className="size-[18px]" />
+                    </span>
+
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-medium">{doc.filename}</p>
+                      <p className="truncate text-sm text-muted-foreground">
+                        {doc.error ??
+                          `${kind.label}, ${formatSize(doc.sizeBytes)}, ${dateFormat.format(new Date(doc.createdAt))}`}
                       </p>
-                      {doc.error && <p className="mt-1.5 max-w-[60ch] text-sm text-destructive">{doc.error}</p>}
                     </div>
 
-                    <div className="flex items-center gap-3">
-                      <StatusBadge status={doc.status} />
-                      <div className="flex gap-1">
-                        {doc.status === "failed" && (
-                          <Button
-                            variant="paper"
-                            size="sm"
-                            onClick={() => retry.mutate(doc.id)}
-                            disabled={retry.isPending && retry.variables === doc.id}
-                          >
-                            Retry
-                          </Button>
-                        )}
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="text-muted-foreground hover:text-destructive"
-                              aria-label={`Delete ${doc.filename}`}
-                            >
-                              Delete
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent className="shadow-lift-3">
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Delete {doc.filename}?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                It&apos;s removed from your library and from search. Past answers that cited it
-                                keep their text.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Keep it</AlertDialogCancel>
-                              <AlertDialogAction variant="destructive" onClick={() => remove.mutate(doc.id)}>
-                                Delete document
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </div>
-                    </div>
+                    <Status doc={doc} onRetry={() => retry.mutate(doc.id)} retrying={retry.isPending && retry.variables === doc.id} />
 
-                    {(doc.status === "pending" || doc.status === "processing") && (
-                      <IndexingStrip slow={doc.status === "pending"} />
-                    )}
-                  </Card>
-                </li>
-              ))}
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          aria-label={`Delete ${doc.filename}`}
+                          className="text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-destructive focus-visible:opacity-100"
+                        >
+                          <Trash2Icon />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete “{doc.filename}”?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            It will be removed from your library and from search.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction variant="destructive" onClick={() => remove.mutate(doc.id)}>
+                            Delete
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </section>
@@ -178,26 +146,31 @@ export function LibraryView() {
   );
 }
 
-function StatusBadge({ status }: { status: DocumentStatus }) {
-  switch (status) {
+function Status({ doc, onRetry, retrying }: { doc: DocumentItem; onRetry: () => void; retrying: boolean }) {
+  switch (doc.status) {
     case "ready":
-      return <Badge variant="success">Ready</Badge>;
-    case "failed":
-      return <Badge variant="stamp">Couldn&apos;t read</Badge>;
+      return <span className="shrink-0 text-sm text-muted-foreground tabular-nums">{doc.chunkCount} sections</span>;
     case "processing":
-      return <Badge variant="pending">Indexing</Badge>;
+      return (
+        <span className="flex shrink-0 items-center gap-1.5 text-sm text-muted-foreground" role="status">
+          <Loader2Icon className="size-4 animate-spin" />
+          Indexing
+        </span>
+      );
     case "pending":
-      return <Badge variant="outline">Queued</Badge>;
+      return (
+        <span className="shrink-0 text-sm text-muted-foreground" role="status">
+          Waiting
+        </span>
+      );
+    case "failed":
+      return (
+        <span className="flex shrink-0 items-center gap-3 text-sm">
+          <span className="text-destructive">Couldn&apos;t read</span>
+          <Button variant="link" className="h-auto p-0" disabled={retrying} onClick={onRetry}>
+            Retry
+          </Button>
+        </span>
+      );
   }
-}
-
-// Progress along the card's bottom edge while the file is queued or indexing
-function IndexingStrip({ slow }: { slow: boolean }) {
-  return (
-    <div aria-hidden className="absolute inset-x-0 bottom-0 h-[3px] overflow-hidden bg-highlight/30">
-      <div
-        className={cn("h-full w-2/5 animate-sweep bg-highlight", slow && "opacity-60 [animation-duration:2.4s]")}
-      />
-    </div>
-  );
 }

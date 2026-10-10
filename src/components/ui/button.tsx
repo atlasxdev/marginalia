@@ -8,12 +8,7 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        // Raised: light top edge and a drop shadow; presses flat when clicked
-        default:
-          "bg-primary bg-linear-to-b from-primary-foreground/15 to-transparent text-primary-foreground shadow-press hover:from-primary-foreground/20 active:shadow-none",
-        // A small lifted sheet of paper, for chips and secondary actions
-        paper:
-          "bg-card text-muted-foreground shadow-lift-1 hover:-translate-y-px hover:text-foreground hover:shadow-lift-2 active:translate-y-0 active:shadow-lift-1",
+        default: "bg-primary text-primary-foreground hover:bg-primary/80",
         outline:
           "border-border bg-background hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
         secondary:

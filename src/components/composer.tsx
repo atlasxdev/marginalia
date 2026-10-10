@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
+import { ArrowUpIcon } from "lucide-react";
 import { askQuestion, type AskState } from "@/app/actions/chat";
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupTextarea } from "@/components/ui/input-group";
 import { MAX_QUESTION_CHARS } from "@/lib/schemas";
@@ -35,14 +36,15 @@ export function Composer({ conversationId, busy = false, textareaRef }: Composer
       <label htmlFor="question" className="sr-only">
         Ask a question about your documents
       </label>
-      <InputGroup>
+      <InputGroup className="rounded-3xl bg-card shadow-sm">
         <InputGroupTextarea
           ref={ref}
           id="question"
           name="question"
+          rows={1}
           maxLength={MAX_QUESTION_CHARS}
           defaultValue={state.question}
-          placeholder="Ask about your documents…"
+          placeholder="Ask about your documents"
           aria-invalid={!!error}
           aria-describedby={error ? "question-error" : undefined}
           onKeyDown={(e) => {
@@ -51,19 +53,23 @@ export function Composer({ conversationId, busy = false, textareaRef }: Composer
               if (!disabled) e.currentTarget.form?.requestSubmit();
             }
           }}
-          className="max-h-48 min-h-14 px-4 pt-3.5 text-[15px] leading-relaxed md:text-[15px]"
+          className="max-h-48 min-h-0 py-3 pl-5 text-[17px] leading-snug md:text-[17px]"
         />
-        <InputGroupAddon align="block-end" className="cursor-default px-3 pb-3">
-          <span className="hidden text-xs font-normal sm:inline">
-            Enter to send, Shift + Enter for a new line
-          </span>
-          <InputGroupButton type="submit" variant="default" size="sm" disabled={disabled} className="ml-auto rounded-md px-4 shadow-press">
-            {pending ? "Sending…" : "Ask"}
+        <InputGroupAddon align="inline-end" className="self-end pb-2">
+          <InputGroupButton
+            type="submit"
+            variant="default"
+            size="icon-sm"
+            disabled={disabled}
+            aria-label={pending ? "Sending" : "Ask"}
+            className="rounded-full"
+          >
+            <ArrowUpIcon />
           </InputGroupButton>
         </InputGroupAddon>
       </InputGroup>
       {error && (
-        <p id="question-error" role="alert" className="mt-2 px-1 text-sm text-destructive">
+        <p id="question-error" role="alert" className="mt-2 px-4 text-sm text-destructive">
           {error}
         </p>
       )}

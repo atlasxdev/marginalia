@@ -3,51 +3,55 @@
 import Link from "next/link";
 import { useActionState } from "react";
 import { signUp } from "@/app/actions/auth";
-import { Field } from "@/components/field";
+import { FieldGroup, GroupedInput } from "@/components/field";
 import { Button } from "@/components/ui/button";
 
 export function SignUpForm() {
   const [state, formAction, pending] = useActionState(signUp, { ok: false });
+  const errors = state.fieldErrors ?? {};
 
   return (
-    <div className="text-center">
-      <h1 className="text-5xl leading-[0.95] font-semibold tracking-[-0.045em] text-balance sm:text-6xl">
-        Ask your documents anything.
-      </h1>
-      <p className="mx-auto mt-4 max-w-xs text-muted-foreground">
-        Every answer shows the exact passage it came from.
-      </p>
+    <>
+      <h1 className="text-3xl font-semibold tracking-tight">Create your account</h1>
+      <p className="mt-2 text-muted-foreground">Your documents stay private to you.</p>
 
-      <form action={formAction} className="mx-auto mt-8 grid max-w-sm gap-3" noValidate>
-        <Field label="Name" name="name" autoComplete="name" hideLabel errors={state.fieldErrors?.name} />
-        <Field label="Email" name="email" type="email" autoComplete="email" hideLabel errors={state.fieldErrors?.email} />
-        <Field
-          label="Password"
-          name="password"
-          type="password"
-          autoComplete="new-password"
-          hideLabel
-          errors={state.fieldErrors?.password}
-        />
-        <Field
-          label="Confirm password"
-          name="confirmPassword"
-          type="password"
-          autoComplete="new-password"
-          hideLabel
-          errors={state.fieldErrors?.confirmPassword}
-        />
-        <Button type="submit" size="lg" disabled={pending} className="mt-1 h-11 text-[15px]">
+      <form action={formAction} className="mt-8 grid gap-4" noValidate>
+        <FieldGroup
+          errors={[
+            { name: "name", message: errors.name?.[0] },
+            { name: "email", message: errors.email?.[0] },
+            { name: "password", message: errors.password?.[0] },
+            { name: "confirmPassword", message: errors.confirmPassword?.[0] },
+          ]}
+        >
+          <GroupedInput label="Name" name="name" autoComplete="name" invalid={!!errors.name} />
+          <GroupedInput label="Email" name="email" type="email" autoComplete="email" invalid={!!errors.email} />
+          <GroupedInput
+            label="Password"
+            name="password"
+            type="password"
+            autoComplete="new-password"
+            invalid={!!errors.password}
+          />
+          <GroupedInput
+            label="Confirm password"
+            name="confirmPassword"
+            type="password"
+            autoComplete="new-password"
+            invalid={!!errors.confirmPassword}
+          />
+        </FieldGroup>
+        <Button type="submit" disabled={pending} className="h-12 rounded-xl text-[17px]">
           {pending ? "Creating account…" : "Create account"}
         </Button>
       </form>
 
       <p className="mt-6 text-sm text-muted-foreground">
         Already have an account?{" "}
-        <Link href="/sign-in" className="font-medium text-foreground underline underline-offset-4 hover:text-ring">
+        <Link href="/sign-in" className="text-primary hover:underline">
           Sign in
         </Link>
       </p>
-    </div>
+    </>
   );
 }

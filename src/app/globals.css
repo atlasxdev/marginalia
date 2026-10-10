@@ -5,103 +5,80 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
-  Theme: a reading desk. Answers are printed sheets, sources are index cards,
-  inputs are trays set into the desk, and the highlighter yellow is the one
-  loud color. To retheme, edit the two token blocks below; components only
-  use these names (bg-card, text-muted-foreground, shadow-lift-2, ...).
+  Theme: Apple-style. System font, white and gray surfaces, one blue accent,
+  hairline separators, almost no shadows. The only other color is the
+  Books-style yellow that marks cited passages. To retheme, edit the two
+  token blocks below; components only use these names.
 */
 
 :root {
-  /* shadcn tokens */
-  --background: #e3e6df; /* the desk */
-  --foreground: #1d2320; /* ink */
-  --card: #fafbf7; /* a sheet of paper */
-  --card-foreground: #1d2320;
-  --popover: #fafbf7;
-  --popover-foreground: #1d2320;
-  --primary: #1d2320;
-  --primary-foreground: #f4f5f1;
-  --secondary: #d9ddd5;
-  --secondary-foreground: #1d2320;
-  --muted: #d9ddd5; /* recessed trays */
-  --muted-foreground: #545c57;
-  --accent: #eef0ea;
-  --accent-foreground: #1d2320;
-  --destructive: #b4321f;
-  --border: #d2d6ce;
-  --input: #d2d6ce;
-  --ring: #2c46c9; /* ballpoint blue: focus and links */
-  --radius: 0.625rem;
+  --background: #ffffff;
+  --foreground: #1d1d1f;
+  --card: #ffffff;
+  --card-foreground: #1d1d1f;
+  --popover: #ffffff;
+  --popover-foreground: #1d1d1f;
+  --primary: #007aff;
+  --primary-foreground: #ffffff;
+  --secondary: #f5f5f7;
+  --secondary-foreground: #1d1d1f;
+  --muted: #f5f5f7;
+  --muted-foreground: #6e6e73;
+  --accent: #e8e8ed;
+  --accent-foreground: #1d1d1f;
+  --destructive: #ff3b30;
+  --success: #248a3d;
+  --border: #d2d2d7;
+  --input: #d2d2d7;
+  --ring: #007aff;
+  --radius: 0.75rem;
 
-  --sidebar: transparent;
-  --sidebar-foreground: #1d2320;
-  --sidebar-primary: #1d2320;
-  --sidebar-primary-foreground: #f4f5f1;
-  --sidebar-accent: #fafbf7;
-  --sidebar-accent-foreground: #1d2320;
-  --sidebar-border: #d2d6ce;
-  --sidebar-ring: #2c46c9;
+  --sidebar: rgb(242 242 247 / 0.8);
+  --sidebar-foreground: #1d1d1f;
+  --sidebar-primary: #007aff;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: rgb(0 0 0 / 0.06);
+  --sidebar-accent-foreground: #1d1d1f;
+  --sidebar-border: #d2d2d7;
+  --sidebar-ring: #007aff;
 
-  /* App tokens */
-  --highlight: #f3e25b;
-  --highlight-soft: #f8efa6;
-  --on-highlight: #1d2320;
-  --success: #2f6b3f;
-
-  /* Depth: a tight contact shadow plus a soft ambient one */
-  --lift-1: 0 1px 1px rgb(40 48 42 / 0.08), 0 2px 6px -1px rgb(40 48 42 / 0.1);
-  --lift-2: 0 1px 2px rgb(40 48 42 / 0.1), 0 8px 18px -6px rgb(40 48 42 / 0.18),
-    0 22px 40px -18px rgb(40 48 42 / 0.2);
-  --lift-3: 0 2px 3px rgb(40 48 42 / 0.12), 0 14px 28px -8px rgb(40 48 42 / 0.26);
-  --edge: inset 0 1px 0 rgb(255 255 255 / 0.85);
-  --recess: inset 0 2px 4px rgb(40 48 42 / 0.14), inset 0 0 0 1px rgb(40 48 42 / 0.06);
-  --press: inset 0 1px 0 rgb(255 255 255 / 0.18), 0 1px 1px rgb(0 0 0 / 0.25),
-    0 3px 8px -2px rgb(0 0 0 / 0.3);
-  --grain-opacity: 0.35;
-  --grain-blend: multiply;
+  --highlight: #ffe066;
+  --highlight-soft: #fff4bf;
+  --on-highlight: #1d1d1f;
 }
 
 .dark {
-  --background: #141816;
-  --foreground: #e6e9e3;
-  --card: #1f2522;
-  --card-foreground: #e6e9e3;
-  --popover: #1f2522;
-  --popover-foreground: #e6e9e3;
-  --primary: #e6e9e3;
-  --primary-foreground: #141816;
-  --secondary: #0f1211;
-  --secondary-foreground: #e6e9e3;
-  --muted: #0f1211;
-  --muted-foreground: #a3aba5;
-  --accent: #262d29;
-  --accent-foreground: #e6e9e3;
-  --destructive: #f08a75;
-  --border: #343b37;
-  --input: #343b37;
-  --ring: #8ea0ff;
+  --background: #000000;
+  --foreground: #f5f5f7;
+  --card: #1c1c1e;
+  --card-foreground: #f5f5f7;
+  --popover: #1c1c1e;
+  --popover-foreground: #f5f5f7;
+  --primary: #0a84ff;
+  --primary-foreground: #ffffff;
+  --secondary: #1c1c1e;
+  --secondary-foreground: #f5f5f7;
+  --muted: #1c1c1e;
+  --muted-foreground: #98989d;
+  --accent: #2c2c2e;
+  --accent-foreground: #f5f5f7;
+  --destructive: #ff453a;
+  --success: #30d158;
+  --border: #38383a;
+  --input: #38383a;
+  --ring: #0a84ff;
 
-  --sidebar-foreground: #e6e9e3;
-  --sidebar-primary: #e6e9e3;
-  --sidebar-primary-foreground: #141816;
-  --sidebar-accent: #1f2522;
-  --sidebar-accent-foreground: #e6e9e3;
-  --sidebar-border: #343b37;
-  --sidebar-ring: #8ea0ff;
+  --sidebar: rgb(28 28 30 / 0.8);
+  --sidebar-foreground: #f5f5f7;
+  --sidebar-primary: #0a84ff;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: rgb(255 255 255 / 0.08);
+  --sidebar-accent-foreground: #f5f5f7;
+  --sidebar-border: #38383a;
+  --sidebar-ring: #0a84ff;
 
-  --highlight: #d8c53c;
-  --highlight-soft: #4a4420;
-  --success: #86c795;
-
-  --lift-1: 0 1px 1px rgb(0 0 0 / 0.4), 0 2px 6px -1px rgb(0 0 0 / 0.35);
-  --lift-2: 0 1px 2px rgb(0 0 0 / 0.5), 0 10px 22px -6px rgb(0 0 0 / 0.55);
-  --lift-3: 0 2px 3px rgb(0 0 0 / 0.55), 0 16px 32px -8px rgb(0 0 0 / 0.7);
-  --edge: inset 0 1px 0 rgb(255 255 255 / 0.06);
-  --recess: inset 0 2px 5px rgb(0 0 0 / 0.55), inset 0 0 0 1px rgb(255 255 255 / 0.03);
-  --press: inset 0 1px 0 rgb(255 255 255 / 0.5), 0 1px 1px rgb(0 0 0 / 0.5),
-    0 3px 8px -2px rgb(0 0 0 / 0.6);
-  --grain-opacity: 0.08;
-  --grain-blend: screen;
+  --highlight: #ffd60a;
+  --highlight-soft: rgb(255 214 10 / 0.22);
 }
 
 @theme inline {
@@ -120,6 +97,7 @@
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
+  --color-success: var(--success);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -131,23 +109,15 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
-
   --color-highlight: var(--highlight);
   --color-highlight-soft: var(--highlight-soft);
   --color-on-highlight: var(--on-highlight);
-  --color-success: var(--success);
 
-  /* shadow-lift-1/2/3, shadow-press, inset-shadow-recess */
-  --shadow-lift-1: var(--edge), var(--lift-1);
-  --shadow-lift-2: var(--edge), var(--lift-2);
-  --shadow-lift-3: var(--edge), var(--lift-3);
-  --shadow-press: var(--press);
-  --inset-shadow-recess: var(--recess);
-
-  --font-sans: var(--font-ui);
-  --font-heading: var(--font-ui);
-  --font-serif: var(--font-read);
-  --font-mono: var(--font-code);
+  /* SF Pro on Apple devices, Inter everywhere else */
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", var(--font-inter),
+    system-ui, sans-serif;
+  --font-heading: var(--font-sans);
+  --font-mono: ui-monospace, "SF Mono", var(--font-code), monospace;
 
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
@@ -156,17 +126,6 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
-
-  --animate-sweep: sweep 1.3s ease-in-out infinite;
-  --animate-drift: drift 18s ease-in-out infinite alternate;
-  @keyframes drift {
-    from { transform: translate(0, 0) scale(1); }
-    to { transform: translate(6%, -8%) scale(1.12); }
-  }
-  @keyframes sweep {
-    from { transform: translateX(-100%); }
-    to { transform: translateX(250%); }
-  }
 }
 
 @layer base {
@@ -175,52 +134,40 @@
   }
   html {
     @apply font-sans;
+    -webkit-font-smoothing: antialiased;
   }
   body {
     @apply bg-background text-foreground;
+    letter-spacing: -0.01em;
   }
   button:not(:disabled),
   [role="button"]:not(:disabled) {
     cursor: pointer;
   }
-  /* Desk grain: fixed noise behind everything */
-  body::before {
-    content: "";
-    position: fixed;
-    inset: 0;
-    z-index: -1;
-    pointer-events: none;
-    opacity: var(--grain-opacity);
-    mix-blend-mode: var(--grain-blend);
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.3  0 0 0 0 0.33  0 0 0 0 0.3  0 0 0 0.22 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  }
 }
 
 @layer components {
-  /* Highlighter stroke. At rest it's a low marker line under the text;
-     when its citation is active it fills the line like a full marker pass. */
+  /* Cited passage, highlighted like Apple Books. Brighter when its citation is active. */
   .mark {
-    background: linear-gradient(transparent 62%, var(--highlight-soft) 62%);
-    border-radius: 0.2em 0.5em 0.3em 0.45em;
-    padding: 0.05em 0.15em;
-    margin: 0 -0.15em;
+    background: var(--highlight-soft);
+    border-radius: 0.2em;
+    padding: 0.05em 0.1em;
     -webkit-box-decoration-break: clone;
     box-decoration-break: clone;
-    transition: background-color 120ms, color 120ms;
+    transition: background-color 150ms;
   }
   .mark[data-active="true"] {
     background: var(--highlight);
     color: var(--on-highlight);
   }
 
-  /* Reading column typography for answers */
+  /* Answer text */
   .answer {
-    font-family: var(--font-read), Georgia, serif;
     font-size: 1.0625rem;
-    line-height: 1.7;
+    line-height: 1.6;
   }
-  .answer > * + * { margin-top: 0.9em; }
-  .answer strong { font-weight: 650; }
+  .answer > * + * { margin-top: 0.85em; }
+  .answer strong { font-weight: 600; }
   .answer ul, .answer ol { padding-left: 1.3em; }
   .answer ul { list-style: disc; }
   .answer ol { list-style: decimal; }
@@ -228,60 +175,59 @@
   .answer table {
     display: block;
     overflow-x: auto;
-    font-family: var(--font-ui), sans-serif;
-    font-size: 0.9rem;
+    font-size: 0.95rem;
     border-collapse: collapse;
     width: 100%;
   }
   .answer thead:has(th:empty) { display: none; }
-  .answer td { border-top: 1px solid var(--border); padding: 0.55em 0.75em 0.55em 0; vertical-align: top; }
+  .answer td { border-top: 1px solid var(--border); padding: 0.6em 1em 0.6em 0; vertical-align: top; }
   .answer td:first-child { color: var(--muted-foreground); white-space: nowrap; }
   .answer pre {
-    font-family: var(--font-code), monospace;
+    font-family: var(--font-mono);
     font-size: 0.85rem;
     background: var(--muted);
-    box-shadow: var(--recess);
-    border-radius: var(--radius-md);
+    border-radius: var(--radius);
     padding: 0.9em 1em;
     overflow-x: auto;
   }
-  .answer code { font-family: var(--font-code), monospace; font-size: 0.9em; }
+  .answer code { font-family: var(--font-mono); font-size: 0.9em; }
 
-  /* Citation chip inside the answer */
+  /* Citation number inside the answer */
   .cite {
-    font-family: var(--font-ui), sans-serif;
-    font-size: 0.72em;
+    display: inline-grid;
+    place-items: center;
+    min-width: 1.25rem;
+    height: 1.25rem;
+    padding: 0 0.3rem;
+    margin-left: 0.15rem;
+    border-radius: 999px;
+    font-size: 0.7rem;
     font-weight: 600;
-    vertical-align: 0.25em;
-    color: var(--foreground);
+    vertical-align: 0.15em;
+    color: var(--muted-foreground);
+    background: var(--accent);
     text-decoration: none;
-    padding: 0.05em 0.4em;
-    margin-left: 0.1em;
-    border-radius: 0.25em 0.45em 0.3em 0.4em;
-    background: var(--highlight-soft);
-    transition: background 120ms;
+    transition: background-color 150ms, color 150ms;
   }
   .cite[data-active="true"], .cite:hover { background: var(--highlight); color: var(--on-highlight); }
 
-  /* Streaming caret, after the last text (inside the last list item when the answer ends in a list) */
+  /* Streaming caret after the last text (inside the last list item when the answer ends in a list) */
   .caret > :last-child:not(ol, ul, table)::after,
   .caret > :is(ol, ul):last-child > li:last-child::after {
     content: "";
     display: inline-block;
-    width: 0.45em;
-    height: 1em;
-    margin-left: 0.15em;
-    vertical-align: -0.12em;
-    background: var(--highlight);
-    animation: blink 900ms steps(2) infinite;
+    width: 0.5em;
+    height: 0.5em;
+    margin-left: 0.3em;
+    border-radius: 999px;
+    background: var(--muted-foreground);
+    animation: pulse-dot 1s ease-in-out infinite;
   }
 }
 
-@keyframes blink { 50% { opacity: 0; } }
+@keyframes pulse-dot { 50% { opacity: 0.25; } }
 
 @media (prefers-reduced-motion: reduce) {
   .caret *::after { animation: none; }
   *, *::before, *::after { transition-duration: 0ms !important; }
-  .animate-sweep { animation: none; width: 100%; opacity: 0.6; }
-  .animate-drift { animation: none; }
 }

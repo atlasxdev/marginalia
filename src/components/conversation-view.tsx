@@ -6,7 +6,6 @@ import { useQuery } from "@tanstack/react-query";
 import { conversationQuery } from "@/lib/queries";
 import { useAnswerStream } from "@/lib/use-answer-stream";
 import { useHydrated } from "@/lib/use-hydrated";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Answer } from "./answer";
@@ -30,9 +29,9 @@ export function ConversationView({ id }: { id: string }) {
   if (error) {
     return (
       <div className="mx-auto max-w-xl px-4 py-24 text-center">
-        <h1 className="text-xl font-semibold">This conversation isn&apos;t available</h1>
+        <h1 className="text-2xl font-semibold">This conversation isn&apos;t available</h1>
         <p className="mt-2 text-muted-foreground">It may have been deleted.</p>
-        <Button asChild className="mt-6">
+        <Button asChild size="lg" className="mt-6">
           <Link href="/chat">Ask a new question</Link>
         </Button>
       </div>
@@ -42,18 +41,22 @@ export function ConversationView({ id }: { id: string }) {
   return (
     <div className="flex h-full flex-col">
       <div className="min-h-0 flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-5xl px-4 py-10 sm:px-8 lg:py-14">
-          {isPending && <ConversationSkeleton />}
+        <div className="mx-auto max-w-3xl px-4 pt-10 pb-8 sm:px-6">
+          {isPending ? (
+            <ConversationSkeleton />
+          ) : (
+            <h1 className="text-3xl font-bold tracking-tight text-balance">{conversation?.title}</h1>
+          )}
 
-          <div className="space-y-14">
+          <div className="mt-8 space-y-8">
             {conversation?.messages.map((m) =>
               m.role === "user" ? (
-                <h2
+                <p
                   key={m.id}
-                  className="max-w-[60ch] break-words border-l-2 border-highlight pl-4 text-xl leading-snug font-medium tracking-tight sm:text-[1.4rem]"
+                  className="ml-auto w-fit max-w-[80%] rounded-2xl bg-muted px-4 py-2.5 break-words"
                 >
                   {m.content}
-                </h2>
+                </p>
               ) : (
                 <Answer key={m.id} content={m.content} sources={m.sources} />
               )
@@ -63,27 +66,25 @@ export function ConversationView({ id }: { id: string }) {
               (stream.text ? (
                 <Answer content={stream.text} sources={stream.sources} streaming />
               ) : (
-                <p className="text-sm text-muted-foreground" role="status">
+                <p className="text-muted-foreground" role="status">
                   Searching your documents…
                 </p>
               ))}
 
             {stream.status === "error" && (
-              <Alert variant="destructive" className="max-w-[68ch] bg-card shadow-lift-1">
-                <AlertDescription className="flex flex-wrap items-center justify-between gap-3">
-                  <span>{stream.error}</span>
-                  <Button variant="paper" size="sm" onClick={stream.retry}>
-                    Try again
-                  </Button>
-                </AlertDescription>
-              </Alert>
+              <div role="alert" className="flex items-center gap-3">
+                <p className="text-destructive">{stream.error}</p>
+                <Button variant="link" className="h-auto p-0" onClick={stream.retry}>
+                  Try again
+                </Button>
+              </div>
             )}
           </div>
           <div ref={endRef} />
         </div>
       </div>
 
-      <div className="px-4 pt-2 pb-4 sm:px-8">
+      <div className="px-4 pb-4 sm:px-6">
         <Composer conversationId={id} busy={stream.busy} />
       </div>
     </div>
@@ -92,11 +93,10 @@ export function ConversationView({ id }: { id: string }) {
 
 function ConversationSkeleton() {
   return (
-    <div className="max-w-[68ch] space-y-4" aria-label="Loading conversation">
-      <Skeleton className="h-6 w-2/3" />
+    <div className="space-y-4" aria-label="Loading conversation">
+      <Skeleton className="h-8 w-2/3" />
       <Skeleton className="h-4 w-full" />
       <Skeleton className="h-4 w-11/12" />
-      <Skeleton className="h-4 w-3/4" />
     </div>
   );
 }
