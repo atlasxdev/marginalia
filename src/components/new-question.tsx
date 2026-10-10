@@ -58,7 +58,7 @@ export function NewQuestion() {
                 <li key={s}>
                   <Button
                     type="button"
-                    variant="secondary"
+                    variant="glass"
                     onClick={() => applySuggestion(s)}
                     className="h-auto rounded-full px-3.5 py-1.5 font-normal whitespace-normal"
                   >

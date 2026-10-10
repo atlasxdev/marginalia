@@ -9,10 +9,14 @@
   hairline separators, almost no shadows. The only other color is the
   Books-style yellow that marks cited passages. To retheme, edit the two
   token blocks below; components only use these names.
+
+  Glass: panels that float (sidebar, composer, sources, dialogs) are frosted
+  over a soft color wash on the page. Use `glass bg-glass border
+  border-glass-border` (or bg-glass-strong for text-heavy panels).
 */
 
 :root {
-  --background: #ffffff;
+  --background: #f2f3f7;
   --foreground: #1d1d1f;
   --card: #ffffff;
   --card-foreground: #1d1d1f;
@@ -33,7 +37,18 @@
   --ring: #007aff;
   --radius: 0.75rem;
 
-  --sidebar: rgb(242 242 247 / 0.8);
+  --glass: rgb(255 255 255 / 0.5);
+  --glass-strong: rgb(255 255 255 / 0.72);
+  --glass-border: rgb(255 255 255 / 0.75);
+  --glass-highlight: rgb(255 255 255 / 0.9);
+  --glass-divider: rgb(0 0 0 / 0.08);
+  --glass-edge: rgb(0 0 0 / 0.07);
+  --glass-drop: 0 10px 30px -10px rgb(30 40 80 / 0.18);
+  --wash-1: rgb(0 122 255 / 0.28);
+  --wash-2: rgb(175 82 222 / 0.2);
+  --wash-3: rgb(90 200 250 / 0.26);
+
+  --sidebar: var(--glass);
   --sidebar-foreground: #1d1d1f;
   --sidebar-primary: #007aff;
   --sidebar-primary-foreground: #ffffff;
@@ -68,7 +83,18 @@
   --input: #38383a;
   --ring: #0a84ff;
 
-  --sidebar: rgb(28 28 30 / 0.8);
+  --glass: rgb(44 44 48 / 0.4);
+  --glass-strong: rgb(44 44 48 / 0.68);
+  --glass-border: rgb(255 255 255 / 0.1);
+  --glass-highlight: rgb(255 255 255 / 0.14);
+  --glass-divider: rgb(255 255 255 / 0.08);
+  --glass-edge: rgb(0 0 0 / 0.5);
+  --glass-drop: 0 10px 30px -10px rgb(0 0 0 / 0.6);
+  --wash-1: rgb(10 132 255 / 0.42);
+  --wash-2: rgb(191 90 242 / 0.32);
+  --wash-3: rgb(100 210 255 / 0.26);
+
+  --sidebar: var(--glass);
   --sidebar-foreground: #f5f5f7;
   --sidebar-primary: #0a84ff;
   --sidebar-primary-foreground: #ffffff;
@@ -109,6 +135,10 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --color-glass: var(--glass);
+  --color-glass-strong: var(--glass-strong);
+  --color-glass-border: var(--glass-border);
+  --color-glass-divider: var(--glass-divider);
   --color-highlight: var(--highlight);
   --color-highlight-soft: var(--highlight-soft);
   --color-on-highlight: var(--on-highlight);
@@ -139,6 +169,12 @@
   body {
     @apply bg-background text-foreground;
     letter-spacing: -0.01em;
+    /* The color wash the glass panels frost over */
+    background-image:
+      radial-gradient(55rem 38rem at 0% 0%, var(--wash-1), transparent 70%),
+      radial-gradient(45rem 35rem at 100% 15%, var(--wash-2), transparent 70%),
+      radial-gradient(60rem 38rem at 55% 105%, var(--wash-3), transparent 70%);
+    background-attachment: fixed;
   }
   button:not(:disabled),
   [role="button"]:not(:disabled) {
@@ -223,6 +259,22 @@
     background: var(--muted-foreground);
     animation: pulse-dot 1s ease-in-out infinite;
   }
+}
+
+/* Frosted material: blur and saturate what's behind, light top edge, soft drop */
+@utility glass {
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  backdrop-filter: blur(28px) saturate(180%);
+  box-shadow:
+    inset 0 1px 0 0 var(--glass-highlight),
+    0 0 0 0.5px var(--glass-edge),
+    var(--glass-drop);
+}
+
+/* "Reduce transparency" turns the glass solid */
+@media (prefers-reduced-transparency: reduce) {
+  :root { --glass: #ffffff; --glass-strong: #ffffff; }
+  .dark { --glass: #1c1c1e; --glass-strong: #1c1c1e; }
 }
 
 @keyframes pulse-dot { 50% { opacity: 0.25; } }

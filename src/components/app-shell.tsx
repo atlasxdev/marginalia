@@ -19,21 +19,24 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex h-dvh">
-      <aside className="hidden w-64 shrink-0 border-r border-sidebar-border bg-sidebar backdrop-blur-xl md:block">
-        <Suspense>
-          <Sidebar />
-        </Suspense>
+      {/* Floating glass panel, inset from the window edge */}
+      <aside className="hidden w-64 shrink-0 p-2 pr-0 md:block">
+        <div className="glass border border-glass-border bg-glass h-full overflow-hidden rounded-2xl">
+          <Suspense>
+            <Sidebar />
+          </Suspense>
+        </div>
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex items-center gap-2 border-b px-3 py-2 md:hidden">
+        <header className="glass flex items-center gap-2 border-b border-glass-border bg-glass px-3 py-2 md:hidden">
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon" aria-label="Open menu">
                 <MenuIcon />
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="w-72 bg-sidebar p-0 backdrop-blur-xl">
+            <SheetContent side="left" className="glass border border-glass-border bg-glass-strong w-72 p-0">
               <SheetTitle className="sr-only">Menu</SheetTitle>
               {/* Close the drawer when a link inside it is followed */}
               <div className="h-full" onClick={(e) => (e.target as HTMLElement).closest("a") && setOpen(false)}>
@@ -117,7 +120,7 @@ function Sidebar() {
         })}
       </ul>
 
-      <div className="flex items-center gap-1 border-t border-sidebar-border px-3 py-2">
+      <div className="flex items-center gap-1 border-t border-glass-divider px-3 py-2">
         <span className="min-w-0 flex-1 truncate px-2 text-sm text-muted-foreground">ace@example.com</span>
         <ThemeToggle />
         <form action={signOut}>

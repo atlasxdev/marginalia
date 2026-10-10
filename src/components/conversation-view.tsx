@@ -39,9 +39,10 @@ export function ConversationView({ id }: { id: string }) {
   }
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="min-h-0 flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-3xl px-4 pt-10 pb-8 sm:px-6">
+    <div className="relative h-full">
+      {/* Messages scroll under the floating composer */}
+      <div className="h-full overflow-y-auto">
+        <div className="mx-auto max-w-3xl px-4 pt-10 pb-36 sm:px-6">
           {isPending ? (
             <ConversationSkeleton />
           ) : (
@@ -53,7 +54,7 @@ export function ConversationView({ id }: { id: string }) {
               m.role === "user" ? (
                 <p
                   key={m.id}
-                  className="ml-auto w-fit max-w-[80%] rounded-2xl bg-muted px-4 py-2.5 break-words"
+                  className="glass border border-glass-border bg-glass-strong ml-auto w-fit max-w-[80%] rounded-2xl px-4 py-2.5 break-words"
                 >
                   {m.content}
                 </p>
@@ -80,11 +81,11 @@ export function ConversationView({ id }: { id: string }) {
               </div>
             )}
           </div>
-          <div ref={endRef} />
+          <div ref={endRef} className="scroll-mb-36" />
         </div>
       </div>
 
-      <div className="px-4 pb-4 sm:px-6">
+      <div className="absolute inset-x-0 bottom-0 px-4 pb-4 sm:px-6">
         <Composer conversationId={id} busy={stream.busy} />
       </div>
     </div>

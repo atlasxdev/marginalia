@@ -16,19 +16,14 @@ export function SignInForm() {
       <p className="mt-2 text-muted-foreground">Ask questions about your documents.</p>
 
       <form action={formAction} className="mt-8 grid gap-4" noValidate>
-        <FieldGroup
-          errors={[
-            { name: "email", message: errors.email?.[0] },
-            { name: "password", message: errors.password?.[0] },
-          ]}
-        >
-          <GroupedInput label="Email" name="email" type="email" autoComplete="email" invalid={!!errors.email} />
+        <FieldGroup>
+          <GroupedInput label="Email" name="email" type="email" autoComplete="email" error={errors.email?.[0]} />
           <GroupedInput
             label="Password"
             name="password"
             type="password"
             autoComplete="current-password"
-            invalid={!!errors.password}
+            error={errors.password?.[0]}
           />
         </FieldGroup>
         <Button type="submit" disabled={pending} className="h-12 rounded-xl text-[17px]">

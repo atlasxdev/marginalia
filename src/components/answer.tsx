@@ -59,7 +59,7 @@ export function Answer({ content, sources, streaming = false }: AnswerProps) {
       {cited.length > 0 && (
         <section aria-label="Sources" className="mt-6">
           <h3 className="mb-2 px-4 text-xs font-semibold text-muted-foreground">Sources</h3>
-          <ol className="divide-y overflow-hidden rounded-xl bg-muted">
+          <ol className="glass border border-glass-border bg-glass divide-y divide-glass-divider overflow-hidden rounded-xl">
             {cited.map((s) => (
               <li
                 key={s.index}

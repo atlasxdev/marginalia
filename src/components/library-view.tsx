@@ -61,7 +61,7 @@ export function LibraryView() {
   });
 
   return (
-    <div className="h-full overflow-y-auto bg-muted dark:bg-background">
+    <div className="h-full overflow-y-auto">
       <div className="mx-auto max-w-3xl px-4 pt-10 pb-12 sm:px-6">
         <div className="grid grid-cols-[1fr_auto] items-center gap-x-4 gap-y-3">
           <h1 className="text-3xl font-bold tracking-tight">Library</h1>
@@ -75,7 +75,7 @@ export function LibraryView() {
           {error && <p className="text-destructive">Couldn&apos;t load your documents. Refresh to try again.</p>}
 
           {isPending && (
-            <ul className="divide-y overflow-hidden rounded-xl bg-card" aria-label="Loading documents">
+            <ul className="glass border border-glass-border bg-glass divide-y divide-glass-divider overflow-hidden rounded-xl" aria-label="Loading documents">
               {[0, 1, 2].map((i) => (
                 <li key={i} className="flex items-center gap-3 px-4 py-3">
                   <Skeleton className="size-9 rounded-lg" />
@@ -86,11 +86,11 @@ export function LibraryView() {
           )}
 
           {documents?.length === 0 && (
-            <p className="rounded-xl bg-card px-4 py-10 text-center text-muted-foreground">No documents yet</p>
+            <p className="glass border border-glass-border bg-glass rounded-xl px-4 py-10 text-center text-muted-foreground">No documents yet</p>
           )}
 
           {documents && documents.length > 0 && (
-            <ul className="divide-y overflow-hidden rounded-xl bg-card">
+            <ul className="glass border border-glass-border bg-glass divide-y divide-glass-divider overflow-hidden rounded-xl">
               {documents.map((doc) => {
                 const kind = KIND[doc.mimeType] ?? { label: "File", color: "bg-[#8e8e93]" };
                 return (
@@ -120,7 +120,7 @@ export function LibraryView() {
                           <Trash2Icon />
                         </Button>
                       </AlertDialogTrigger>
-                      <AlertDialogContent>
+                      <AlertDialogContent className="glass border border-glass-border bg-glass-strong">
                         <AlertDialogHeader>
                           <AlertDialogTitle>Delete “{doc.filename}”?</AlertDialogTitle>
                           <AlertDialogDescription>

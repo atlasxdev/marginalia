@@ -36,7 +36,7 @@ export function Composer({ conversationId, busy = false, textareaRef }: Composer
       <label htmlFor="question" className="sr-only">
         Ask a question about your documents
       </label>
-      <InputGroup className="rounded-3xl bg-card shadow-sm">
+      <InputGroup className="glass border border-glass-border bg-glass-strong rounded-3xl dark:bg-glass-strong">
         <InputGroupTextarea
           ref={ref}
           id="question"

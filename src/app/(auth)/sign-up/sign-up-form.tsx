@@ -16,29 +16,22 @@ export function SignUpForm() {
       <p className="mt-2 text-muted-foreground">Your documents stay private to you.</p>
 
       <form action={formAction} className="mt-8 grid gap-4" noValidate>
-        <FieldGroup
-          errors={[
-            { name: "name", message: errors.name?.[0] },
-            { name: "email", message: errors.email?.[0] },
-            { name: "password", message: errors.password?.[0] },
-            { name: "confirmPassword", message: errors.confirmPassword?.[0] },
-          ]}
-        >
-          <GroupedInput label="Name" name="name" autoComplete="name" invalid={!!errors.name} />
-          <GroupedInput label="Email" name="email" type="email" autoComplete="email" invalid={!!errors.email} />
+        <FieldGroup>
+          <GroupedInput label="Name" name="name" autoComplete="name" error={errors.name?.[0]} />
+          <GroupedInput label="Email" name="email" type="email" autoComplete="email" error={errors.email?.[0]} />
           <GroupedInput
             label="Password"
             name="password"
             type="password"
             autoComplete="new-password"
-            invalid={!!errors.password}
+            error={errors.password?.[0]}
           />
           <GroupedInput
             label="Confirm password"
             name="confirmPassword"
             type="password"
             autoComplete="new-password"
-            invalid={!!errors.confirmPassword}
+            error={errors.confirmPassword?.[0]}
           />
         </FieldGroup>
         <Button type="submit" disabled={pending} className="h-12 rounded-xl text-[17px]">
