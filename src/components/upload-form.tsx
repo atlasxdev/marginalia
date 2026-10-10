@@ -2,7 +2,10 @@
 
 import { useActionState, useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { UploadIcon } from "lucide-react";
 import { uploadDocument } from "@/app/actions/documents";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { ACCEPTED_TYPES } from "@/lib/schemas";
 
 const ACCEPT = Object.values(ACCEPTED_TYPES).join(",");
@@ -44,7 +47,8 @@ export function UploadForm() {
           if (file) submitFile(file);
         }}
         data-dragging={dragging}
-        className="flex cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-ink-soft/50 px-6 py-10 text-center transition-colors hover:border-ink hover:bg-sheet data-[dragging=true]:border-pen data-[dragging=true]:bg-sheet has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-pen"
+        // A tray set into the desk: files get dropped in
+        className="group flex cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl bg-muted px-6 py-9 text-center inset-shadow-recess transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-ring data-[dragging=true]:bg-highlight-soft"
       >
         <input
           ref={inputRef}
@@ -56,18 +60,19 @@ export function UploadForm() {
           onChange={(e) => e.currentTarget.files?.length && formRef.current?.requestSubmit()}
           disabled={pending}
         />
-        <span className="font-medium">
-          {pending ? "Uploading…" : dragging ? "Drop to upload" : "Drop a file here or choose one"}
+        <span className={cn(buttonVariants({ variant: "paper" }), "pointer-events-none h-9 gap-2 px-4 text-foreground group-hover:-translate-y-px group-hover:shadow-lift-2")}>
+          <UploadIcon />
+          {pending ? "Uploading…" : dragging ? "Drop to upload" : "Choose a file or drop it here"}
         </span>
-        <span id="upload-help" className="mt-1 text-sm text-ink-soft">
+        <span id="upload-help" className="text-sm text-muted-foreground">
           Markdown, PDF, or Word, up to 10 MB. Text only: images and scanned pages are skipped.
         </span>
       </label>
       <p role="status" className="mt-2 min-h-5 text-sm">
         {error ? (
-          <span className="text-danger">{error}</span>
+          <span className="text-destructive">{error}</span>
         ) : state.ok ? (
-          <span className="text-ok">{state.message} It&apos;ll be ready to search in a moment.</span>
+          <span className="text-success">{state.message} It&apos;ll be ready to search in a moment.</span>
         ) : null}
       </p>
     </form>

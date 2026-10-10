@@ -4,6 +4,7 @@ import { useActionState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { askQuestion, type AskState } from "@/app/actions/chat";
+import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupTextarea } from "@/components/ui/input-group";
 import { MAX_QUESTION_CHARS } from "@/lib/schemas";
 
 type ComposerProps = {
@@ -31,15 +32,14 @@ export function Composer({ conversationId, busy = false, textareaRef }: Composer
   return (
     <form action={formAction} className="mx-auto w-full max-w-3xl">
       {conversationId && <input type="hidden" name="conversationId" value={conversationId} />}
-      <div className="rounded-xl border border-rule bg-sheet p-2 shadow-[0_1px_0_var(--rule)] focus-within:border-pen">
-        <label htmlFor="question" className="sr-only">
-          Ask a question about your documents
-        </label>
-        <textarea
+      <label htmlFor="question" className="sr-only">
+        Ask a question about your documents
+      </label>
+      <InputGroup className="rounded-2xl">
+        <InputGroupTextarea
           ref={ref}
           id="question"
           name="question"
-          rows={2}
           maxLength={MAX_QUESTION_CHARS}
           defaultValue={state.question}
           placeholder="Ask about your documents…"
@@ -51,23 +51,19 @@ export function Composer({ conversationId, busy = false, textareaRef }: Composer
               if (!disabled) e.currentTarget.form?.requestSubmit();
             }
           }}
-          className="block max-h-48 w-full resize-none bg-transparent px-2.5 py-2 text-[15px] leading-relaxed outline-none placeholder:text-ink-soft/70"
+          className="max-h-48 min-h-14 px-4 pt-3.5 text-[15px] leading-relaxed md:text-[15px]"
         />
-        <div className="flex items-center justify-between gap-3 pl-2.5">
-          <p className="text-xs text-ink-soft">
-            <span className="hidden sm:inline">Enter to send, Shift + Enter for a new line</span>
-          </p>
-          <button
-            type="submit"
-            disabled={disabled}
-            className="rounded-lg bg-ink px-4 py-2 text-sm font-medium text-paper transition-opacity hover:opacity-90 disabled:opacity-50"
-          >
+        <InputGroupAddon align="block-end" className="cursor-default px-3 pb-3">
+          <span className="hidden text-xs font-normal sm:inline">
+            Enter to send, Shift + Enter for a new line
+          </span>
+          <InputGroupButton type="submit" variant="default" size="sm" disabled={disabled} className="ml-auto px-4 shadow-press">
             {pending ? "Sending…" : "Ask"}
-          </button>
-        </div>
-      </div>
+          </InputGroupButton>
+        </InputGroupAddon>
+      </InputGroup>
       {error && (
-        <p id="question-error" role="alert" className="mt-2 px-1 text-sm text-danger">
+        <p id="question-error" role="alert" className="mt-2 px-1 text-sm text-destructive">
           {error}
         </p>
       )}
