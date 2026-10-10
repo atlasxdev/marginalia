@@ -1,5 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <path d="M10 50V30a11 11 0 0 1 22 0v20M32 50V30a11 11 0 0 1 22 0v20" fill="none" stroke="#007aff" stroke-width="7" stroke-linejoin="round"/>
-  <rect x="3" y="52.5" width="58" height="3.5" rx="1.75" fill="#007aff"/>
-  <path d="M32 31l2 3.2-2 3.2-2-3.2zM32 40l2 3.2-2 3.2-2-3.2z" fill="#ffd60a"/>
+  <rect width="64" height="64" rx="14.4" fill="#fff"/>
+  <path d="M16 3c-5 .5-9 0-11.5.8C3.4 20 4.6 50 3.6 70c-.3 9 .6 18 .2 26 3.6.8 8 .2 12.2.6l.4-5c-2.6-.4-5.2 0-7.6-.4.5-8-.3-17 .1-25 .6-19-.3-42 .4-58 2.4-.4 5 .1 7.2-.3z" fill="#007aff" transform="translate(6 10) scale(.6 .44)"/>
+  <path d="M16 3c-5 .5-9 0-11.5.8C3.4 20 4.6 50 3.6 70c-.3 9 .6 18 .2 26 3.6.8 8 .2 12.2.6l.4-5c-2.6-.4-5.2 0-7.6-.4.5-8-.3-17 .1-25 .6-19-.3-42 .4-58 2.4-.4 5 .1 7.2-.3z" fill="#007aff" transform="translate(58 10) scale(-.6 .44)"/>
+  <text x="32" y="45" text-anchor="middle" font-family="Bodoni 72, Didot, Georgia, serif" font-size="40" fill="#1d1d1f">m</text>
 </svg>

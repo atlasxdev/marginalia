@@ -12,7 +12,7 @@ export function SignInForm() {
 
   return (
     <>
-      <h1 className="text-3xl font-semibold tracking-tight">Sign in to Marginalia</h1>
+      <h1 className="text-3xl font-semibold tracking-tight">Sign in</h1>
       <p className="mt-2 text-muted-foreground">Ask questions about your documents.</p>
 
       <form action={formAction} className="mt-8 grid gap-4" noValidate>

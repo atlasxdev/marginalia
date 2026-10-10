@@ -12,7 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { conversationsQuery, documentsQuery } from "@/lib/queries";
 import { useHydrated } from "@/lib/use-hydrated";
 import { cn } from "@/lib/utils";
-import { Wordmark } from "./app-icon";
+import { Wordmark } from "./logo";
 import { ThemeToggle } from "./theme-toggle";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -47,7 +47,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </div>
             </SheetContent>
           </Sheet>
-          <Wordmark />
+          <Wordmark className="text-[22px]" />
         </header>
         <main className="min-h-0 flex-1">{children}</main>
       </div>
@@ -73,7 +73,7 @@ function Sidebar() {
     <nav className="flex h-full flex-col">
       <div className="flex items-center justify-between py-3 pr-3 pl-4">
         <Link href="/chat" aria-label="Marginalia home">
-          <Wordmark />
+          <Wordmark className="text-[22px]" />
         </Link>
         <Button asChild variant="ghost" size="icon-sm" aria-label="New question">
           <Link href="/chat">
