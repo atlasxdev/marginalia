@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useEffectEvent, useState } from "react";
+import { useDeferredValue, useEffect, useEffectEvent, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -22,11 +22,14 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { applyFormat } from "@/lib/markdown-edit";
 import { documentQuery, documentsQuery } from "@/lib/queries";
 import { MAX_NOTE_CHARS, noteSchema } from "@/lib/schemas";
 import type { DocumentItem, EditableDocument } from "@/lib/types";
 import { useHydrated } from "@/lib/use-hydrated";
+import { cn } from "@/lib/utils";
+import { FormatToolbar, SHORTCUTS } from "./format-toolbar";
 
 type Draft = { id?: string; title: string; content: string };
 
@@ -38,6 +41,13 @@ function PreviewLink({ href, children }: React.ComponentProps<"a">) {
   );
 }
 const components = { a: PreviewLink };
+
+// Keeps the preview at the same relative position as the text being edited
+function syncScroll(from: HTMLElement, to: HTMLElement | null) {
+  if (!to) return;
+  const ratio = from.scrollTop / Math.max(1, from.scrollHeight - from.clientHeight);
+  to.scrollTop = ratio * (to.scrollHeight - to.clientHeight);
+}
 
 // Writes a new Markdown document (no id) or edits an existing one.
 export function DocumentEditor({ id }: { id?: string }) {
@@ -62,6 +72,11 @@ function EditorForm({ initial }: { initial: Draft }) {
   const [content, setContent] = useState(initial.content);
   const [saved, setSaved] = useState(initial);
   const [confirmLeave, setConfirmLeave] = useState(false);
+  const [view, setView] = useState<"edit" | "preview">("edit");
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const previewRef = useRef<HTMLDivElement>(null);
+  // Long documents re-render the preview after typing, not on every key
+  const preview = useDeferredValue(content);
   const dirty = title !== saved.title || content !== saved.content;
 
   // Status comes from the library list, which polls while the document is indexing
@@ -153,7 +168,7 @@ function EditorForm({ initial }: { initial: Draft }) {
 
   return (
     <div className="h-full">
-      <div className="mx-auto flex h-full max-w-3xl flex-col px-4 pt-6 pb-4 sm:px-6 sm:pb-6">
+      <div className="mx-auto flex h-full max-w-6xl flex-col px-4 pt-6 pb-4 sm:px-6 sm:pb-6">
         <div className="flex items-center gap-3">
           <Button
             variant="ghost"
@@ -187,43 +202,65 @@ function EditorForm({ initial }: { initial: Draft }) {
             {titleError}
           </p>
         )}
+        {contentError && <p className="mt-1 text-[13px] text-destructive">{contentError}</p>}
 
-        <Tabs defaultValue="edit" className="mt-4 min-h-0 flex-1 gap-3">
-          <div className="flex items-center gap-3">
-            <TabsList className="glass border border-glass-border bg-glass">
-              <TabsTrigger value="edit" className="px-3">Edit</TabsTrigger>
-              <TabsTrigger value="preview" className="px-3">Preview</TabsTrigger>
-            </TabsList>
-            {contentError && <p className="text-[13px] text-destructive">{contentError}</p>}
+        {/* Side by side from lg up; on smaller screens a switch flips between the two */}
+        <div className="glass mt-4 flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-glass-border bg-glass has-[textarea:focus-visible]:border-ring has-[textarea:focus-visible]:ring-3 has-[textarea:focus-visible]:ring-ring/30">
+          <div className="flex items-center gap-2 border-b border-glass-divider px-2 py-1.5">
+            <FormatToolbar textareaRef={textareaRef} disabled={view === "preview"} />
+            <ToggleGroup
+              type="single"
+              size="sm"
+              value={view}
+              onValueChange={(v) => v && setView(v as "edit" | "preview")}
+              aria-label="Show"
+              className="ml-auto shrink-0 lg:hidden"
+            >
+              <ToggleGroupItem value="edit" className="px-3">Edit</ToggleGroupItem>
+              <ToggleGroupItem value="preview" className="px-3">Preview</ToggleGroupItem>
+            </ToggleGroup>
           </div>
 
-          <TabsContent value="edit" className="flex min-h-0">
+          <div className="grid min-h-0 flex-1 divide-glass-divider lg:grid-cols-2 lg:divide-x">
             <textarea
+              ref={textareaRef}
               aria-label="Document text, in Markdown"
               placeholder={"# Heading\n\nWrite in Markdown. Headings help answers point to the right section."}
               value={content}
               onChange={(e) => edit(() => setContent(e.target.value))}
+              onKeyDown={(e) => {
+                const action = e.metaKey || e.ctrlKey ? SHORTCUTS[e.key.toLowerCase()] : undefined;
+                if (action && !e.shiftKey && !e.altKey) {
+                  e.preventDefault();
+                  applyFormat(e.currentTarget, action);
+                }
+              }}
+              onScroll={(e) => syncScroll(e.currentTarget, previewRef.current)}
               aria-invalid={!!contentError}
               spellCheck
-              className="glass min-h-0 w-full flex-1 resize-none rounded-xl border border-glass-border bg-glass p-5 font-mono text-sm leading-relaxed outline-none placeholder:text-muted-foreground/60 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+              className={cn(
+                "h-full min-h-0 w-full resize-none bg-transparent p-5 font-mono text-sm leading-relaxed outline-none placeholder:text-muted-foreground/60",
+                view === "preview" && "max-lg:hidden"
+              )}
             />
-          </TabsContent>
 
-          <TabsContent
-            value="preview"
-            className="glass min-h-0 overflow-y-auto rounded-xl border border-glass-border bg-glass p-6"
-          >
-            {content.trim() ? (
-              <div className="answer">
-                <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeSanitize]} components={components}>
-                  {content}
-                </ReactMarkdown>
-              </div>
-            ) : (
-              <p className="text-muted-foreground">Nothing to preview yet.</p>
-            )}
-          </TabsContent>
-        </Tabs>
+            <div
+              ref={previewRef}
+              aria-label="Preview"
+              className={cn("min-h-0 overflow-y-auto p-6", view === "edit" && "max-lg:hidden")}
+            >
+              {preview.trim() ? (
+                <div className="answer doc">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeSanitize]} components={components}>
+                    {preview}
+                  </ReactMarkdown>
+                </div>
+              ) : (
+                <p className="text-muted-foreground">The preview shows up here as you write.</p>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
 
       <AlertDialog open={confirmLeave} onOpenChange={setConfirmLeave}>
@@ -246,7 +283,7 @@ function EditorForm({ initial }: { initial: Draft }) {
 
 function EditorSkeleton() {
   return (
-    <div className="mx-auto flex h-full max-w-3xl flex-col px-4 pt-6 pb-6 sm:px-6" aria-label="Loading document">
+    <div className="mx-auto flex h-full max-w-6xl flex-col px-4 pt-6 pb-6 sm:px-6" aria-label="Loading document">
       <Skeleton className="h-8 w-24" />
       <Skeleton className="mt-6 h-9 w-2/3" />
       <Skeleton className="mt-6 min-h-0 flex-1 rounded-xl" />
