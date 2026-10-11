@@ -1,6 +1,6 @@
 import { queryOptions } from "@tanstack/react-query";
 import { getBrowserClient } from "./supabase/client";
-import type { Conversation, ConversationSummary, DocumentItem, EditableDocument } from "./types";
+import type { Conversation, ConversationSummary, DocumentItem, EditableDocument, Space } from "./types";
 
 async function getJson<T>(url: string): Promise<T> {
   const res = await fetch(url);
@@ -42,4 +42,15 @@ export const documentQuery = (id: string) =>
     // The editor keeps its own copy while open, so don't refetch underneath it
     staleTime: Infinity,
     refetchOnWindowFocus: false,
+  });
+
+export const spacesQuery = queryOptions({
+  queryKey: ["spaces"],
+  queryFn: () => getJson<Space[]>("/api/spaces"),
+});
+
+export const spaceQuery = (id: string) =>
+  queryOptions({
+    queryKey: ["spaces", id],
+    queryFn: () => getJson<Space>(`/api/spaces/${id}`),
   });

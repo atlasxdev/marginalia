@@ -15,6 +15,7 @@ export async function askQuestion(_prev: AskState, formData: FormData): Promise<
   const parsed = questionSchema.safeParse({
     question: formData.get("question"),
     conversationId: formData.get("conversationId") || undefined,
+    spaceId: formData.get("spaceId") || undefined,
   });
   if (!parsed.success) {
     return {
@@ -31,7 +32,12 @@ export async function askQuestion(_prev: AskState, formData: FormData): Promise<
   if (!conversationId) {
     const title =
       question.length > TITLE_CHARS ? question.slice(0, TITLE_CHARS - 1).trimEnd() + "…" : question;
-    const { data, error } = await supabase.from("conversations").insert({ title }).select("id").single();
+    // RLS only accepts a space the user owns
+    const { data, error } = await supabase
+      .from("conversations")
+      .insert({ title, space_id: parsed.data.spaceId ?? null })
+      .select("id")
+      .single();
     if (error) return { ok: false, message: "Couldn't start a conversation. Try again.", question };
     conversationId = data.id as string;
   }

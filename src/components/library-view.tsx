@@ -23,13 +23,13 @@ import { useHydrated } from "@/lib/use-hydrated";
 import { cn } from "@/lib/utils";
 import { UploadForm } from "./upload-form";
 
-const KIND: Record<string, { label: string; color: string }> = {
+export const KIND: Record<string, { label: string; color: string }> = {
   "text/markdown": { label: "Markdown", color: "bg-[#8e8e93]" },
   "application/pdf": { label: "PDF", color: "bg-[#ff3b30]" },
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document": { label: "Word", color: "bg-[#007aff]" },
 };
 
-function formatSize(bytes: number) {
+export function formatSize(bytes: number) {
   if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }

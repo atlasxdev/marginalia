@@ -4,12 +4,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Suspense, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { LibraryIcon, MenuIcon, SquarePenIcon } from "lucide-react";
+import { LayersIcon, LibraryIcon, MenuIcon, PlusIcon, SquarePenIcon } from "lucide-react";
 import { signOut } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
-import { conversationsQuery, documentsQuery, meQuery } from "@/lib/queries";
+import { conversationsQuery, documentsQuery, meQuery, spacesQuery } from "@/lib/queries";
+import { useCreateSpace } from "@/lib/use-create-space";
 import { useHydrated } from "@/lib/use-hydrated";
 import { cn } from "@/lib/utils";
 import { Wordmark } from "./logo";
@@ -39,8 +40,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </SheetTrigger>
             <SheetContent side="left" className="glass border border-glass-border bg-glass-strong w-72 p-0">
               <SheetTitle className="sr-only">Menu</SheetTitle>
-              {/* Close the drawer when a link inside it is followed */}
-              <div className="h-full" onClick={(e) => (e.target as HTMLElement).closest("a") && setOpen(false)}>
+              {/* Close the drawer when a link (or the new space button) inside it is used */}
+              <div className="h-full" onClick={(e) => (e.target as HTMLElement).closest("a, [data-closes-menu]") && setOpen(false)}>
                 <Suspense>
                   <Sidebar />
                 </Suspense>
@@ -69,6 +70,9 @@ function Sidebar() {
   const readyCount = documents?.filter((d) => d.status === "ready").length;
   const libraryActive = pathname === "/library" || pathname.startsWith("/library/");
   const email = useQuery(meQuery).data?.email;
+  const spacesResult = useQuery(spacesQuery);
+  const spaces = hydrated ? spacesResult.data : undefined;
+  const createSpace = useCreateSpace();
 
   return (
     <nav className="flex h-full flex-col">
@@ -94,6 +98,38 @@ function Sidebar() {
           )}
         </Link>
       </div>
+
+      <div className="mt-5 flex items-center justify-between pr-3 pl-5">
+        <h2 className="text-xs font-semibold text-muted-foreground">Spaces</h2>
+        <Button
+          variant="ghost"
+          size="icon-xs"
+          aria-label="New space"
+          data-closes-menu
+          disabled={createSpace.isPending}
+          onClick={() => createSpace.mutate()}
+          className="text-muted-foreground"
+        >
+          <PlusIcon />
+        </Button>
+      </div>
+      <ul className="max-h-44 shrink-0 overflow-y-auto px-2.5">
+        {spaces?.length === 0 && (
+          <li className="px-2.5 py-1.5 text-sm text-muted-foreground">Group documents for focused answers</li>
+        )}
+        {spaces?.map((s) => {
+          const href = `/spaces/${s.id}`;
+          const current = pathname === href;
+          return (
+            <li key={s.id}>
+              <Link href={href} aria-current={current ? "page" : undefined} className={itemClass}>
+                <LayersIcon className={cn("size-4 shrink-0", !current && "text-primary")} />
+                <span className="truncate">{s.name}</span>
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
 
       <h2 className="mt-5 px-5 pb-1 text-xs font-semibold text-muted-foreground">Conversations</h2>
       <ul className="min-h-0 flex-1 overflow-y-auto px-2.5 pb-4">

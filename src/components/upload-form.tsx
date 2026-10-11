@@ -13,7 +13,7 @@ const ACCEPT = Object.values(ACCEPTED_TYPES).join(",");
 /* The file goes straight from the browser to Supabase Storage, so it never hits
    the server's request size limit. The server action then records it and starts
    ingestion. */
-async function upload(file: File) {
+async function upload(file: File, spaceId?: string) {
   const parsed = uploadSchema.safeParse({ file });
   if (!parsed.success) throw new Error(parsed.error.issues[0].message);
 
@@ -28,19 +28,22 @@ async function upload(file: File) {
   const { error } = await supabase.storage.from("documents").upload(storagePath, file);
   if (error) throw new Error("Couldn't upload that file. Try again.");
 
-  const result = await registerDocument({ id, filename: file.name, sizeBytes: file.size, storagePath });
+  const result = await registerDocument({ id, filename: file.name, sizeBytes: file.size, storagePath, spaceId });
   if (!result.ok) throw new Error(result.message);
   return result.message;
 }
 
-// An Upload button, plus drag-and-drop anywhere on the page.
-export function UploadForm() {
+// An Upload button, plus drag-and-drop anywhere on the page. With `spaceId`, uploads also join that space.
+export function UploadForm({ spaceId }: { spaceId?: string }) {
   const queryClient = useQueryClient();
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   const mutation = useMutation({
-    mutationFn: upload,
-    onSettled: () => queryClient.invalidateQueries({ queryKey: ["documents"] }),
+    mutationFn: (file: File) => upload(file, spaceId),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+      if (spaceId) queryClient.invalidateQueries({ queryKey: ["spaces"] });
+    },
   });
   const { mutate } = mutation;
 

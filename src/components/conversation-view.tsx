@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import Link from "next/link";
+import { LayersIcon } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { conversationQuery } from "@/lib/queries";
 import { useAnswerStream } from "@/lib/use-answer-stream";
@@ -49,7 +50,18 @@ export function ConversationView({ id }: { id: string }) {
               {isPending ? (
                 <ConversationSkeleton />
               ) : (
-                <h1 className="text-3xl font-bold tracking-tight text-balance">{conversation?.title}</h1>
+                <>
+                  {conversation?.space && (
+                    <Link
+                      href={`/spaces/${conversation.space.id}`}
+                      className="glass mb-3 inline-flex max-w-full items-center gap-1.5 rounded-full border border-glass-border bg-glass px-3 py-1 text-sm hover:bg-glass-strong"
+                    >
+                      <LayersIcon className="size-3.5 shrink-0 text-primary" />
+                      <span className="truncate">{conversation.space.name}</span>
+                    </Link>
+                  )}
+                  <h1 className="text-3xl font-bold tracking-tight text-balance">{conversation?.title}</h1>
+                </>
               )}
 
               <div className="mt-8 space-y-8">
@@ -89,7 +101,11 @@ export function ConversationView({ id }: { id: string }) {
           </div>
 
           <div className="absolute inset-x-0 bottom-0 px-4 pb-4 sm:px-6">
-            <Composer conversationId={id} busy={stream.busy} />
+            <Composer
+              conversationId={id}
+              busy={stream.busy}
+              placeholder={conversation?.space ? `Ask ${conversation.space.name}` : undefined}
+            />
           </div>
         </div>
         {/* Beside the chat on wide screens, a drawer below lg */}

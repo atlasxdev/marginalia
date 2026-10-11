@@ -1,15 +1,15 @@
 import { admin } from "@/lib/supabase/admin";
 import { createClient, getUserId } from "@/lib/supabase/server";
 import type { Source } from "@/lib/types";
-import { getConversation } from "@/server/data";
+import { getConversation, getSpace } from "@/server/data";
 import { ModelsUnavailableError, streamChat } from "@/server/gemini";
 import {
   DAILY_QUESTION_LIMIT,
   NOT_FOUND_ANSWER,
-  SYSTEM_PROMPT,
   buildContents,
   retrieve,
   standaloneQuestion,
+  systemPrompt,
   toSources,
 } from "@/server/rag";
 
@@ -40,12 +40,18 @@ export async function POST(_req: Request, ctx: RouteContext<"/api/conversations/
     );
   }
 
+  // A conversation in a space searches only its documents and follows its instructions
+  const space = conversation.space ? await getSpace(supabase, conversation.space.id) : null;
+  if (space && space.documentIds.length === 0) {
+    return Response.json({ error: "This space has no documents yet. Add some on the space's page." }, { status: 409 });
+  }
+
   const history = conversation.messages.slice(0, -1);
   let sources: Source[];
   let contents;
   try {
     const query = await standaloneQuestion(last.content, history);
-    const rows = await retrieve(supabase, query);
+    const rows = await retrieve(supabase, query, space?.documentIds);
     sources = toSources(rows);
     contents = rows.length ? buildContents(last.content, history, rows) : null;
   } catch (error) {
@@ -74,7 +80,7 @@ export async function POST(_req: Request, ctx: RouteContext<"/api/conversations/
 
   let modelStream;
   try {
-    modelStream = await streamChat(SYSTEM_PROMPT, contents);
+    modelStream = await streamChat(systemPrompt(space?.instructions), contents);
   } catch (error) {
     console.error("Generation failed:", error);
     const message =

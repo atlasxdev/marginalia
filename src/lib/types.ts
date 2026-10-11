@@ -38,10 +38,22 @@ export type ConversationSummary = {
   id: string;
   title: string;
   updatedAt: string;
+  /** The space it was started in; null searches every document. */
+  spaceId: string | null;
 };
 
 export type Conversation = ConversationSummary & {
+  space: { id: string; name: string } | null;
   messages: Message[];
+};
+
+// A named set of documents with optional instructions for its answers
+export type Space = {
+  id: string;
+  name: string;
+  instructions: string;
+  documentIds: string[];
+  updatedAt: string;
 };
 
 export type ActionState = {

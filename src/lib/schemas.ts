@@ -61,4 +61,16 @@ export const questionSchema = z.object({
     .min(1, "Type a question first.")
     .max(MAX_QUESTION_CHARS, `Keep questions under ${MAX_QUESTION_CHARS} characters.`),
   conversationId: z.string().optional(),
+  spaceId: z.uuid().optional(),
+});
+
+export const MAX_SPACE_INSTRUCTIONS = 1000;
+
+export const spaceSchema = z.object({
+  id: z.uuid(),
+  name: z.string().trim().min(1, "Give the space a name.").max(80, "Keep names under 80 characters."),
+  instructions: z
+    .string()
+    .trim()
+    .max(MAX_SPACE_INSTRUCTIONS, `Keep instructions under ${MAX_SPACE_INSTRUCTIONS} characters.`),
 });

@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef } from "react";
+import { useActionState, useEffect, useId, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowUpIcon } from "lucide-react";
@@ -10,16 +10,21 @@ import { MAX_QUESTION_CHARS } from "@/lib/schemas";
 
 type ComposerProps = {
   conversationId?: string;
+  /** Starts the new conversation in this space. */
+  spaceId?: string;
+  placeholder?: string;
   busy?: boolean;
   textareaRef?: React.RefObject<HTMLTextAreaElement | null>;
 };
 
-export function Composer({ conversationId, busy = false, textareaRef }: ComposerProps) {
+export function Composer({ conversationId, spaceId, placeholder = "Ask about your documents", busy = false, textareaRef }: ComposerProps) {
   const [state, formAction, pending] = useActionState<AskState, FormData>(askQuestion, { ok: false });
   const queryClient = useQueryClient();
   const router = useRouter();
   const localRef = useRef<HTMLTextAreaElement>(null);
   const ref = textareaRef ?? localRef;
+  // Unique, since a page kept in the background can have its own composer
+  const inputId = useId();
 
   useEffect(() => {
     if (!state.ok || !state.conversationId) return;
@@ -33,20 +38,21 @@ export function Composer({ conversationId, busy = false, textareaRef }: Composer
   return (
     <form action={formAction} className="mx-auto w-full max-w-3xl">
       {conversationId && <input type="hidden" name="conversationId" value={conversationId} />}
-      <label htmlFor="question" className="sr-only">
+      {!conversationId && spaceId && <input type="hidden" name="spaceId" value={spaceId} />}
+      <label htmlFor={inputId} className="sr-only">
         Ask a question about your documents
       </label>
       <InputGroup className="glass border border-glass-border bg-glass-strong rounded-3xl dark:bg-glass-strong">
         <InputGroupTextarea
           ref={ref}
-          id="question"
+          id={inputId}
           name="question"
           rows={1}
           maxLength={MAX_QUESTION_CHARS}
           defaultValue={state.question}
-          placeholder="Ask about your documents"
+          placeholder={placeholder}
           aria-invalid={!!error}
-          aria-describedby={error ? "question-error" : undefined}
+          aria-describedby={error ? `${inputId}-error` : undefined}
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
               e.preventDefault();
@@ -69,7 +75,7 @@ export function Composer({ conversationId, busy = false, textareaRef }: Composer
         </InputGroupAddon>
       </InputGroup>
       {error && (
-        <p id="question-error" role="alert" className="mt-2 px-4 text-sm text-destructive">
+        <p id={`${inputId}-error`} role="alert" className="mt-2 px-4 text-sm text-destructive">
           {error}
         </p>
       )}
