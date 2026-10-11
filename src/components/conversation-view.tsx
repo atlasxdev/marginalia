@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Answer } from "./answer";
 import { Composer } from "./composer";
+import { SourcesProvider, SourcesView } from "./sources";
 
 export function ConversationView({ id }: { id: string }) {
   const query = useQuery(conversationQuery(id));
@@ -39,56 +40,62 @@ export function ConversationView({ id }: { id: string }) {
   }
 
   return (
-    <div className="relative h-full">
-      {/* Messages scroll under the floating composer */}
-      <div className="h-full overflow-y-auto">
-        <div className="mx-auto max-w-3xl px-4 pt-10 pb-36 sm:px-6">
-          {isPending ? (
-            <ConversationSkeleton />
-          ) : (
-            <h1 className="text-3xl font-bold tracking-tight text-balance">{conversation?.title}</h1>
-          )}
-
-          <div className="mt-8 space-y-8">
-            {conversation?.messages.map((m) =>
-              m.role === "user" ? (
-                <p
-                  key={m.id}
-                  className="glass border border-glass-border bg-glass-strong ml-auto w-fit max-w-[80%] rounded-2xl px-4 py-2.5 break-words"
-                >
-                  {m.content}
-                </p>
+    <SourcesProvider>
+      <div className="flex h-full">
+        <div className="relative h-full min-w-0 flex-1">
+          {/* Messages scroll under the floating composer */}
+          <div className="h-full overflow-y-auto">
+            <div className="mx-auto max-w-3xl px-4 pt-10 pb-36 sm:px-6">
+              {isPending ? (
+                <ConversationSkeleton />
               ) : (
-                <Answer key={m.id} content={m.content} sources={m.sources} />
-              )
-            )}
+                <h1 className="text-3xl font-bold tracking-tight text-balance">{conversation?.title}</h1>
+              )}
 
-            {stream.status === "streaming" &&
-              (stream.text ? (
-                <Answer content={stream.text} sources={stream.sources} streaming />
-              ) : (
-                <p className="text-muted-foreground" role="status">
-                  Searching your documents…
-                </p>
-              ))}
+              <div className="mt-8 space-y-8">
+                {conversation?.messages.map((m) =>
+                  m.role === "user" ? (
+                    <p
+                      key={m.id}
+                      className="glass border border-glass-border bg-glass-strong ml-auto w-fit max-w-[80%] rounded-2xl px-4 py-2.5 break-words"
+                    >
+                      {m.content}
+                    </p>
+                  ) : (
+                    <Answer key={m.id} id={m.id} content={m.content} sources={m.sources} />
+                  )
+                )}
 
-            {stream.status === "error" && (
-              <div role="alert" className="flex items-center gap-3">
-                <p className="text-destructive">{stream.error}</p>
-                <Button variant="link" className="h-auto p-0" onClick={stream.retry}>
-                  Try again
-                </Button>
+                {stream.status === "streaming" &&
+                  (stream.text ? (
+                    <Answer id="streaming" content={stream.text} sources={stream.sources} streaming />
+                  ) : (
+                    <p className="text-muted-foreground" role="status">
+                      Searching your documents…
+                    </p>
+                  ))}
+
+                {stream.status === "error" && (
+                  <div role="alert" className="flex items-center gap-3">
+                    <p className="text-destructive">{stream.error}</p>
+                    <Button variant="link" className="h-auto p-0" onClick={stream.retry}>
+                      Try again
+                    </Button>
+                  </div>
+                )}
               </div>
-            )}
+              <div ref={endRef} className="scroll-mb-36" />
+            </div>
           </div>
-          <div ref={endRef} className="scroll-mb-36" />
-        </div>
-      </div>
 
-      <div className="absolute inset-x-0 bottom-0 px-4 pb-4 sm:px-6">
-        <Composer conversationId={id} busy={stream.busy} />
+          <div className="absolute inset-x-0 bottom-0 px-4 pb-4 sm:px-6">
+            <Composer conversationId={id} busy={stream.busy} />
+          </div>
+        </div>
+        {/* Beside the chat on wide screens, a drawer below lg */}
+        <SourcesView />
       </div>
-    </div>
+    </SourcesProvider>
   );
 }
 
