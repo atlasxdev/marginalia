@@ -2,8 +2,9 @@
 
 import { useEffect, useRef } from "react";
 import Link from "next/link";
-import { LayersIcon, MessageSquareIcon } from "lucide-react";
+import { DownloadIcon, LayersIcon, MessageSquareIcon } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import { conversationToMarkdown, downloadText } from "@/lib/export-markdown";
 import { conversationQuery } from "@/lib/queries";
 import { useAnswerStream } from "@/lib/use-answer-stream";
 import { useHydrated } from "@/lib/use-hydrated";
@@ -69,7 +70,24 @@ export function ConversationView({ id }: { id: string }) {
                       <span className="truncate">{conversation.space.name}</span>
                     </Link>
                   )}
-                  <h1 className="text-3xl font-bold tracking-tight text-balance wrap-anywhere">{conversation?.title}</h1>
+                  <div className="flex items-start gap-3">
+                    <h1 className="min-w-0 flex-1 text-3xl font-bold tracking-tight text-balance wrap-anywhere">{conversation?.title}</h1>
+                    {conversation && conversation.messages.length > 0 && (
+                      <Button
+                        variant="glass"
+                        className="mt-0.5 shrink-0"
+                        onClick={() =>
+                          downloadText(
+                            `${conversation.title.replace(/[\\/:*?"<>|]+/g, "").slice(0, 80) || "Conversation"}.md`,
+                            conversationToMarkdown(conversation.title, conversation.messages)
+                          )
+                        }
+                      >
+                        <DownloadIcon />
+                        Export
+                      </Button>
+                    )}
+                  </div>
                 </>
               )}
 

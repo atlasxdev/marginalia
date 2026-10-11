@@ -1,10 +1,11 @@
 "use client";
 
-import { createContext, use } from "react";
-import { ChevronRightIcon } from "lucide-react";
+import { createContext, use, useState } from "react";
+import { CheckIcon, ChevronRightIcon, CopyIcon } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeSanitize from "rehype-sanitize";
+import { answerToMarkdown } from "@/lib/export-markdown";
 import { formatResponse } from "@/lib/format-response";
 import type { Source } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -99,6 +100,28 @@ export function Answer({ id, content, sources, streaming = false }: AnswerProps)
           <ChevronRightIcon aria-hidden className="size-4 shrink-0 text-muted-foreground" />
         </Button>
       )}
+      {!streaming && <CopyAnswer text={() => answerToMarkdown(content, sources)} />}
     </CiteContext>
+  );
+}
+
+// Copies the answer as Markdown, with its sources
+function CopyAnswer({ text }: { text: () => string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="sm"
+      className="mt-3 -ml-2.5 text-muted-foreground"
+      onClick={async () => {
+        await navigator.clipboard.writeText(text());
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+      }}
+    >
+      {copied ? <CheckIcon /> : <CopyIcon />}
+      {copied ? "Copied" : "Copy"}
+    </Button>
   );
 }

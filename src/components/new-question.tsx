@@ -13,11 +13,20 @@ import { SpaceDialog } from "./space-dialog";
 
 const ALL = "all";
 
-const SUGGESTIONS = [
-  "What's the refund window for digital products?",
-  "How do I request annual leave?",
-  "What do I need to set up on my laptop in week one?",
-];
+const MAX_SUGGESTIONS = 3;
+
+// One question from each of the newest documents first, so the picks cover different files
+function pickSuggestions(documents: { suggestedQuestions: string[] }[]) {
+  const picked: string[] = [];
+  for (let round = 0; picked.length < MAX_SUGGESTIONS && round < MAX_SUGGESTIONS; round++) {
+    for (const doc of documents) {
+      const q = doc.suggestedQuestions[round];
+      if (q && !picked.includes(q)) picked.push(q);
+      if (picked.length === MAX_SUGGESTIONS) break;
+    }
+  }
+  return picked;
+}
 
 export function NewQuestion() {
   const query = useQuery(documentsQuery);
@@ -32,6 +41,7 @@ export function NewQuestion() {
   const space = spaces.find((s) => s.id === scope);
   const spaceReady = space ? ready.filter((d) => space.documentIds.includes(d.id)) : ready;
   const [creating, setCreating] = useState(false);
+  const suggestions = pickSuggestions(spaceReady);
 
   function applySuggestion(text: string) {
     const el = textareaRef.current;
@@ -78,7 +88,11 @@ export function NewQuestion() {
             <div className="mt-4 flex items-center justify-center gap-2 text-sm text-muted-foreground">
               <span id="scope-label">Search</span>
               <Select value={scope} onValueChange={setScope}>
-                <SelectTrigger aria-labelledby="scope-label" size="sm" className="glass border-glass-border bg-glass text-foreground">
+                <SelectTrigger
+                  aria-labelledby="scope-label"
+                  size="sm"
+                  className="glass border-glass-border bg-glass text-foreground"
+                >
                   <LayersIcon className="text-primary" />
                   <SelectValue />
                 </SelectTrigger>
@@ -99,20 +113,22 @@ export function NewQuestion() {
               </Button>
               <SpaceDialog open={creating} onOpenChange={setCreating} onSaved={setScope} />
             </div>
-            <ul className="mt-8 flex flex-wrap justify-center gap-2.5" aria-label="Example questions">
-              {SUGGESTIONS.map((s) => (
-                <li key={s}>
-                  <Button
-                    type="button"
-                    variant="glass"
-                    onClick={() => applySuggestion(s)}
-                    className="h-auto rounded-full px-4 py-2 font-normal whitespace-normal"
-                  >
-                    {s}
-                  </Button>
-                </li>
-              ))}
-            </ul>
+            {suggestions.length > 0 && (
+              <ul className="mt-8 flex flex-wrap justify-center gap-2.5" aria-label="Questions your documents can answer">
+                {suggestions.map((s) => (
+                  <li key={s}>
+                    <Button
+                      type="button"
+                      variant="glass"
+                      onClick={() => applySuggestion(s)}
+                      className="h-auto rounded-full px-4 py-2 font-normal whitespace-normal"
+                    >
+                      {s}
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            )}
           </>
         )}
       </div>

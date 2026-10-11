@@ -9,6 +9,8 @@ export type DocumentItem = {
   error: string | null;
   chunkCount: number;
   createdAt: string;
+  /** Questions this document can answer, offered on the new question page. */
+  suggestedQuestions: string[];
 };
 
 // A Markdown document opened in the editor

@@ -18,7 +18,8 @@ type Supabase = Awaited<ReturnType<typeof createClient>>;
 export async function listDocuments(supabase: Supabase): Promise<DocumentItem[]> {
   const { data, error } = await supabase
     .from("documents")
-    .select("id, filename, mime_type, size_bytes, status, error, chunk_count, created_at")
+    // All columns, so this keeps working before the suggested_questions migration has run
+    .select("*")
     .order("created_at", { ascending: false });
   if (error) throw error;
   return data.map((d) => ({
@@ -30,6 +31,7 @@ export async function listDocuments(supabase: Supabase): Promise<DocumentItem[]>
     error: d.error,
     chunkCount: d.chunk_count,
     createdAt: d.created_at,
+    suggestedQuestions: d.suggested_questions ?? [],
   }));
 }
 

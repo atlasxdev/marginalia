@@ -1,7 +1,7 @@
 import "server-only";
 import { MAX_FILE_BYTES } from "@/lib/schemas";
 import { admin } from "@/lib/supabase/admin";
-import { embed } from "@/server/gemini";
+import { embed, generateText } from "@/server/gemini";
 import { chunkMarkdown } from "./chunk";
 import { IngestError, toMarkdown } from "./convert";
 
@@ -71,6 +71,9 @@ export async function ingestDocument(documentId: string) {
     await admin.from("chunks").delete().eq("document_id", documentId).lte("id", previousMaxId);
 
     await setStatus({ status: "ready", chunk_count: chunks.length });
+    // Extra: a failure here leaves the document ready, just without suggestions
+    const questions = await suggestQuestions(title, markdown).catch(() => []);
+    if (questions.length) await setStatus({ suggested_questions: questions });
   } catch (error) {
     console.error(`Ingestion failed for document ${documentId}:`, error);
     await setStatus({
@@ -84,3 +87,19 @@ export async function ingestDocument(documentId: string) {
 }
 
 export const documentTitle = (filename: string) => filename.replace(/\.[^.]+$/, "");
+
+const SUGGESTION_SOURCE_CHARS = 8000;
+
+// Three short questions the start of the document clearly answers
+async function suggestQuestions(title: string, markdown: string) {
+  const text = await generateText(
+    `Here is the start of a document titled "${title}".\n\n${markdown.slice(0, SUGGESTION_SOURCE_CHARS)}\n\n` +
+      "Write 3 short questions (under 12 words each) a reader could ask that this text clearly answers. " +
+      "Use plain language, as a person would type them. One question per line, with no numbering or quotes."
+  );
+  return text
+    .split("\n")
+    .map((line) => line.replace(/^\s*(?:[-*•]|\d+[.)])\s*/, "").replace(/^["“]|["”]$/g, "").trim())
+    .filter((q) => q.endsWith("?") && q.length <= 120)
+    .slice(0, 3);
+}
