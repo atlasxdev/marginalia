@@ -8,9 +8,12 @@ import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } f
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import type { CitedSource } from "@/lib/format-response";
 import { useMediaQuery } from "@/lib/use-media-query";
+import { FileSearchIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Item, ItemContent, ItemDescription, ItemGroup, ItemMedia, ItemSeparator, ItemTitle } from "@/components/ui/item";
 import { cn } from "@/lib/utils";
 import { SmartLink } from "./smart-link";
+import { SourceViewer } from "./source-viewer";
 
 /*
  * One conversation's sources view: a sheet from the right on a wide screen,
@@ -191,6 +194,7 @@ function SourceList({ shown, className }: { shown: Shown; className?: string }) 
   const listRef = useRef<HTMLDivElement>(null);
   // Hovered, or else the passage that was asked for (opening the drawer moves focus off its citation)
   const activeN = active?.key === shown.key ? active.n : focus?.key === shown.key ? focus.n : null;
+  const [viewing, setViewing] = useState<CitedSource | null>(null);
 
   // Scroll the asked-for passage into view
   useEffect(() => {
@@ -221,10 +225,15 @@ function SourceList({ shown, className }: { shown: Shown; className?: string }) 
               <ItemTitle className="block truncate">{s.documentTitle}</ItemTitle>
               {s.headingPath && <ItemDescription className="truncate text-xs">{s.headingPath}</ItemDescription>}
               <Excerpt text={s.excerpt} active={activeN === s.index} />
+              <Button variant="link" size="sm" className="mt-2 h-auto self-start p-0" onClick={() => setViewing(s)}>
+                <FileSearchIcon />
+                Show in document
+              </Button>
             </ItemContent>
           </Item>
         </Fragment>
       ))}
+      <SourceViewer source={viewing} onClose={() => setViewing(null)} />
     </ItemGroup>
   );
 }
