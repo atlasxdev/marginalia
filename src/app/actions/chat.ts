@@ -53,6 +53,7 @@ export async function askQuestion(_prev: AskState, formData: FormData): Promise<
 
 export async function deleteConversation(id: string): Promise<ActionState> {
   const supabase = await createClient();
-  await supabase.from("conversations").delete().eq("id", z.uuid().parse(id));
+  const { data, error } = await supabase.from("conversations").delete().eq("id", z.uuid().parse(id)).select("id");
+  if (error || !data?.length) return { ok: false, message: "Couldn't delete this conversation. Try again." };
   return { ok: true };
 }

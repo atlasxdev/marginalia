@@ -26,6 +26,28 @@ export const signUpSchema = signInSchema
     path: ["confirmPassword"],
   });
 
+export const forgotPasswordSchema = signInSchema.pick({ email: true });
+
+const newPassword = z
+  .object({
+    password: z.string().min(8, "Password must be at least 8 characters."),
+    confirmPassword: z.string(),
+  })
+  .refine((v) => v.password === v.confirmPassword, {
+    message: "Passwords don't match.",
+    path: ["confirmPassword"],
+  });
+
+export const resetPasswordSchema = newPassword;
+
+export const changePasswordSchema = z
+  .object({ currentPassword: z.string().min(1, "Enter your current password.") })
+  .and(newPassword);
+
+export const profileSchema = z.object({
+  name: z.string().trim().min(1, "Enter your name.").max(80, "Keep your name under 80 characters."),
+});
+
 // Browsers often report .md as "" or text/plain, so the extension is the source of truth.
 export const uploadSchema = z.object({
   file: z

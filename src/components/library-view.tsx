@@ -14,7 +14,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { ArrowDownIcon, ArrowUpIcon, FilePlusIcon, FileTextIcon, Loader2Icon, PencilIcon, SearchIcon, Trash2Icon } from "lucide-react";
+import { ArrowDownIcon, ArrowUpIcon, FilePlusIcon, FileTextIcon, MoreHorizontalIcon, PencilIcon, SearchIcon, Trash2Icon } from "lucide-react";
 import { deleteDocument, retryDocument } from "@/app/actions/documents";
 import {
   AlertDialog,
@@ -25,12 +25,20 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Spinner } from "@/components/ui/spinner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { documentsQuery } from "@/lib/queries";
 import type { DocumentItem } from "@/lib/types";
@@ -143,7 +151,7 @@ export function LibraryView() {
 
   return (
     <div className="h-full overflow-y-auto">
-      <div className="mx-auto max-w-4xl px-4 pt-10 pb-12 sm:px-6">
+      <div className="mx-auto max-w-6xl px-5 sm:px-8 lg:px-12 pt-14 pb-24">
         <div className="grid grid-cols-[1fr_auto_auto] items-center gap-x-2 gap-y-3">
           <h1 className="text-3xl font-bold tracking-tight">Library</h1>
           <Button asChild variant="glass">
@@ -154,33 +162,57 @@ export function LibraryView() {
           </Button>
           <UploadForm />
         </div>
-        <p className="mt-1 text-muted-foreground">
+        <p className="mt-2 text-muted-foreground">
           Markdown, PDF, and Word files. Drop a file anywhere on this page to upload it, or write a new
           one in Markdown.
         </p>
 
-        <section aria-label="Documents" className="mt-6">
+        <section aria-label="Documents" className="mt-10">
           {error && <p className="text-destructive">Couldn&apos;t load your documents. Refresh to try again.</p>}
 
           {isPending && (
-            <ul className="glass border border-glass-border bg-glass divide-y divide-glass-divider overflow-hidden rounded-xl" aria-label="Loading documents">
-              {[0, 1, 2].map((i) => (
-                <li key={i} className="flex items-center gap-3 px-4 py-3">
-                  <Skeleton className="size-9 rounded-lg" />
-                  <Skeleton className="h-4 w-1/2" />
-                </li>
-              ))}
-            </ul>
+            <div className="glass overflow-hidden rounded-xl border border-glass-border bg-glass" aria-label="Loading documents">
+              <Table>
+                <TableBody>
+                  {[0, 1, 2].map((i) => (
+                    <TableRow key={i} className="border-glass-divider hover:bg-transparent">
+                      <TableCell className="px-5 py-4">
+                        <div className="flex items-center gap-3">
+                          <Skeleton className="size-9 rounded-lg" />
+                          <Skeleton className="h-4 w-1/2" />
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           )}
 
           {documents?.length === 0 && (
-            <p className="glass border border-glass-border bg-glass rounded-xl px-4 py-10 text-center text-muted-foreground">No documents yet</p>
+            <Empty className="glass border border-glass-border bg-glass">
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <FileTextIcon />
+                </EmptyMedia>
+                <EmptyTitle>No documents yet</EmptyTitle>
+                <EmptyDescription>Upload a Markdown, PDF, or Word file, or write a new one.</EmptyDescription>
+              </EmptyHeader>
+              <EmptyContent>
+                <Button asChild variant="glass">
+                  <Link href="/library/new">
+                    <FilePlusIcon />
+                    Write a document
+                  </Link>
+                </Button>
+              </EmptyContent>
+            </Empty>
           )}
 
           {documents && documents.length > 0 && (
             <>
               {/* Search and filter */}
-              <div className="mb-3 flex flex-wrap items-center gap-2">
+              <div className="mb-5 flex flex-wrap items-center gap-3">
                 <div className="relative min-w-0 flex-1 sm:max-w-xs">
                   {/* Above the glass input, which paints its own layer */}
                   <SearchIcon className="pointer-events-none absolute top-1/2 left-3 z-10 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -193,7 +225,7 @@ export function LibraryView() {
                       table.getColumn("filename")?.setFilterValue(e.target.value || undefined);
                       table.setPageIndex(0);
                     }}
-                    className="glass h-9 rounded-xl border-glass-border bg-glass pl-9 dark:bg-glass"
+                    className="glass h-10 rounded-xl border-glass-border bg-glass pl-9 dark:bg-glass"
                   />
                 </div>
                 <Select
@@ -203,7 +235,7 @@ export function LibraryView() {
                     table.setPageIndex(0);
                   }}
                 >
-                  <SelectTrigger aria-label="Filter by type" className="glass h-9! rounded-xl border-glass-border bg-glass">
+                  <SelectTrigger aria-label="Filter by type" className="glass h-10! rounded-xl border-glass-border bg-glass px-3.5">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="glass border border-glass-border bg-glass-strong">
@@ -223,7 +255,7 @@ export function LibraryView() {
                     {table.getHeaderGroups().map((group) => (
                       <TableRow key={group.id} className="border-glass-divider hover:bg-transparent">
                         {group.headers.map((header) => (
-                          <TableHead key={header.id} className={cn("px-4 text-muted-foreground", metaClass(header.column.columnDef.meta))}>
+                          <TableHead key={header.id} className={cn("h-12 px-5 text-muted-foreground", metaClass(header.column.columnDef.meta))}>
                             {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                           </TableHead>
                         ))}
@@ -241,7 +273,7 @@ export function LibraryView() {
                       table.getRowModel().rows.map((row) => (
                         <TableRow key={row.id} className="group border-glass-divider hover:bg-glass-strong">
                           {row.getVisibleCells().map((cell) => (
-                            <TableCell key={cell.id} className={cn("px-4 py-3 text-muted-foreground", metaClass(cell.column.columnDef.meta))}>
+                            <TableCell key={cell.id} className={cn("px-5 py-4 text-muted-foreground", metaClass(cell.column.columnDef.meta))}>
                               {flexRender(cell.column.columnDef.cell, cell.getContext())}
                             </TableCell>
                           ))}
@@ -254,7 +286,7 @@ export function LibraryView() {
 
               {/* Pagination, once there's more than a page */}
               {filteredCount > pageSize && (
-                <div className="mt-3 flex items-center justify-between gap-2 text-sm text-muted-foreground">
+                <div className="mt-5 flex items-center justify-between gap-2 text-sm text-muted-foreground">
                   <span className="tabular-nums">
                     {pageIndex * pageSize + 1}–{Math.min((pageIndex + 1) * pageSize, filteredCount)} of {filteredCount}
                   </span>
@@ -317,8 +349,8 @@ function Status({ doc }: { doc: DocumentItem }) {
       return <span className="whitespace-nowrap tabular-nums">{doc.chunkCount} {doc.chunkCount === 1 ? "section" : "sections"}</span>;
     case "processing":
       return (
-        <span className="flex items-center gap-1.5 whitespace-nowrap" role="status">
-          <Loader2Icon className="size-4 animate-spin" />
+        <span className="flex items-center gap-1.5 whitespace-nowrap">
+          <Spinner />
           Indexing
         </span>
       );
@@ -338,6 +370,7 @@ function Status({ doc }: { doc: DocumentItem }) {
 
 function RowActions({ doc }: { doc: DocumentItem }) {
   const queryClient = useQueryClient();
+  const [confirming, setConfirming] = useState(false);
   const remove = useMutation({
     mutationFn: deleteDocument,
     onMutate: async (id) => {
@@ -346,35 +379,47 @@ function RowActions({ doc }: { doc: DocumentItem }) {
       queryClient.setQueryData<DocumentItem[]>(["documents"], (docs) => docs?.filter((d) => d.id !== id));
       return { previous };
     },
+    onSuccess: (result, _id, ctx) => {
+      if (!result.ok) queryClient.setQueryData(["documents"], ctx?.previous);
+    },
     onError: (_err, _id, ctx) => queryClient.setQueryData(["documents"], ctx?.previous),
-    onSettled: () => queryClient.invalidateQueries({ queryKey: ["documents"] }),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+      queryClient.invalidateQueries({ queryKey: ["spaces"] });
+    },
   });
-  const reveal = "opacity-0 group-hover:opacity-100 focus-visible:opacity-100 max-md:opacity-100";
 
   return (
     <div className="-mr-2 flex justify-end">
-      {doc.mimeType === "text/markdown" && (
-        <Button asChild variant="ghost" size="icon-sm" className={cn("text-muted-foreground", reveal)}>
-          <Link href={`/library/${doc.id}`} aria-label={`Edit ${doc.filename}`}>
-            <PencilIcon />
-          </Link>
-        </Button>
-      )}
-      <AlertDialog>
-        <AlertDialogTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            aria-label={`Delete ${doc.filename}`}
-            className={cn("text-muted-foreground hover:text-destructive", reveal)}
-          >
-            <Trash2Icon />
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon-sm" aria-label={`More options for ${doc.filename}`} className="text-muted-foreground">
+            <MoreHorizontalIcon />
           </Button>
-        </AlertDialogTrigger>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          {doc.mimeType === "text/markdown" && (
+            <>
+              <DropdownMenuItem asChild>
+                <Link href={`/library/${doc.id}`}>
+                  <PencilIcon />
+                  Edit
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+            </>
+          )}
+          <DropdownMenuItem variant="destructive" onSelect={() => setConfirming(true)}>
+            <Trash2Icon />
+            Delete
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <AlertDialog open={confirming} onOpenChange={setConfirming}>
         <AlertDialogContent className="glass border border-glass-border bg-glass-strong">
           <AlertDialogHeader>
             <AlertDialogTitle>Delete “{doc.filename}”?</AlertDialogTitle>
-            <AlertDialogDescription>It will be removed from your library and from search.</AlertDialogDescription>
+            <AlertDialogDescription>It will be removed from your library, its spaces, and search.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>

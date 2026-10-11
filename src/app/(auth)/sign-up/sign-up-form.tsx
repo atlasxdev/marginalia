@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { useActionState } from "react";
 import { signUp } from "@/app/actions/auth";
-import { FieldGroup, GroupedInput } from "@/components/field";
+import { TextField } from "@/components/field";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { FieldGroup } from "@/components/ui/field";
 import { Button } from "@/components/ui/button";
 
 export function SignUpForm() {
@@ -15,18 +17,18 @@ export function SignUpForm() {
       <h1 className="text-3xl font-semibold tracking-tight">Create your account</h1>
       <p className="mt-2 text-muted-foreground">Your documents stay private to you.</p>
 
-      <form action={formAction} className="mt-8 grid gap-4" noValidate>
+      <form action={formAction} className="mt-8 grid gap-6 text-left" noValidate>
         <FieldGroup>
-          <GroupedInput label="Name" name="name" autoComplete="name" error={errors.name?.[0]} />
-          <GroupedInput label="Email" name="email" type="email" autoComplete="email" error={errors.email?.[0]} />
-          <GroupedInput
+          <TextField label="Name" name="name" autoComplete="name" error={errors.name?.[0]} />
+          <TextField label="Email" name="email" type="email" autoComplete="email" error={errors.email?.[0]} />
+          <TextField
             label="Password"
             name="password"
             type="password"
             autoComplete="new-password"
             error={errors.password?.[0]}
           />
-          <GroupedInput
+          <TextField
             label="Confirm password"
             name="confirmPassword"
             type="password"
@@ -38,9 +40,9 @@ export function SignUpForm() {
           {pending ? "Creating account…" : "Create account"}
         </Button>
         {state.message && (
-          <p role={state.ok ? "status" : "alert"} className={state.ok ? "text-sm text-success" : "text-sm text-destructive"}>
-            {state.message}
-          </p>
+          <Alert variant={state.ok ? "default" : "destructive"} role={state.ok ? "status" : "alert"}>
+            <AlertDescription className={state.ok ? "text-success" : undefined}>{state.message}</AlertDescription>
+          </Alert>
         )}
       </form>
 

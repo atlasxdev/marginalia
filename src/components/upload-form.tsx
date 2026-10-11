@@ -5,6 +5,8 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { PlusIcon } from "lucide-react";
 import { registerDocument } from "@/app/actions/documents";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Spinner } from "@/components/ui/spinner";
 import { ACCEPTED_TYPES, uploadSchema } from "@/lib/schemas";
 import { getBrowserClient } from "@/lib/supabase/client";
 
@@ -71,7 +73,7 @@ export function UploadForm() {
 
   return (
     <>
-      <input
+      <Input
         ref={inputRef}
         id="file"
         type="file"
@@ -86,7 +88,7 @@ export function UploadForm() {
         }}
       />
       <Button type="button" disabled={mutation.isPending} onClick={() => inputRef.current?.click()}>
-        <PlusIcon />
+        {mutation.isPending ? <Spinner /> : <PlusIcon />}
         {mutation.isPending ? "Uploading…" : "Upload"}
       </Button>
 

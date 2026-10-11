@@ -41,10 +41,10 @@ export function NewQuestion() {
   }
 
   return (
-    <div className="flex h-full flex-col justify-center px-4 py-10 sm:px-6">
-      <div className="mx-auto w-full max-w-3xl text-center">
+    <div className="flex h-full flex-col justify-center px-5 sm:px-8 lg:px-12 py-14">
+      <div className="mx-auto w-full max-w-4xl text-center">
         <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">Ask your documents</h1>
-        <p className="mt-3 text-muted-foreground">
+        <p className="mt-4 text-muted-foreground">
           {isPending
             ? "Checking your library…"
             : space
@@ -57,7 +57,7 @@ export function NewQuestion() {
         </p>
 
         {!isPending && ready.length === 0 ? (
-          <div className="mt-8">
+          <div className="mt-10">
             <p className="text-muted-foreground">Upload a Markdown, PDF, or Word file to get started.</p>
             <Button asChild size="lg" className="mt-4">
               <Link href="/library">Upload documents</Link>
@@ -65,7 +65,7 @@ export function NewQuestion() {
           </div>
         ) : (
           <>
-            <div className="mt-8">
+            <div className="mt-10">
               <Composer
                 key={scope}
                 textareaRef={textareaRef}
@@ -75,7 +75,7 @@ export function NewQuestion() {
               />
             </div>
             {/* What to search: everything, or one space */}
-            <div className="mt-3 flex items-center justify-center gap-2 text-sm text-muted-foreground">
+            <div className="mt-4 flex items-center justify-center gap-2 text-sm text-muted-foreground">
               <span id="scope-label">Search</span>
               <Select value={scope} onValueChange={setScope}>
                 <SelectTrigger aria-labelledby="scope-label" size="sm" className="glass border-glass-border bg-glass text-foreground">
@@ -99,14 +99,14 @@ export function NewQuestion() {
               </Button>
               <SpaceDialog open={creating} onOpenChange={setCreating} onSaved={setScope} />
             </div>
-            <ul className="mt-4 flex flex-wrap justify-center gap-2" aria-label="Example questions">
+            <ul className="mt-8 flex flex-wrap justify-center gap-2.5" aria-label="Example questions">
               {SUGGESTIONS.map((s) => (
                 <li key={s}>
                   <Button
                     type="button"
                     variant="glass"
                     onClick={() => applySuggestion(s)}
-                    className="h-auto rounded-full px-3.5 py-1.5 font-normal whitespace-normal"
+                    className="h-auto rounded-full px-4 py-2 font-normal whitespace-normal"
                   >
                     {s}
                   </Button>

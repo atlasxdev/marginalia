@@ -1,44 +1,28 @@
+import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 
-// Inputs stacked in one rounded glass group with hairline dividers, like iOS forms.
-export function FieldGroup({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="glass divide-y divide-glass-divider overflow-hidden rounded-xl border border-glass-border bg-glass-strong text-left focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/20">
-      {children}
-    </div>
-  );
-}
-
-type GroupedInputProps = React.ComponentProps<typeof Input> & {
+type TextFieldProps = React.ComponentProps<typeof Input> & {
   label: string;
   name: string;
   error?: string;
 };
 
-export function GroupedInput({ label, name, error, ...input }: GroupedInputProps) {
+// A labelled input with its error, for the sign-in and sign-up forms
+export function TextField({ label, name, error, ...input }: TextFieldProps) {
   return (
-    // One wrapper per row so the group's dividers fall between rows, and the error sits in its own row
-    <div>
-      <Label htmlFor={name} className="sr-only">
-        {label}
-      </Label>
+    <Field data-invalid={!!error || undefined}>
+      <FieldLabel htmlFor={name}>{label}</FieldLabel>
       <Input
         id={name}
         name={name}
-        placeholder={label}
         aria-invalid={!!error || undefined}
         aria-describedby={error ? `${name}-error` : undefined}
         // Autofill and password-manager extensions restyle these inputs before React hydrates
         suppressHydrationWarning
-        className="h-12 rounded-none border-0 bg-transparent px-4 text-[17px] shadow-none focus-visible:ring-0 aria-invalid:ring-0 md:text-[17px] dark:bg-transparent"
+        className="glass h-12 rounded-xl border-glass-border bg-glass-strong px-4 text-[17px] md:text-[17px] dark:bg-glass-strong"
         {...input}
       />
-      {error && (
-        <p id={`${name}-error`} className="-mt-1.5 px-4 pb-2.5 text-[13px] text-destructive">
-          {error}
-        </p>
-      )}
-    </div>
+      {error && <FieldError id={`${name}-error`}>{error}</FieldError>}
+    </Field>
   );
 }

@@ -31,7 +31,13 @@ export const conversationQuery = (id: string) =>
 
 export const meQuery = queryOptions({
   queryKey: ["me"],
-  queryFn: async () => (await getBrowserClient().auth.getUser()).data.user,
+  queryFn: async () => {
+    const { data, error } = await getBrowserClient().auth.getUser();
+    // A missing or ended session means no user; anything else, like being offline, is a real error
+    const signedOut = error && (error.status === 401 || error.status === 403 || error.name === "AuthSessionMissingError");
+    if (error && !signedOut) throw error;
+    return data.user;
+  },
   staleTime: Infinity,
 });
 

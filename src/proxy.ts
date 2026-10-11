@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PUBLIC_PATHS = ["/sign-in", "/sign-up", "/auth"];
+const PUBLIC_PATHS = ["/sign-in", "/sign-up", "/forgot-password", "/auth"];
 
 // Refreshes the Supabase session cookie on every request and keeps signed-out
 // visitors on the auth pages. Data access is still enforced by row level security.

@@ -21,6 +21,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { applyFormat } from "@/lib/markdown-edit";
@@ -168,7 +170,7 @@ function EditorForm({ initial }: { initial: Draft }) {
 
   return (
     <div className="h-full">
-      <div className="mx-auto flex h-full max-w-6xl flex-col px-4 pt-6 pb-4 sm:px-6 sm:pb-6">
+      <div className="mx-auto flex h-full max-w-6xl flex-col px-5 sm:px-8 lg:px-12 pt-8 pb-6 sm:pb-8">
         <div className="flex items-center gap-3">
           <Button
             variant="ghost"
@@ -187,7 +189,7 @@ function EditorForm({ initial }: { initial: Draft }) {
           </Button>
         </div>
 
-        <input
+        <Input
           aria-label="Title"
           placeholder="Untitled"
           value={title}
@@ -195,7 +197,7 @@ function EditorForm({ initial }: { initial: Draft }) {
           aria-invalid={!!titleError}
           aria-describedby={titleError ? "title-error" : undefined}
           autoFocus={!initial.id}
-          className="mt-5 w-full bg-transparent text-3xl font-bold tracking-tight outline-none placeholder:text-muted-foreground/50"
+          className="mt-8 h-auto rounded-none border-0 bg-transparent px-0 text-3xl font-bold tracking-tight shadow-none placeholder:text-muted-foreground/50 focus-visible:ring-0 md:text-3xl dark:bg-transparent"
         />
         {titleError && (
           <p id="title-error" className="mt-1 text-[13px] text-destructive">
@@ -205,7 +207,7 @@ function EditorForm({ initial }: { initial: Draft }) {
         {contentError && <p className="mt-1 text-[13px] text-destructive">{contentError}</p>}
 
         {/* Side by side from lg up; on smaller screens a switch flips between the two */}
-        <div className="glass mt-4 flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-glass-border bg-glass has-[textarea:focus-visible]:border-ring has-[textarea:focus-visible]:ring-3 has-[textarea:focus-visible]:ring-ring/30">
+        <div className="glass mt-6 flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-glass-border bg-glass has-[textarea:focus-visible]:border-ring has-[textarea:focus-visible]:ring-3 has-[textarea:focus-visible]:ring-ring/30">
           <div className="flex items-center gap-2 border-b border-glass-divider px-2 py-1.5">
             <FormatToolbar textareaRef={textareaRef} disabled={view === "preview"} />
             <ToggleGroup
@@ -222,7 +224,7 @@ function EditorForm({ initial }: { initial: Draft }) {
           </div>
 
           <div className="grid min-h-0 flex-1 divide-glass-divider lg:grid-cols-2 lg:divide-x">
-            <textarea
+            <Textarea
               ref={textareaRef}
               aria-label="Document text, in Markdown"
               placeholder={"# Heading\n\nWrite in Markdown. Headings help answers point to the right section."}
@@ -239,7 +241,7 @@ function EditorForm({ initial }: { initial: Draft }) {
               aria-invalid={!!contentError}
               spellCheck
               className={cn(
-                "h-full min-h-0 w-full resize-none bg-transparent p-5 font-mono text-sm leading-relaxed outline-none placeholder:text-muted-foreground/60",
+                "field-sizing-fixed h-full min-h-0 w-full resize-none rounded-none border-0 bg-transparent p-6 font-mono text-sm leading-relaxed shadow-none placeholder:text-muted-foreground/60 focus-visible:ring-0 md:text-sm dark:bg-transparent",
                 view === "preview" && "max-lg:hidden"
               )}
             />
@@ -283,7 +285,7 @@ function EditorForm({ initial }: { initial: Draft }) {
 
 function EditorSkeleton() {
   return (
-    <div className="mx-auto flex h-full max-w-6xl flex-col px-4 pt-6 pb-6 sm:px-6" aria-label="Loading document">
+    <div className="mx-auto flex h-full max-w-6xl flex-col px-5 sm:px-8 lg:px-12 pt-8 pb-8" aria-label="Loading document">
       <Skeleton className="h-8 w-24" />
       <Skeleton className="mt-6 h-9 w-2/3" />
       <Skeleton className="mt-6 min-h-0 flex-1 rounded-xl" />

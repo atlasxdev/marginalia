@@ -6,7 +6,9 @@ import { useQueryClient } from "@tanstack/react-query";
 import { ArrowUpIcon } from "lucide-react";
 import { askQuestion, type AskState } from "@/app/actions/chat";
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupTextarea } from "@/components/ui/input-group";
+import { Label } from "@/components/ui/label";
 import { MAX_QUESTION_CHARS } from "@/lib/schemas";
+import { cn } from "@/lib/utils";
 
 type ComposerProps = {
   conversationId?: string;
@@ -15,9 +17,10 @@ type ComposerProps = {
   placeholder?: string;
   busy?: boolean;
   textareaRef?: React.RefObject<HTMLTextAreaElement | null>;
+  className?: string;
 };
 
-export function Composer({ conversationId, spaceId, placeholder = "Ask about your documents", busy = false, textareaRef }: ComposerProps) {
+export function Composer({ conversationId, spaceId, placeholder = "Ask about your documents", busy = false, textareaRef, className }: ComposerProps) {
   const [state, formAction, pending] = useActionState<AskState, FormData>(askQuestion, { ok: false });
   const queryClient = useQueryClient();
   const router = useRouter();
@@ -40,12 +43,12 @@ export function Composer({ conversationId, spaceId, placeholder = "Ask about you
   const disabled = pending || busy;
 
   return (
-    <form action={formAction} className="mx-auto w-full max-w-3xl">
+    <form action={formAction} className={cn("mx-auto w-full max-w-4xl", className)}>
       {conversationId && <input type="hidden" name="conversationId" value={conversationId} />}
       {!conversationId && spaceId && <input type="hidden" name="spaceId" value={spaceId} />}
-      <label htmlFor={inputId} className="sr-only">
+      <Label htmlFor={inputId} className="sr-only">
         Ask a question about your documents
-      </label>
+      </Label>
       <InputGroup className="glass border border-glass-border bg-glass-strong rounded-3xl dark:bg-glass-strong">
         <InputGroupTextarea
           ref={ref}

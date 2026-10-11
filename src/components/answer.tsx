@@ -8,6 +8,7 @@ import rehypeSanitize from "rehype-sanitize";
 import { formatResponse } from "@/lib/format-response";
 import type { Source } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import { SmartLink } from "./smart-link";
 import { useSources } from "./sources";
 
@@ -82,11 +83,12 @@ export function Answer({ id, content, sources, streaming = false }: AnswerProps)
       </div>
 
       {cited.length > 0 && (
-        <button
+        <Button
           type="button"
+          variant="glass"
           aria-expanded={open}
           onClick={() => (open ? view.close() : view.show(id, cited))}
-          className="glass mt-6 flex w-full items-center gap-3 rounded-xl border border-glass-border bg-glass px-4 py-3 text-left text-sm transition-colors hover:bg-glass-strong focus-visible:bg-glass-strong focus-visible:outline-none aria-expanded:bg-glass-strong aria-expanded:ring-2 aria-expanded:ring-primary/40"
+          className="mt-8 h-auto w-full justify-start gap-3 rounded-xl px-5 py-4 text-left font-normal aria-expanded:bg-glass-strong aria-expanded:ring-2 aria-expanded:ring-primary/40"
         >
           <span className="font-semibold">
             {cited.length} {cited.length === 1 ? "source" : "sources"}
@@ -95,7 +97,7 @@ export function Answer({ id, content, sources, streaming = false }: AnswerProps)
             {documents.join(", ")}
           </span>
           <ChevronRightIcon aria-hidden className="size-4 shrink-0 text-muted-foreground" />
-        </button>
+        </Button>
       )}
     </CiteContext>
   );

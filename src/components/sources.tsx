@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, use, useEffect, useRef, useState } from "react";
+import { createContext, Fragment, use, useEffect, useRef, useState } from "react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeSanitize from "rehype-sanitize";
@@ -8,6 +8,7 @@ import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } f
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import type { CitedSource } from "@/lib/format-response";
 import { useMediaQuery } from "@/lib/use-media-query";
+import { Item, ItemContent, ItemDescription, ItemGroup, ItemMedia, ItemSeparator, ItemTitle } from "@/components/ui/item";
 import { cn } from "@/lib/utils";
 import { SmartLink } from "./smart-link";
 
@@ -187,7 +188,7 @@ function Excerpt({ text, active }: { text: string; active: boolean }) {
 
 function SourceList({ shown, className }: { shown: Shown; className?: string }) {
   const { active, focus, setActive } = useSources();
-  const listRef = useRef<HTMLOListElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
   // Hovered, or else the passage that was asked for (opening the drawer moves focus off its citation)
   const activeN = active?.key === shown.key ? active.n : focus?.key === shown.key ? focus.n : null;
 
@@ -200,25 +201,30 @@ function SourceList({ shown, className }: { shown: Shown; className?: string }) 
   }, [focus]);
 
   return (
-    <ol ref={listRef} className={cn("divide-y divide-glass-divider", className)}>
-      {shown.sources.map((s) => (
-        <li
-          key={s.index}
-          data-source={s.index}
-          className="scroll-my-4 px-5 py-4"
-          onMouseEnter={() => setActive(shown.key, s.index)}
-          onMouseLeave={() => setActive(shown.key, null)}
-        >
-          <p className="flex items-baseline gap-2 text-sm">
-            <span className="cite m-0" data-active={activeN === s.index}>
-              {s.index}
-            </span>
-            <span className="min-w-0 truncate font-medium">{s.documentTitle}</span>
-          </p>
-          {s.headingPath && <p className="mt-0.5 truncate pl-7 text-xs text-muted-foreground">{s.headingPath}</p>}
-          <Excerpt text={s.excerpt} active={activeN === s.index} />
-        </li>
+    <ItemGroup ref={listRef} role="list" className={cn("gap-0", className)}>
+      {shown.sources.map((s, i) => (
+        <Fragment key={s.index}>
+          {i > 0 && <ItemSeparator className="my-0 bg-glass-divider" />}
+          <Item
+            role="listitem"
+            data-source={s.index}
+            className="scroll-my-4 items-start rounded-none px-6 py-5"
+            onMouseEnter={() => setActive(shown.key, s.index)}
+            onMouseLeave={() => setActive(shown.key, null)}
+          >
+            <ItemMedia>
+              <span className="cite m-0" data-active={activeN === s.index}>
+                {s.index}
+              </span>
+            </ItemMedia>
+            <ItemContent className="min-w-0">
+              <ItemTitle className="block truncate">{s.documentTitle}</ItemTitle>
+              {s.headingPath && <ItemDescription className="truncate text-xs">{s.headingPath}</ItemDescription>}
+              <Excerpt text={s.excerpt} active={activeN === s.index} />
+            </ItemContent>
+          </Item>
+        </Fragment>
       ))}
-    </ol>
+    </ItemGroup>
   );
 }

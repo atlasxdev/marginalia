@@ -133,13 +133,14 @@ export async function retryDocument(id: string): Promise<ActionState> {
 
 export async function deleteDocument(id: string): Promise<ActionState> {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("documents")
     .delete()
     .eq("id", z.uuid().parse(id))
     .select("storage_path")
     .maybeSingle();
+  if (error || !data) return { ok: false, message: "Couldn't delete this document. Try again." };
   // Chunks go with the row (on delete cascade); the original file is removed from Storage
-  if (data) await supabase.storage.from("documents").remove([data.storage_path]);
+  await supabase.storage.from("documents").remove([data.storage_path]);
   return { ok: true };
 }

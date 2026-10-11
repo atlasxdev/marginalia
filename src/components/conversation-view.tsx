@@ -2,13 +2,15 @@
 
 import { useEffect, useRef } from "react";
 import Link from "next/link";
-import { LayersIcon } from "lucide-react";
+import { LayersIcon, MessageSquareIcon } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { conversationQuery } from "@/lib/queries";
 import { useAnswerStream } from "@/lib/use-answer-stream";
 import { useHydrated } from "@/lib/use-hydrated";
 import { Button } from "@/components/ui/button";
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Spinner } from "@/components/ui/spinner";
 import { Answer } from "./answer";
 import { Composer } from "./composer";
 import { SourcesProvider, SourcesView } from "./sources";
@@ -30,13 +32,20 @@ export function ConversationView({ id }: { id: string }) {
 
   if (error) {
     return (
-      <div className="mx-auto max-w-xl px-4 py-24 text-center">
-        <h1 className="text-2xl font-semibold">This conversation isn&apos;t available</h1>
-        <p className="mt-2 text-muted-foreground">It may have been deleted.</p>
-        <Button asChild size="lg" className="mt-6">
-          <Link href="/chat">Ask a new question</Link>
-        </Button>
-      </div>
+      <Empty className="h-full">
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <MessageSquareIcon />
+          </EmptyMedia>
+          <EmptyTitle>This conversation isn&apos;t available</EmptyTitle>
+          <EmptyDescription>It may have been deleted.</EmptyDescription>
+        </EmptyHeader>
+        <EmptyContent>
+          <Button asChild>
+            <Link href="/chat">Ask a new question</Link>
+          </Button>
+        </EmptyContent>
+      </Empty>
     );
   }
 
@@ -46,7 +55,7 @@ export function ConversationView({ id }: { id: string }) {
         <div className="relative h-full min-w-0 flex-1">
           {/* Messages scroll under the floating composer */}
           <div className="h-full overflow-y-auto">
-            <div className="mx-auto max-w-3xl px-4 pt-10 pb-36 sm:px-6">
+            <div className="mx-auto max-w-4xl px-5 sm:px-8 lg:px-12 pt-14 pb-44">
               {isPending ? (
                 <ConversationSkeleton />
               ) : (
@@ -54,7 +63,7 @@ export function ConversationView({ id }: { id: string }) {
                   {conversation?.space && (
                     <Link
                       href={`/spaces/${conversation.space.id}`}
-                      className="glass mb-3 inline-flex max-w-full items-center gap-1.5 rounded-full border border-glass-border bg-glass px-3 py-1 text-sm hover:bg-glass-strong"
+                      className="glass mb-4 inline-flex max-w-full items-center gap-1.5 rounded-full border border-glass-border bg-glass px-3 py-1 text-sm hover:bg-glass-strong"
                     >
                       <LayersIcon className="size-3.5 shrink-0 text-primary" />
                       <span className="truncate">{conversation.space.name}</span>
@@ -64,7 +73,7 @@ export function ConversationView({ id }: { id: string }) {
                 </>
               )}
 
-              <div className="mt-8 space-y-8">
+              <div className="mt-10 space-y-12">
                 {conversation?.messages.map((m) =>
                   m.role === "user" ? (
                     <p
@@ -82,7 +91,8 @@ export function ConversationView({ id }: { id: string }) {
                   (stream.text ? (
                     <Answer id="streaming" content={stream.text} sources={stream.sources} streaming />
                   ) : (
-                    <p className="text-muted-foreground" role="status">
+                    <p className="flex items-center gap-2 text-muted-foreground" role="status">
+                      <Spinner />
                       Searching your documents…
                     </p>
                   ))}
@@ -96,11 +106,11 @@ export function ConversationView({ id }: { id: string }) {
                   </div>
                 )}
               </div>
-              <div ref={endRef} className="scroll-mb-36" />
+              <div ref={endRef} className="scroll-mb-44" />
             </div>
           </div>
 
-          <div className="absolute inset-x-0 bottom-0 px-4 pb-4 sm:px-6">
+          <div className="absolute inset-x-0 bottom-0 px-5 sm:px-8 lg:px-12 pb-6">
             <Composer
               conversationId={id}
               busy={stream.busy}

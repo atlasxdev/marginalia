@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { useActionState } from "react";
 import { signIn } from "@/app/actions/auth";
-import { FieldGroup, GroupedInput } from "@/components/field";
+import { TextField } from "@/components/field";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { FieldGroup } from "@/components/ui/field";
 import { Button } from "@/components/ui/button";
 
 export function SignInForm() {
@@ -15,10 +17,10 @@ export function SignInForm() {
       <h1 className="text-3xl font-semibold tracking-tight">Sign in</h1>
       <p className="mt-2 text-muted-foreground">Ask questions about your documents.</p>
 
-      <form action={formAction} className="mt-8 grid gap-4" noValidate>
+      <form action={formAction} className="mt-8 grid gap-6 text-left" noValidate>
         <FieldGroup>
-          <GroupedInput label="Email" name="email" type="email" autoComplete="email" error={errors.email?.[0]} />
-          <GroupedInput
+          <TextField label="Email" name="email" type="email" autoComplete="email" error={errors.email?.[0]} />
+          <TextField
             label="Password"
             name="password"
             type="password"
@@ -26,13 +28,16 @@ export function SignInForm() {
             error={errors.password?.[0]}
           />
         </FieldGroup>
+        <Link href="/forgot-password" className="-mt-2 justify-self-end text-sm text-primary hover:underline">
+          Forgot password?
+        </Link>
         <Button type="submit" disabled={pending} className="h-12 rounded-xl text-[17px]">
           {pending ? "Signing in…" : "Sign in"}
         </Button>
         {state.message && (
-          <p role={state.ok ? "status" : "alert"} className={state.ok ? "text-sm text-success" : "text-sm text-destructive"}>
-            {state.message}
-          </p>
+          <Alert variant={state.ok ? "default" : "destructive"} role={state.ok ? "status" : "alert"}>
+            <AlertDescription className={state.ok ? "text-success" : undefined}>{state.message}</AlertDescription>
+          </Alert>
         )}
       </form>
 
