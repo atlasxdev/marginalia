@@ -95,6 +95,7 @@ async function suggestQuestions(title: string, markdown: string) {
   const text = await generateText(
     `Here is the start of a document titled "${title}".\n\n${markdown.slice(0, SUGGESTION_SOURCE_CHARS)}\n\n` +
       "Write 3 short questions (under 12 words each) a reader could ask that this text clearly answers. " +
+      "Each question must make sense on its own, so name the subject instead of writing he, she, it or this. " +
       "Use plain language, as a person would type them. One question per line, with no numbering or quotes."
   );
   return text
