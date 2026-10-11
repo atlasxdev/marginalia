@@ -25,9 +25,13 @@ export function Composer({ conversationId, spaceId, placeholder = "Ask about you
   const ref = textareaRef ?? localRef;
   // Unique, since a page kept in the background can have its own composer
   const inputId = useId();
+  // Pages kept in the background re-run effects when shown again, so act on each answer once;
+  // otherwise coming back to this page would jump to the last conversation
+  const handled = useRef<AskState>(null);
 
   useEffect(() => {
-    if (!state.ok || !state.conversationId) return;
+    if (!state.ok || !state.conversationId || handled.current === state) return;
+    handled.current = state;
     queryClient.invalidateQueries({ queryKey: ["conversations"] });
     if (!conversationId) router.push(`/chat/${state.conversationId}`);
   }, [state, conversationId, queryClient, router]);
