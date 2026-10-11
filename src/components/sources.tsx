@@ -1,17 +1,16 @@
 "use client";
 
 import { createContext, use, useEffect, useRef, useState } from "react";
-import { XIcon } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import type { CitedSource } from "@/lib/format-response";
 import { useMediaQuery } from "@/lib/use-media-query";
 import { cn } from "@/lib/utils";
 
 /*
- * One conversation's sources view. On a wide screen it's a panel docked beside
- * the chat, so an answer and its passages read side by side; below lg it's a
- * drawer from the bottom. `key` names the answer whose sources are shown, so
+ * One conversation's sources view. On a wide screen it's a non-modal sheet
+ * beside the chat, so an answer and its passages read side by side; below lg
+ * it's a drawer from the bottom. `key` names the answer whose sources are shown, so
  * only that answer's citations light up with the passages.
  */
 type Shown = { key: string; sources: CitedSource[] };
@@ -80,34 +79,35 @@ export function SourcesView() {
 }
 
 function SourcesPanel() {
-  const { shown, close } = useSources();
+  const { shown, last, close } = useSources();
+  const content = shown ?? last;
 
-  // Escape closes the panel, unless something else (a dialog) is handling it
-  useEffect(() => {
-    if (!shown) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !e.defaultPrevented) close();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [shown, close]);
-
-  if (!shown) return null;
   return (
-    <aside aria-label="Sources" className="w-96 shrink-0 p-2 pl-0 duration-300 animate-in fade-in-0 slide-in-from-right-6 xl:w-[26rem]">
-      <div className="glass flex h-full flex-col overflow-hidden rounded-2xl border border-glass-border bg-glass-strong">
-        <div className="flex items-start gap-3 border-b border-glass-divider py-3 pr-3 pl-5">
-          <div className="min-w-0 flex-1">
-            <h2 className="font-semibold">{countOf(shown.sources.length)}</h2>
-            <p className="truncate text-sm text-muted-foreground">{documentsOf(shown.sources)}</p>
-          </div>
-          <Button variant="ghost" size="icon-sm" aria-label="Close sources" onClick={close}>
-            <XIcon />
-          </Button>
-        </div>
-        <SourceList shown={shown} className="min-h-0 flex-1 overflow-y-auto" />
-      </div>
-    </aside>
+    <>
+      {/* Holds the sheet's width beside the chat, so the answer is never under it */}
+      {shown && <div aria-hidden className="w-96 shrink-0 xl:w-[26rem]" />}
+      <Sheet open={!!shown} onOpenChange={(open) => !open && close()} modal={false}>
+        <SheetContent
+          side="right"
+          overlay={false}
+          // Citations and the trigger in the chat stay clickable while it's open
+          onInteractOutside={(e) => e.preventDefault()}
+          // Keep focus in the chat; the sheet is for reading beside it
+          onOpenAutoFocus={(e) => e.preventDefault()}
+          className="glass gap-0 rounded-2xl border border-glass-border bg-glass-strong p-0 shadow-none data-[side=right]:inset-y-2 data-[side=right]:right-2 data-[side=right]:h-auto data-[side=right]:w-[calc(24rem-0.5rem)] data-[side=right]:sm:max-w-none xl:data-[side=right]:w-[calc(26rem-0.5rem)]"
+        >
+          {content && (
+            <>
+              <SheetHeader className="border-b border-glass-divider py-3 pr-12 pl-5">
+                <SheetTitle className="font-semibold">{countOf(content.sources.length)}</SheetTitle>
+                <SheetDescription className="truncate">{documentsOf(content.sources)}</SheetDescription>
+              </SheetHeader>
+              <SourceList shown={content} className="min-h-0 flex-1 overflow-y-auto" />
+            </>
+          )}
+        </SheetContent>
+      </Sheet>
+    </>
   );
 }
 

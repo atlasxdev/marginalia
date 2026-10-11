@@ -50,14 +50,17 @@ function SheetContent({
   children,
   side = "right",
   showCloseButton = true,
+  overlay = true,
   ...props
 }: React.ComponentProps<typeof SheetPrimitive.Content> & {
   side?: "top" | "right" | "bottom" | "left"
   showCloseButton?: boolean
+  /** False for a non-modal sheet that leaves the page usable behind it. */
+  overlay?: boolean
 }) {
   return (
     <SheetPortal>
-      <SheetOverlay />
+      {overlay && <SheetOverlay />}
       <SheetPrimitive.Content
         data-slot="sheet-content"
         data-side={side}
