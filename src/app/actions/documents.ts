@@ -18,14 +18,12 @@ const registerSchema = z.object({
   filename: z.string().min(1).max(255),
   sizeBytes: z.number().int().positive().max(MAX_FILE_BYTES),
   storagePath: z.string().min(1),
-  // Uploaded from a space's page: add it to that space too
-  spaceId: z.uuid().optional(),
 });
 
 export async function registerDocument(input: z.input<typeof registerSchema>): Promise<ActionState> {
   const parsed = registerSchema.safeParse(input);
   if (!parsed.success) return { ok: false, message: "That upload didn't look right. Try again." };
-  const { id, filename, sizeBytes, storagePath, spaceId } = parsed.data;
+  const { id, filename, sizeBytes, storagePath } = parsed.data;
 
   const ext = filename.slice(filename.lastIndexOf(".")).toLowerCase();
   const mimeType = MIME_BY_EXTENSION[ext];
@@ -46,10 +44,6 @@ export async function registerDocument(input: z.input<typeof registerSchema>): P
     storage_path: storagePath,
   });
   if (error) return { ok: false, message: "Couldn't save that file. Try again." };
-  if (spaceId) {
-    const { error: addError } = await supabase.from("space_documents").insert({ space_id: spaceId, document_id: id });
-    if (addError) return { ok: false, message: `Uploaded ${filename}, but couldn't add it to this space.` };
-  }
 
   after(() => ingestDocument(id));
   return { ok: true, message: `Uploaded ${filename}.` };

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Suspense, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { LayersIcon, LibraryIcon, MenuIcon, PlusIcon, SquarePenIcon } from "lucide-react";
@@ -10,10 +10,10 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { conversationsQuery, documentsQuery, meQuery, spacesQuery } from "@/lib/queries";
-import { useCreateSpace } from "@/lib/use-create-space";
 import { useHydrated } from "@/lib/use-hydrated";
 import { cn } from "@/lib/utils";
 import { Wordmark } from "./logo";
+import { SpaceDialog } from "./space-dialog";
 import { ThemeToggle } from "./theme-toggle";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -40,10 +40,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </SheetTrigger>
             <SheetContent side="left" className="glass border border-glass-border bg-glass-strong w-72 p-0">
               <SheetTitle className="sr-only">Menu</SheetTitle>
-              {/* Close the drawer when a link (or the new space button) inside it is used */}
-              <div className="h-full" onClick={(e) => (e.target as HTMLElement).closest("a, [data-closes-menu]") && setOpen(false)}>
+              {/* Close the drawer when a link inside it is followed */}
+              <div className="h-full" onClick={(e) => (e.target as HTMLElement).closest("a") && setOpen(false)}>
                 <Suspense>
-                  <Sidebar />
+                  <Sidebar onNavigate={() => setOpen(false)} />
                 </Suspense>
               </div>
             </SheetContent>
@@ -59,8 +59,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 const itemClass =
   "flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm hover:bg-sidebar-accent aria-[current=page]:bg-sidebar-primary aria-[current=page]:text-sidebar-primary-foreground";
 
-function Sidebar() {
+function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
+  const router = useRouter();
   const hydrated = useHydrated();
   const conversationsResult = useQuery(conversationsQuery);
   const documentsResult = useQuery(documentsQuery);
@@ -72,7 +73,7 @@ function Sidebar() {
   const email = useQuery(meQuery).data?.email;
   const spacesResult = useQuery(spacesQuery);
   const spaces = hydrated ? spacesResult.data : undefined;
-  const createSpace = useCreateSpace();
+  const [creating, setCreating] = useState(false);
 
   return (
     <nav className="flex h-full flex-col">
@@ -105,13 +106,19 @@ function Sidebar() {
           variant="ghost"
           size="icon-xs"
           aria-label="New space"
-          data-closes-menu
-          disabled={createSpace.isPending}
-          onClick={() => createSpace.mutate()}
+          onClick={() => setCreating(true)}
           className="text-muted-foreground"
         >
           <PlusIcon />
         </Button>
+        <SpaceDialog
+          open={creating}
+          onOpenChange={setCreating}
+          onSaved={(id) => {
+            router.push(`/spaces/${id}`);
+            onNavigate?.();
+          }}
+        />
       </div>
       <ul className="max-h-44 shrink-0 overflow-y-auto px-2.5">
         {spaces?.length === 0 && (

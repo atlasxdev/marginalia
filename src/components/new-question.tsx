@@ -3,17 +3,15 @@
 import { useRef, useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { LayersIcon } from "lucide-react";
+import { LayersIcon, PlusIcon } from "lucide-react";
 import { documentsQuery, spacesQuery } from "@/lib/queries";
-import { useCreateSpace } from "@/lib/use-create-space";
 import { useHydrated } from "@/lib/use-hydrated";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Composer } from "./composer";
+import { SpaceDialog } from "./space-dialog";
 
 const ALL = "all";
-// With this many documents, grouping them into a space starts to pay off
-const SPACE_NUDGE_AT = 10;
 
 const SUGGESTIONS = [
   "What's the refund window for digital products?",
@@ -33,7 +31,7 @@ export function NewQuestion() {
   const [scope, setScope] = useState(ALL);
   const space = spaces.find((s) => s.id === scope);
   const spaceReady = space ? ready.filter((d) => space.documentIds.includes(d.id)) : ready;
-  const createSpace = useCreateSpace();
+  const [creating, setCreating] = useState(false);
 
   function applySuggestion(text: string) {
     const el = textareaRef.current;
@@ -94,16 +92,13 @@ export function NewQuestion() {
                   ))}
                 </SelectContent>
               </Select>
+              {/* Want this chat to search only certain documents? Make a space for it */}
+              <Button variant="ghost" size="sm" onClick={() => setCreating(true)} className="text-primary">
+                <PlusIcon />
+                New space
+              </Button>
+              <SpaceDialog open={creating} onOpenChange={setCreating} onSaved={setScope} />
             </div>
-            {spaces.length === 0 && ready.length >= SPACE_NUDGE_AT && (
-              <p className="mt-3 text-sm text-muted-foreground">
-                Lots of documents?{" "}
-                <Button variant="link" className="h-auto p-0" disabled={createSpace.isPending} onClick={() => createSpace.mutate()}>
-                  Group them into a space
-                </Button>{" "}
-                for more focused answers.
-              </p>
-            )}
             <ul className="mt-4 flex flex-wrap justify-center gap-2" aria-label="Example questions">
               {SUGGESTIONS.map((s) => (
                 <li key={s}>
