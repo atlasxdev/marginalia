@@ -1,11 +1,15 @@
 "use client";
 
 import { createContext, use, useEffect, useRef, useState } from "react";
+import ReactMarkdown, { type Components } from "react-markdown";
+import remarkGfm from "remark-gfm";
+import rehypeSanitize from "rehype-sanitize";
 import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import type { CitedSource } from "@/lib/format-response";
 import { useMediaQuery } from "@/lib/use-media-query";
 import { cn } from "@/lib/utils";
+import { SmartLink } from "./smart-link";
 
 /*
  * One conversation's sources view: a sheet from the right on a wide screen,
@@ -119,6 +123,68 @@ function SourcesDrawer() {
   );
 }
 
+/*
+ * A passage is a chunk of the original file, so a Markdown file's passage is
+ * Markdown: render it, with the highlight on each block's text. Whether it's
+ * the active passage comes from context, so the components stay stable.
+ */
+const MarkActive = createContext(false);
+function Marked({ children }: { children?: React.ReactNode }) {
+  return (
+    <span className="mark" data-active={use(MarkActive)}>
+      {children}
+    </span>
+  );
+}
+const heading = ({ children }: { children?: React.ReactNode }) => (
+  <p className="font-semibold">
+    <Marked>{children}</Marked>
+  </p>
+);
+const excerptComponents: Components = {
+  p: ({ children }) => (
+    <p>
+      <Marked>{children}</Marked>
+    </p>
+  ),
+  li: ({ children }) => (
+    <li>
+      <Marked>{children}</Marked>
+    </li>
+  ),
+  td: ({ children }) => (
+    <td>
+      <Marked>{children}</Marked>
+    </td>
+  ),
+  th: ({ children }) => (
+    <th>
+      <Marked>{children}</Marked>
+    </th>
+  ),
+  h1: heading,
+  h2: heading,
+  h3: heading,
+  h4: heading,
+  h5: heading,
+  h6: heading,
+  a: SmartLink,
+  // Badges and screenshots aren't worth the room in a passage
+  img: () => null,
+};
+
+function Excerpt({ text, active }: { text: string; active: boolean }) {
+  return (
+    <MarkActive value={active}>
+      <div className="answer doc excerpt mt-2">
+        <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeSanitize]} components={excerptComponents}>
+          {text}
+        </ReactMarkdown>
+      </div>
+    </MarkActive>
+  );
+}
+
 function SourceList({ shown, className }: { shown: Shown; className?: string }) {
   const { active, focus, setActive } = useSources();
   const listRef = useRef<HTMLOListElement>(null);
@@ -150,11 +216,7 @@ function SourceList({ shown, className }: { shown: Shown; className?: string }) 
             <span className="min-w-0 truncate font-medium">{s.documentTitle}</span>
           </p>
           {s.headingPath && <p className="mt-0.5 truncate pl-7 text-xs text-muted-foreground">{s.headingPath}</p>}
-          <p className="mt-2 text-[15px] leading-relaxed">
-            <span className="mark" data-active={activeN === s.index}>
-              {s.excerpt}
-            </span>
-          </p>
+          <Excerpt text={s.excerpt} active={activeN === s.index} />
         </li>
       ))}
     </ol>

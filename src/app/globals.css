@@ -243,6 +243,22 @@
   .answer.doc th { text-align: left; font-weight: 600; padding: 0.6em 1em 0.6em 0; }
   .answer.doc td:first-child { color: inherit; white-space: normal; }
 
+  /* A source passage, rendered from the document's Markdown: compact, headings at body size */
+  .answer.excerpt { font-size: 0.9375rem; }
+  .answer.excerpt > * + * { margin-top: 0.6em; }
+  .answer.excerpt > * + p.font-semibold { margin-top: 0.9em; }
+
+  /* Links in answers and passages */
+  .link {
+    color: var(--primary);
+    text-decoration: underline;
+    text-decoration-color: color-mix(in srgb, var(--primary) 35%, transparent);
+    text-underline-offset: 3px;
+    transition: text-decoration-color 150ms;
+    overflow-wrap: anywhere;
+  }
+  .link:hover { text-decoration-color: var(--primary); }
+
   /* Citation number inside the answer */
   .cite {
     display: inline-grid;

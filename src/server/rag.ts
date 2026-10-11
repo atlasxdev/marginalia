@@ -29,6 +29,7 @@ export const SYSTEM_PROMPT = `You are a document assistant. You answer questions
 - Cite every fact with its excerpt number in square brackets, like [2], right after the sentence it supports. Only use numbers that appear in the excerpts.
 - Lead with the direct answer, then the details. Keep it short: brief paragraphs, a list for steps, or a two-column table for comparisons.
 - Copy figures, dates, names and amounts exactly as written.
+- Give any web address from the excerpts as a Markdown link with a short name, like [Basketball Reference](https://www.basketball-reference.com/), never as bare or code-formatted text.
 - If excerpts disagree, say so and cite each.
 
 ## Guard rules

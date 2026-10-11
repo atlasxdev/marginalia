@@ -8,6 +8,7 @@ import rehypeSanitize from "rehype-sanitize";
 import { formatResponse } from "@/lib/format-response";
 import type { Source } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { SmartLink } from "./smart-link";
 import { useSources } from "./sources";
 
 // Citations read hover state from context so the markdown components stay stable.
@@ -22,18 +23,7 @@ const CiteContext = createContext<CiteState | null>(null);
 function MarkdownLink({ href, children }: React.ComponentProps<"a">) {
   const cite = use(CiteContext);
   const match = href?.match(/^#cite-(\d+)$/);
-  if (!match || !cite) {
-    return (
-      <a
-        href={href}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="text-primary hover:underline"
-      >
-        {children}
-      </a>
-    );
-  }
+  if (!match || !cite) return <SmartLink href={href}>{children}</SmartLink>;
   const n = Number(match[1]);
   return (
     <a
