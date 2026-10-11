@@ -87,7 +87,7 @@ function SourcesPanel() {
 
   return (
     <Sheet open={!!shown} onOpenChange={(open) => !open && close()}>
-      <SheetContent side="right" className="glass gap-0 border-glass-border bg-glass-strong p-0">
+      <SheetContent side="right" className="glass gap-0 border-glass-border bg-glass-strong p-0 data-[side=right]:sm:max-w-lg">
         {content && (
           <>
             <SheetHeader className="border-b border-glass-divider py-3 pr-12 pl-5">
