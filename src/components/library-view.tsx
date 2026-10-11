@@ -14,7 +14,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { ArrowDownIcon, ArrowUpIcon, FilePlusIcon, FileTextIcon, MoreHorizontalIcon, PencilIcon, SearchIcon, Trash2Icon } from "lucide-react";
+import { ArrowDownIcon, ArrowUpIcon, FilePlusIcon, FileTextIcon, MoreHorizontalIcon, PencilIcon, RotateCcwIcon, SearchIcon, Trash2Icon } from "lucide-react";
 import { deleteDocument, retryDocument } from "@/app/actions/documents";
 import {
   AlertDialog,
@@ -78,6 +78,8 @@ const columns: ColumnDef<DocumentItem>[] = [
     accessorKey: "filename",
     header: ({ column }) => <SortHeader column={column}>Name</SortHeader>,
     cell: ({ row }) => <NameCell doc={row.original} />,
+    // Takes the leftover width, so long names truncate instead of widening the table
+    meta: { className: "w-full max-w-0" },
   },
   {
     id: "type",
@@ -85,24 +87,26 @@ const columns: ColumnDef<DocumentItem>[] = [
     header: "Type",
     filterFn: "equals",
     cell: ({ row }) => kindOf(row.original).label,
-    meta: { className: "hidden md:table-cell" },
+    meta: { className: "hidden xl:table-cell whitespace-nowrap" },
   },
   {
     accessorKey: "sizeBytes",
     header: ({ column }) => <SortHeader column={column}>Size</SortHeader>,
     cell: ({ row }) => <span className="tabular-nums">{formatSize(row.original.sizeBytes)}</span>,
-    meta: { className: "hidden md:table-cell" },
+    meta: { className: "hidden xl:table-cell whitespace-nowrap" },
   },
   {
     accessorKey: "createdAt",
     header: ({ column }) => <SortHeader column={column}>Added</SortHeader>,
     cell: ({ row }) => dateFormat.format(new Date(row.original.createdAt)),
-    meta: { className: "hidden sm:table-cell" },
+    meta: { className: "hidden lg:table-cell whitespace-nowrap" },
   },
   {
     id: "status",
     header: "Status",
     cell: ({ row }) => <Status doc={row.original} />,
+    // On phones, status moves under the name to leave room for it
+    meta: { className: "hidden sm:table-cell" },
   },
   {
     id: "actions",
@@ -255,7 +259,7 @@ export function LibraryView() {
                     {table.getHeaderGroups().map((group) => (
                       <TableRow key={group.id} className="border-glass-divider hover:bg-transparent">
                         {group.headers.map((header) => (
-                          <TableHead key={header.id} className={cn("h-12 px-5 text-muted-foreground", metaClass(header.column.columnDef.meta))}>
+                          <TableHead key={header.id} className={cn("h-12 px-3 text-muted-foreground first:pl-4 sm:px-5", metaClass(header.column.columnDef.meta))}>
                             {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                           </TableHead>
                         ))}
@@ -273,7 +277,7 @@ export function LibraryView() {
                       table.getRowModel().rows.map((row) => (
                         <TableRow key={row.id} className="group border-glass-divider hover:bg-glass-strong">
                           {row.getVisibleCells().map((cell) => (
-                            <TableCell key={cell.id} className={cn("px-5 py-4 text-muted-foreground", metaClass(cell.column.columnDef.meta))}>
+                            <TableCell key={cell.id} className={cn("px-3 py-4 text-muted-foreground first:pl-4 sm:px-5", metaClass(cell.column.columnDef.meta))}>
                               {flexRender(cell.column.columnDef.cell, cell.getContext())}
                             </TableCell>
                           ))}
@@ -318,18 +322,22 @@ function NameCell({ doc }: { doc: DocumentItem }) {
       </span>
       <div className="min-w-0">
         {editable ? (
-          <Link href={`/library/${doc.id}`} className="block max-w-[16rem] truncate font-medium text-foreground hover:underline sm:max-w-sm">
+          <Link href={`/library/${doc.id}`} className="block truncate font-medium text-foreground hover:underline">
             {doc.filename}
           </Link>
         ) : (
-          <p className="max-w-[16rem] truncate font-medium text-foreground sm:max-w-sm">{doc.filename}</p>
+          <p className="truncate font-medium text-foreground">{doc.filename}</p>
         )}
         {/* Details that have no column on small screens, or the reason it failed */}
         {doc.error ? (
-          <p className="max-w-[16rem] truncate text-sm sm:max-w-sm">{doc.error}</p>
+          <p className="truncate text-sm">
+            <span className="text-destructive sm:hidden">Couldn&apos;t read. </span>
+            {doc.error}
+          </p>
         ) : (
-          <p className="truncate text-sm md:hidden">
+          <p className="truncate text-sm xl:hidden">
             {kind.label}, {formatSize(doc.sizeBytes)}
+            {doc.status !== "ready" && <span className="sm:hidden">, {doc.status === "pending" ? "waiting" : "indexing"}</span>}
           </p>
         )}
       </div>
@@ -371,6 +379,10 @@ function Status({ doc }: { doc: DocumentItem }) {
 function RowActions({ doc }: { doc: DocumentItem }) {
   const queryClient = useQueryClient();
   const [confirming, setConfirming] = useState(false);
+  const retry = useMutation({
+    mutationFn: retryDocument,
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ["documents"] }),
+  });
   const remove = useMutation({
     mutationFn: deleteDocument,
     onMutate: async (id) => {
@@ -405,6 +417,15 @@ function RowActions({ doc }: { doc: DocumentItem }) {
                   <PencilIcon />
                   Edit
                 </Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+            </>
+          )}
+          {doc.status === "failed" && (
+            <>
+              <DropdownMenuItem onSelect={() => retry.mutate(doc.id)}>
+                <RotateCcwIcon />
+                Try again
               </DropdownMenuItem>
               <DropdownMenuSeparator />
             </>

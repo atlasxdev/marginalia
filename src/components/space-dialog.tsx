@@ -178,7 +178,7 @@ function SpaceForm({ space, onDone }: { space?: Space; onDone: (id: string) => v
               ref={fileRef}
               type="file"
               accept={ACCEPT}
-              className="sr-only"
+              className="hidden"
               tabIndex={-1}
               aria-hidden
               onChange={(e) => {

@@ -79,7 +79,7 @@ export function UploadForm() {
         type="file"
         name="file"
         accept={ACCEPT}
-        className="sr-only"
+        className="hidden"
         tabIndex={-1}
         onChange={(e) => {
           const file = e.currentTarget.files?.[0];

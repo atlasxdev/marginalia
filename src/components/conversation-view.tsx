@@ -69,7 +69,7 @@ export function ConversationView({ id }: { id: string }) {
                       <span className="truncate">{conversation.space.name}</span>
                     </Link>
                   )}
-                  <h1 className="text-3xl font-bold tracking-tight text-balance">{conversation?.title}</h1>
+                  <h1 className="text-3xl font-bold tracking-tight text-balance wrap-anywhere">{conversation?.title}</h1>
                 </>
               )}
 
@@ -78,7 +78,7 @@ export function ConversationView({ id }: { id: string }) {
                   m.role === "user" ? (
                     <p
                       key={m.id}
-                      className="glass border border-glass-border bg-glass-strong ml-auto w-fit max-w-[80%] rounded-2xl px-4 py-2.5 break-words"
+                      className="glass border border-glass-border bg-glass-strong ml-auto w-fit max-w-[80%] rounded-2xl px-4 py-2.5 wrap-anywhere"
                     >
                       {m.content}
                     </p>

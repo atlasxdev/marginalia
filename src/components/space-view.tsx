@@ -98,7 +98,7 @@ function SpaceDetail({ space }: { space: Space }) {
   return (
     <>
       <div className="flex items-start gap-2">
-        <h1 className="min-w-0 flex-1 text-3xl font-bold tracking-tight break-words">{space.name}</h1>
+        <h1 className="min-w-0 flex-1 text-3xl font-bold tracking-tight wrap-anywhere">{space.name}</h1>
         <Button variant="glass" onClick={() => setEditing(true)}>
           <PencilIcon />
           Edit
@@ -174,8 +174,8 @@ function SpaceDetail({ space }: { space: Space }) {
             Instructions
           </h2>
           <Item className={`${groupClass} mt-4 px-5 py-4`}>
-            <ItemContent>
-              <p className="whitespace-pre-wrap">{space.instructions}</p>
+            <ItemContent className="min-w-0">
+              <p className="whitespace-pre-wrap wrap-anywhere">{space.instructions}</p>
             </ItemContent>
           </Item>
         </section>
