@@ -261,9 +261,12 @@ function SpaceDetail({ space }: { space: Space }) {
                 <span className="text-muted-foreground">Saved</span>
               ) : null}
             </span>
-            <Button type="submit" disabled={!instructionsChanged || save.isPending}>
-              {save.isPending ? "Saving…" : "Save"}
-            </Button>
+            {/* Only offered once there's a change, so an empty box doesn't look required */}
+            {(instructionsChanged || save.isPending) && (
+              <Button type="submit" disabled={save.isPending}>
+                {save.isPending ? "Saving…" : "Save"}
+              </Button>
+            )}
           </div>
         </form>
       </section>
