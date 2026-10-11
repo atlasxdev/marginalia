@@ -8,9 +8,8 @@ import { useMediaQuery } from "@/lib/use-media-query";
 import { cn } from "@/lib/utils";
 
 /*
- * One conversation's sources view. On a wide screen it's a non-modal sheet
- * beside the chat, so an answer and its passages read side by side; below lg
- * it's a drawer from the bottom. `key` names the answer whose sources are shown, so
+ * One conversation's sources view: a sheet from the right on a wide screen,
+ * a drawer from the bottom below lg. `key` names the answer whose sources are shown, so
  * only that answer's citations light up with the passages.
  */
 type Shown = { key: string; sources: CitedSource[] };
@@ -83,31 +82,19 @@ function SourcesPanel() {
   const content = shown ?? last;
 
   return (
-    <>
-      {/* Holds the sheet's width beside the chat, so the answer is never under it */}
-      {shown && <div aria-hidden className="w-96 shrink-0 xl:w-[26rem]" />}
-      <Sheet open={!!shown} onOpenChange={(open) => !open && close()} modal={false}>
-        <SheetContent
-          side="right"
-          overlay={false}
-          // Citations and the trigger in the chat stay clickable while it's open
-          onInteractOutside={(e) => e.preventDefault()}
-          // Keep focus in the chat; the sheet is for reading beside it
-          onOpenAutoFocus={(e) => e.preventDefault()}
-          className="glass gap-0 rounded-2xl border border-glass-border bg-glass-strong p-0 shadow-none data-[side=right]:inset-y-2 data-[side=right]:right-2 data-[side=right]:h-auto data-[side=right]:w-[calc(24rem-0.5rem)] data-[side=right]:sm:max-w-none xl:data-[side=right]:w-[calc(26rem-0.5rem)]"
-        >
-          {content && (
-            <>
-              <SheetHeader className="border-b border-glass-divider py-3 pr-12 pl-5">
-                <SheetTitle className="font-semibold">{countOf(content.sources.length)}</SheetTitle>
-                <SheetDescription className="truncate">{documentsOf(content.sources)}</SheetDescription>
-              </SheetHeader>
-              <SourceList shown={content} className="min-h-0 flex-1 overflow-y-auto" />
-            </>
-          )}
-        </SheetContent>
-      </Sheet>
-    </>
+    <Sheet open={!!shown} onOpenChange={(open) => !open && close()}>
+      <SheetContent side="right" className="glass gap-0 border-glass-border bg-glass-strong p-0">
+        {content && (
+          <>
+            <SheetHeader className="border-b border-glass-divider py-3 pr-12 pl-5">
+              <SheetTitle className="font-semibold">{countOf(content.sources.length)}</SheetTitle>
+              <SheetDescription className="truncate">{documentsOf(content.sources)}</SheetDescription>
+            </SheetHeader>
+            <SourceList shown={content} className="min-h-0 flex-1 overflow-y-auto" />
+          </>
+        )}
+      </SheetContent>
+    </Sheet>
   );
 }
 
