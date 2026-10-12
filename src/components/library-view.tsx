@@ -1,7 +1,6 @@
 "use client";
 
 import { createContext, use, useEffect, useState } from "react";
-import { AnimatePresence, motion } from "motion/react";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -375,12 +374,6 @@ function NameCell({ doc }: { doc: DocumentItem }) {
 
 // A document that just finished indexing says so for a moment before showing its size
 const READY_FLASH_MS = 2000;
-const swap = {
-  initial: { opacity: 0, y: 4 },
-  animate: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: -4 },
-  transition: { duration: 0.18, ease: [0.16, 1, 0.3, 1] as const },
-};
 
 function Status({ doc }: { doc: DocumentItem }) {
   const queryClient = useQueryClient();
@@ -405,8 +398,7 @@ function Status({ doc }: { doc: DocumentItem }) {
     const label =
       doc.status === "processing" ? "indexing" : doc.status === "pending" ? "waiting" : justReady ? "just-ready" : "ready";
     return (
-      <AnimatePresence mode="wait" initial={false}>
-        <motion.span key={label} {...swap} className="flex items-center gap-1.5 whitespace-nowrap" role={label === "ready" ? undefined : "status"}>
+      <span className="flex items-center gap-1.5 whitespace-nowrap" role={label === "ready" ? undefined : "status"}>
           {label === "indexing" && (
             <>
               <Spinner />
@@ -420,8 +412,7 @@ function Status({ doc }: { doc: DocumentItem }) {
               {doc.chunkCount} {doc.chunkCount === 1 ? "section" : "sections"}
             </span>
           )}
-        </motion.span>
-      </AnimatePresence>
+      </span>
     );
   }
 

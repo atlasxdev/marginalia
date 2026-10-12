@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { DownloadIcon, LayersIcon, MessageSquareIcon } from "lucide-react";
+import { ArrowDownIcon, DownloadIcon, LayersIcon, MessageSquareIcon } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { conversationToMarkdown, downloadText } from "@/lib/export-markdown";
 import { conversationQuery } from "@/lib/queries";
@@ -24,12 +24,27 @@ export function ConversationView({ id }: { id: string }) {
   const error = hydrated ? query.error : null;
   const stream = useAnswerStream(conversation);
   const endRef = useRef<HTMLDivElement>(null);
+  // Whether the reader is at the latest message; scrolling up stops the answer pulling them down
+  const [atEnd, setAtEnd] = useState(true);
+  const atEndRef = useRef(true);
+  const onScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const el = e.currentTarget;
+    const end = el.scrollHeight - el.scrollTop - el.clientHeight < 120;
+    atEndRef.current = end;
+    setAtEnd(end);
+  };
+  const toEnd = () => endRef.current?.scrollIntoView({ block: "end", behavior: "smooth" });
 
   const messageCount = conversation?.messages.length ?? 0;
   const streamedLength = stream.status === "streaming" ? stream.text.length : 0;
+  // A new message always brings you down to it
   useEffect(() => {
     endRef.current?.scrollIntoView({ block: "end" });
-  }, [messageCount, streamedLength]);
+  }, [messageCount]);
+  // A streaming answer keeps you at the end, unless you've scrolled up to read
+  useEffect(() => {
+    if (atEndRef.current) endRef.current?.scrollIntoView({ block: "end" });
+  }, [streamedLength]);
 
   if (error) {
     return (
@@ -55,7 +70,7 @@ export function ConversationView({ id }: { id: string }) {
       <div className="flex h-full">
         <div className="relative h-full min-w-0 flex-1">
           {/* Messages scroll under the floating composer */}
-          <div className="h-full overflow-y-auto">
+          <div className="h-full overflow-y-auto" onScroll={onScroll}>
             <div className="mx-auto max-w-4xl px-5 sm:px-8 lg:px-12 pt-14 pb-44">
               {isPending ? (
                 <ConversationSkeleton />
@@ -127,6 +142,18 @@ export function ConversationView({ id }: { id: string }) {
               <div ref={endRef} className="scroll-mb-44" />
             </div>
           </div>
+
+          {!atEnd && (
+            <Button
+              variant="glass"
+              size="icon-lg"
+              aria-label="Scroll to the latest message"
+              onClick={toEnd}
+              className="absolute bottom-32 left-1/2 z-10 -translate-x-1/2 rounded-full shadow-lg animate-in fade-in zoom-in-90 duration-150 motion-reduce:animate-none"
+            >
+              <ArrowDownIcon />
+            </Button>
+          )}
 
           <div className="absolute inset-x-0 bottom-0 px-5 sm:px-8 lg:px-12 pb-6">
             <Composer
