@@ -336,8 +336,6 @@ export function PetDevice({ pet, onEdit }: { pet: Pet; onEdit: () => void }) {
       <DPad pressed={pressed} onPress={(d) => press(d === "up" ? "left" : d === "down" ? "right" : d)} style={place(9, 75, 17, 17)} />
       <RoundButton label="B, back" letter="B" tone="b" pressed={pressed === "b"} onPress={() => press("b")} style={place(42, 80, 10, 10)} />
       <RoundButton label="A, choose" letter="A" tone="a" pressed={pressed === "a"} onPress={() => press("a")} style={place(55, 75, 10, 10)} />
-      <PillButton label="Select" onPress={() => press("right")} style={place(25, 93, 8, 2.4)} outline={colors.O} />
-      <PillButton label="Start" onPress={() => press("a")} style={place(36, 93, 8, 2.4)} outline={colors.O} />
       {/* Speaker slits */}
       {[0, 1, 2, 3].map((i) => (
         <span key={i} aria-hidden className="absolute rounded-full" style={{ ...place(54 + i * 2.6, 89, 1, 7), background: colors.D, transform: "rotate(-30deg)" }} />
@@ -386,23 +384,6 @@ function RoundButton({ label, letter, tone, pressed, onPress, style }: { label: 
     >
       {letter}
     </button>
-  );
-}
-
-function PillButton({ label, onPress, style, outline }: { label: string; onPress: () => void; style: React.CSSProperties; outline: string }) {
-  return (
-    <div className="absolute flex flex-col items-center" style={{ ...style, height: "auto" }}>
-      <button
-        type="button"
-        aria-label={label}
-        {...press(onPress)}
-        className="w-full rounded-full bg-[#2b3446] outline-none focus-visible:outline-2 focus-visible:outline-white active:translate-y-px"
-        style={{ height: u(2.4), boxShadow: `inset 0 ${u(0.5)} 0 #4b566b, 0 0 0 ${u(0.4)} ${outline}`, transform: "rotate(-20deg)" }}
-      />
-      <span className="font-pixel leading-none text-white/80" style={{ marginTop: u(1.2), fontSize: u(1.7) }}>
-        {label.toUpperCase()}
-      </span>
-    </div>
   );
 }
 
