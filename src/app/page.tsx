@@ -8,19 +8,37 @@ import { Wordmark } from "@/components/logo";
 import { ProductShot } from "@/components/product-shot";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
+import { SITE_URL } from "@/lib/site";
 
 const DESCRIPTION = "Upload PDFs, Word docs and notes, then ask in plain words. Every answer shows the line it came from.";
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://marginalia.aceguevarra.xyz"),
   title: { absolute: "Marginalia · Ask your documents" },
   description: DESCRIPTION,
+  alternates: { canonical: "/" },
   openGraph: {
+    type: "website",
+    siteName: "Marginalia",
+    locale: "en_US",
+    url: "/",
     title: "Marginalia: ask your documents",
     description: DESCRIPTION,
     images: [{ url: "/product/og.png", width: 1200, height: 630, alt: "Marginalia on a laptop and a phone" }],
   },
-  twitter: { card: "summary_large_image", images: ["/product/og.png"] },
+  twitter: { card: "summary_large_image", title: "Marginalia: ask your documents", description: DESCRIPTION, images: ["/product/og.png"] },
+};
+
+const JSON_LD = {
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  name: "Marginalia",
+  url: SITE_URL,
+  description: DESCRIPTION,
+  applicationCategory: "ProductivityApplication",
+  operatingSystem: "Web",
+  image: `${SITE_URL}/product/og.png`,
+  offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+  author: { "@type": "Person", name: "Ace Guevarra", url: "https://www.aceguevarra.xyz" },
 };
 
 const FEATURES = [
@@ -60,6 +78,7 @@ const LinkedInIcon = () => (
 export default function Landing() {
   return (
     <div className="min-h-dvh overflow-x-clip">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }} />
       {/* Drifting colour behind the glass */}
       <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
         <div className="absolute -top-40 -left-40 size-[38rem] rounded-full bg-primary/20 blur-3xl animate-[drift_22s_ease-in-out_infinite_alternate] motion-reduce:animate-none" />

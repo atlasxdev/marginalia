@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Bodoni_Moda, Caveat, Inter, JetBrains_Mono, Pixelify_Sans } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
+import { SITE_URL } from "@/lib/site";
 import { cn } from "@/lib/utils";
 import "./globals.css";
 
@@ -15,8 +16,13 @@ const caveat = Caveat({ variable: "--font-caveat", subsets: ["latin"] });
 const pixel = Pixelify_Sans({ variable: "--font-pixelify", subsets: ["latin"], weight: ["400", "600"] });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
+  applicationName: "Marginalia",
   title: { default: "Marginalia", template: "%s · Marginalia" },
   description: "Ask questions about your documents and get answers with sources.",
+  authors: [{ name: "Ace Guevarra", url: "https://www.aceguevarra.xyz" }],
+  creator: "Ace Guevarra",
+  openGraph: { type: "website", siteName: "Marginalia", locale: "en_US" },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
