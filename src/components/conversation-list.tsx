@@ -79,6 +79,7 @@ export function ConversationGroups({ conversations, isPending, pathname, close, 
 
   const row = (c: ConversationSummary, extra?: { index: number; count: number }) => (
     <Row
+      key={c.id}
       c={c}
       active={pathname === `/chat/${c.id}`}
       close={close}

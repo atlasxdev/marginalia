@@ -5,12 +5,22 @@ import {
   DocChip, FindPlayground, LiveDemo, NavShell, OpeningWordmark, Reveal, SpotlightCard, Steps, StreamedAnswer, Tour,
 } from "@/components/landing";
 import { Wordmark } from "@/components/logo";
+import { ProductShot } from "@/components/product-shot";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 
+const DESCRIPTION = "Upload PDFs, Word docs and notes, then ask in plain words. Every answer shows the line it came from.";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://marginalia.aceguevarra.xyz"),
   title: { absolute: "Marginalia · Ask your documents" },
-  description: "Upload PDFs, Word docs and notes, then ask in plain words. Every answer shows the line it came from.",
+  description: DESCRIPTION,
+  openGraph: {
+    title: "Marginalia: ask your documents",
+    description: DESCRIPTION,
+    images: [{ url: "/product/og.png", width: 1200, height: 630, alt: "Marginalia on a laptop and a phone" }],
+  },
+  twitter: { card: "summary_large_image", images: ["/product/og.png"] },
 };
 
 const FEATURES = [
@@ -109,6 +119,17 @@ export default function Landing() {
           </div>
         </section>
 
+        {/* On devices */}
+        <section className="mx-auto max-w-6xl px-5 pb-12">
+          <Reveal className="text-center">
+            <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">On your laptop and your phone.</h2>
+            <p className="mx-auto mt-4 max-w-xl text-lg text-muted-foreground">The same library and the same chats, wherever you happen to be reading.</p>
+          </Reveal>
+          <Reveal delay={80} className="mt-10">
+            <ProductShot name="hero" alt="Marginalia answering a question with cited sources, on a laptop and a phone" />
+          </Reveal>
+        </section>
+
         {/* The problem */}
         <section className="mx-auto max-w-6xl px-5 py-20">
           <Reveal className="max-w-2xl">
@@ -134,6 +155,9 @@ export default function Landing() {
         {/* Features */}
         <section id="features" className="mx-auto max-w-6xl scroll-mt-24 px-5 py-20">
           <Reveal><h2 className="max-w-2xl text-3xl font-semibold tracking-tight sm:text-4xl">Answers you can check.</h2></Reveal>
+          <Reveal delay={80} className="mt-10">
+            <ProductShot name="laptop-sources" alt="The sources beside an answer, each cited passage highlighted" className="mx-auto max-w-4xl" />
+          </Reveal>
           <div className="mt-10 grid gap-4 md:grid-cols-3">
             {FEATURES.map(({ icon: Icon, title, body }, i) => (
               <Reveal key={title} delay={i * 60} className="h-full">
@@ -169,6 +193,21 @@ export default function Landing() {
                 </SpotlightCard>
               </Reveal>
             ))}
+          </div>
+        </section>
+
+        {/* The pet */}
+        <section className="mx-auto max-w-6xl px-5 py-20">
+          <div className="grid items-center gap-10 lg:grid-cols-[1fr_1.4fr]">
+            <Reveal>
+              <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">A little friend while you read.</h2>
+              <p className="mt-4 text-lg text-muted-foreground">
+                Hatch a pixel pet and keep it in a pocket handheld. Feed it, play catch with it, put it to bed. It reads along with you and levels up every time you ask a question or add a file.
+              </p>
+            </Reveal>
+            <Reveal delay={80}>
+              <ProductShot name="laptop-pet" alt="Mochi, a pixel cat in glasses, in its handheld inside Marginalia" />
+            </Reveal>
           </div>
         </section>
 
