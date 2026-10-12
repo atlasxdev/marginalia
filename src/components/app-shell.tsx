@@ -143,6 +143,14 @@ function AppSidebar() {
         <SidebarGroup className="py-0">
           <SidebarMenu>
             <SidebarMenuItem>
+              <SidebarMenuButton asChild isActive={pathname === "/chat"}>
+                <Link href="/chat" onClick={close}>
+                  <SquarePenIcon className="text-primary" />
+                  <span>New chat</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
               <SidebarMenuButton asChild isActive={pathname === "/library" || pathname.startsWith("/library/")}>
                 <Link href="/library" onClick={close}>
                   <LibraryIcon className="text-primary" />
@@ -150,14 +158,6 @@ function AppSidebar() {
                 </Link>
               </SidebarMenuButton>
               {readyCount !== undefined && <SidebarMenuBadge className="tabular-nums">{readyCount}</SidebarMenuBadge>}
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={pathname === "/chat"}>
-                <Link href="/chat" onClick={close}>
-                  <SquarePenIcon className="text-primary" />
-                  <span>New chat</span>
-                </Link>
-              </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarGroup>
