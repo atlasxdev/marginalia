@@ -360,20 +360,9 @@
 }
 
 /*
-  App motion: quick and small (≤300ms, out-expo), and gone with reduced motion.
-  Fills only backwards, so nothing keeps a transform once it has played
-  (a lingering transform would trap fixed overlays like the drop zone).
+  App motion only where it means something: it answers what you just did or
+  shows that something changed. Quick (≤300ms) and gone with reduced motion.
 */
-@keyframes rise-in {
-  from { opacity: 0; transform: translateY(6px); }
-}
-@keyframes cite-pop {
-  0% { opacity: 0; transform: scale(0.5); }
-  70% { transform: scale(1.12); }
-}
-@keyframes mark-sweep {
-  from { background-size: 0% 100%; }
-}
 @keyframes match-in {
   from { background-color: transparent; box-shadow: 0 0 0 0.3em transparent; }
 }
@@ -382,19 +371,7 @@
   to { background-position: -50% 0; }
 }
 
-/* A page lifts in when you move to it (pages kept in the background replay it when shown) */
-.page-in > * { animation: rise-in 260ms cubic-bezier(0.16, 1, 0.3, 1) backwards; }
-/* A streaming answer: each new block rises in, citations pop as they're written */
-.caret > * { animation: rise-in 220ms cubic-bezier(0.16, 1, 0.3, 1) backwards; }
-.caret .cite { animation: cite-pop 280ms cubic-bezier(0.34, 1.56, 0.64, 1) backwards; }
-/* A source's passage: the highlighter sweeps across when the sources open */
-.excerpt .mark {
-  background: linear-gradient(var(--highlight-soft), var(--highlight-soft)) no-repeat;
-  background-size: 100% 100%;
-  animation: mark-sweep 420ms cubic-bezier(0.16, 1, 0.3, 1) 120ms backwards;
-}
-.excerpt .mark[data-active="true"] { background-image: linear-gradient(var(--highlight), var(--highlight)); }
-/* The cited passage inside its document */
+/* Opening a source: the cited passage lights up so your eye finds it */
 .source-match { animation: match-in 500ms ease-out 150ms backwards; }
 /* Skeletons shimmer instead of pulsing */
 [data-slot="skeleton"] {
@@ -404,6 +381,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .page-in > *, .caret > *, .caret .cite, .excerpt .mark, .source-match { animation: none; }
+  .source-match { animation: none; }
   [data-slot="skeleton"] { animation: none; background-image: none; }
 }

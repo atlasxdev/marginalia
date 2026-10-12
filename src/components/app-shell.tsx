@@ -62,6 +62,7 @@ import { conversationsQuery, documentsQuery, meQuery, spacesQuery } from "@/lib/
 import type { ConversationSummary } from "@/lib/types";
 import { getBrowserClient } from "@/lib/supabase/client";
 import { useHydrated } from "@/lib/use-hydrated";
+import { cn } from "@/lib/utils";
 import { Wordmark } from "./logo";
 import { SpaceDialog } from "./space-dialog";
 
@@ -76,13 +77,22 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <SidebarTrigger aria-label="Open menu" />
           <Wordmark className="text-[22px]" />
         </header>
-        {/* Pages render from client data, so they stream in after the shell; each lifts in as you move to it */}
-        <div className="page-in min-h-0 flex-1">
+        {/* Pages render from client data, so they stream in after the shell */}
+        <div className="min-h-0 flex-1">
           <Suspense>{children}</Suspense>
         </div>
       </SidebarInset>
     </SidebarProvider>
   );
+}
+
+const SLIDE_IN = "animate-in fade-in slide-in-from-left-2 duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:animate-none";
+
+/** True for ids that weren't in the list when it first loaded. */
+function useFresh(ids: string[] | undefined) {
+  const [first, setFirst] = useState<ReadonlySet<string> | null>(null);
+  if (ids && first === null) setFirst(new Set(ids));
+  return (id: string) => first !== null && !first.has(id);
 }
 
 function AppSidebar() {
@@ -114,6 +124,9 @@ function AppSidebar() {
   const [deleting, setDeleting] = useState<ConversationSummary | null>(null);
   // Following a link closes the menu on phones
   const close = () => setOpenMobile(false);
+  // Only items added while you're here slide in, not the whole list on load
+  const freshSpace = useFresh(spaces?.map((s) => s.id));
+  const freshChat = useFresh(conversations?.map((c) => c.id));
 
   return (
     <Sidebar
@@ -159,7 +172,7 @@ function AppSidebar() {
               {spaces?.map((s) => {
                 const href = `/spaces/${s.id}`;
                 return (
-                  <SidebarMenuItem key={s.id} className="animate-in fade-in slide-in-from-left-2 duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:animate-none">
+                  <SidebarMenuItem key={s.id} className={cn(freshSpace(s.id) && SLIDE_IN)}>
                     <SidebarMenuButton asChild isActive={pathname === href}>
                       <Link href={href} onClick={close}>
                         <LayersIcon className="text-primary" />
@@ -189,7 +202,7 @@ function AppSidebar() {
               {conversations?.map((c) => {
                 const href = `/chat/${c.id}`;
                 return (
-                  <SidebarMenuItem key={c.id} className="animate-in fade-in slide-in-from-left-2 duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:animate-none">
+                  <SidebarMenuItem key={c.id} className={cn(freshChat(c.id) && SLIDE_IN)}>
                     <SidebarMenuButton asChild isActive={pathname === href}>
                       <Link href={href} onClick={close}>
                         <span>{c.title}</span>

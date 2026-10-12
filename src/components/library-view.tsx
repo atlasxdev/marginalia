@@ -294,16 +294,13 @@ export function LibraryView() {
                         </TableCell>
                       </TableRow>
                     ) : (
-                      table.getRowModel().rows.map((row, i) => (
+                      table.getRowModel().rows.map((row) => (
                         <TableRow
                           key={row.id}
-                          // Rows come in one after another; a deleted row slides out
-                          style={{ animationDelay: leavingIds.has(row.id) ? undefined : `${Math.min(i, 10) * 35}ms` }}
+                          // A deleted row slides out before it's removed
                           className={cn(
                             "group border-glass-divider hover:bg-glass-strong motion-reduce:animate-none",
-                            leavingIds.has(row.id)
-                              ? "pointer-events-none animate-out fade-out slide-out-to-left-4 fill-mode-forwards duration-200"
-                              : "animate-in fade-in slide-in-from-bottom-1 fill-mode-backwards duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
+                            leavingIds.has(row.id) && "pointer-events-none animate-out fade-out slide-out-to-left-4 fill-mode-forwards duration-200"
                           )}
                         >
                           {row.getVisibleCells().map((cell) => (
@@ -477,7 +474,7 @@ function RowActions({ doc }: { doc: DocumentItem }) {
             <MoreHorizontalIcon />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
+        <DropdownMenuContent align="end" className="w-auto min-w-44">
           {doc.mimeType === "text/markdown" && (
             <>
               <DropdownMenuItem asChild>

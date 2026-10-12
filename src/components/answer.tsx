@@ -90,9 +90,7 @@ export function Answer({ id, content, sources, streaming = false }: AnswerProps)
           aria-expanded={open}
           onClick={() => (open ? view.close() : view.show(id, cited))}
           className={cn(
-            "mt-8 h-auto w-full justify-start gap-3 rounded-xl px-5 py-4 text-left font-normal aria-expanded:bg-glass-strong aria-expanded:ring-2 aria-expanded:ring-primary/40",
-            // Rises in while the answer is written; the finished answer replaces it in place
-            streaming && "animate-in fade-in slide-in-from-bottom-2 duration-300 motion-reduce:animate-none"
+            "mt-8 h-auto w-full justify-start gap-3 rounded-xl px-5 py-4 text-left font-normal aria-expanded:bg-glass-strong aria-expanded:ring-2 aria-expanded:ring-primary/40"
           )}
         >
           <span className="font-semibold">

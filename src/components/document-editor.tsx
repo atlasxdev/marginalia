@@ -170,7 +170,7 @@ function EditorForm({ initial }: { initial: Draft }) {
 
   return (
     <div className="h-full">
-      <div className="mx-auto flex h-full max-w-6xl flex-col px-5 sm:px-8 lg:px-12 pt-8 pb-6 sm:pb-8">
+      <div className="mx-auto flex h-full max-w-[100rem] flex-col px-5 sm:px-8 lg:px-12 pt-8 pb-6 sm:pb-8">
         <div className="flex items-center gap-3">
           <Button
             variant="ghost"
@@ -285,7 +285,7 @@ function EditorForm({ initial }: { initial: Draft }) {
 
 function EditorSkeleton() {
   return (
-    <div className="mx-auto flex h-full max-w-6xl flex-col px-5 sm:px-8 lg:px-12 pt-8 pb-8" aria-label="Loading document">
+    <div className="mx-auto flex h-full max-w-[100rem] flex-col px-5 sm:px-8 lg:px-12 pt-8 pb-8" aria-label="Loading document">
       <Skeleton className="h-8 w-24" />
       <Skeleton className="mt-6 h-9 w-2/3" />
       <Skeleton className="mt-6 min-h-0 flex-1 rounded-xl" />

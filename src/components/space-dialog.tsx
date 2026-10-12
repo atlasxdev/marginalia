@@ -114,7 +114,7 @@ function SpaceForm({ space, onDone }: { space?: Space; onDone: (id: string) => v
               autoFocus
               onChange={(e) => setName(e.target.value)}
               placeholder="For example: Biology finals"
-              className="h-10 rounded-xl"
+              className="h-10 rounded-xl bg-popover"
             />
           </Field>
 
@@ -238,7 +238,7 @@ function SpaceForm({ space, onDone }: { space?: Space; onDone: (id: string) => v
               maxLength={MAX_SPACE_INSTRUCTIONS}
               onChange={(e) => setInstructions(e.target.value)}
               placeholder="For example: Explain like a patient tutor and end with a quick quiz question."
-              className="min-h-24 rounded-xl px-3 py-2.5"
+              className="min-h-24 rounded-xl bg-popover px-3 py-2.5"
             />
             <FieldDescription>How answers in this space should read. They still come only from its documents.</FieldDescription>
           </Field>
