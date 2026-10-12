@@ -384,3 +384,7 @@
   .source-match { animation: none; }
   [data-slot="skeleton"] { animation: none; background-image: none; }
 }
+
+/* Find in chat: every match, and the one you're on */
+::highlight(find) { background-color: var(--highlight-soft); color: inherit; }
+::highlight(find-current) { background-color: var(--highlight); color: var(--on-highlight); }

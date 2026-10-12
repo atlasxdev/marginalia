@@ -3,34 +3,21 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
+import { useQuery } from "@tanstack/react-query";
 import {
   ChevronsUpDownIcon,
   LayersIcon,
   LibraryIcon,
   LogOutIcon,
   MoonIcon,
-  MoreHorizontalIcon,
   PlusIcon,
+  SearchIcon,
   SettingsIcon,
   SquarePenIcon,
   SunIcon,
-  Trash2Icon,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { signOut } from "@/app/actions/auth";
-import { deleteConversation } from "@/app/actions/chat";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -49,11 +36,9 @@ import {
   SidebarHeader,
   SidebarInset,
   SidebarMenu,
-  SidebarMenuAction,
   SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarMenuSkeleton,
   SidebarProvider,
   SidebarTrigger,
   useSidebar,
@@ -64,6 +49,9 @@ import { getBrowserClient } from "@/lib/supabase/client";
 import { useHydrated } from "@/lib/use-hydrated";
 import { cn } from "@/lib/utils";
 import { Wordmark } from "./logo";
+import { DeleteConversation, RenameConversation } from "./conversation-actions";
+import { ConversationGroups } from "./conversation-list";
+import { SearchChats } from "./search-chats";
 import { SpaceDialog } from "./space-dialog";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -122,6 +110,19 @@ function AppSidebar() {
   const { resolvedTheme, setTheme } = useTheme();
   const [creating, setCreating] = useState(false);
   const [deleting, setDeleting] = useState<ConversationSummary | null>(null);
+  const [renaming, setRenaming] = useState<ConversationSummary | null>(null);
+  const [searching, setSearching] = useState(false);
+  // ⌘K / Ctrl+K opens search from anywhere in the app
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setSearching((open) => !open);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
   // Following a link closes the menu on phones
   const close = () => setOpenMobile(false);
   // Only items added while you're here slide in, not the whole list on load
@@ -148,6 +149,13 @@ function AppSidebar() {
                   <SquarePenIcon className="text-primary" />
                   <span>New chat</span>
                 </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton onClick={() => setSearching(true)}>
+                <SearchIcon className="text-primary" />
+                <span>Search chats</span>
+                <kbd className="ml-auto rounded border border-border px-1 font-sans text-[10px] text-muted-foreground">⌘K</kbd>
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
@@ -189,47 +197,15 @@ function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        <SidebarGroup>
-          <SidebarGroupLabel>Conversations</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {isPending &&
-                [0, 1, 2].map((i) => (
-                  <SidebarMenuItem key={i}>
-                    <SidebarMenuSkeleton />
-                  </SidebarMenuItem>
-                ))}
-              {conversations?.length === 0 && (
-                <p className="px-2 py-1.5 text-sm text-muted-foreground">No conversations yet</p>
-              )}
-              {conversations?.map((c) => {
-                const href = `/chat/${c.id}`;
-                return (
-                  <SidebarMenuItem key={c.id} className={cn(freshChat(c.id) && SLIDE_IN)}>
-                    <SidebarMenuButton asChild isActive={pathname === href}>
-                      <Link href={href} onClick={close}>
-                        <span>{c.title}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <SidebarMenuAction showOnHover aria-label={`More options for ${c.title}`}>
-                          <MoreHorizontalIcon />
-                        </SidebarMenuAction>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent side="right" align="start">
-                        <DropdownMenuItem variant="destructive" onSelect={() => setDeleting(c)}>
-                          <Trash2Icon />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </SidebarMenuItem>
-                );
-              })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        <ConversationGroups
+          conversations={conversations}
+          isPending={isPending}
+          pathname={pathname}
+          close={close}
+          onRename={setRenaming}
+          onDelete={setDeleting}
+          fresh={freshChat}
+        />
       </SidebarContent>
 
       <SidebarFooter className="border-t border-glass-divider p-2">
@@ -278,6 +254,8 @@ function AppSidebar() {
           close();
         }}
       />
+      <SearchChats open={searching} onOpenChange={setSearching} conversations={conversations} onNavigate={close} />
+      <RenameConversation conversation={renaming} onClose={() => setRenaming(null)} />
       <DeleteConversation
         conversation={deleting}
         onClose={() => setDeleting(null)}
@@ -286,57 +264,5 @@ function AppSidebar() {
         }}
       />
     </Sidebar>
-  );
-}
-
-// Confirms, then removes a conversation; the sidebar list updates right away
-export function DeleteConversation({
-  conversation,
-  onClose,
-  onDeleted,
-}: {
-  conversation: { id: string; title: string } | null;
-  onClose: () => void;
-  onDeleted?: (id: string) => void;
-}) {
-  const queryClient = useQueryClient();
-  const remove = useMutation({
-    mutationFn: deleteConversation,
-    onMutate: async (id) => {
-      await queryClient.cancelQueries({ queryKey: ["conversations"], exact: true });
-      const previous = queryClient.getQueryData<ConversationSummary[]>(["conversations"]);
-      queryClient.setQueryData<ConversationSummary[]>(["conversations"], (list) => list?.filter((c) => c.id !== id));
-      return { previous };
-    },
-    onError: (_err, _id, ctx) => queryClient.setQueryData(["conversations"], ctx?.previous),
-    onSuccess: (result, id, ctx) => {
-      if (!result.ok) {
-        toast.error(result.message ?? "Couldn't delete this conversation. Try again.");
-        return queryClient.setQueryData(["conversations"], ctx?.previous);
-      }
-      toast.success("Conversation deleted");
-      queryClient.removeQueries({ queryKey: ["conversations", id], exact: true });
-      onDeleted?.(id);
-    },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: ["conversations"], exact: true }),
-  });
-
-  return (
-    <AlertDialog open={!!conversation} onOpenChange={(open) => !open && onClose()}>
-      <AlertDialogContent className="glass border border-glass-border bg-glass-strong">
-        <AlertDialogHeader>
-          <AlertDialogTitle>Delete “{conversation?.title}”?</AlertDialogTitle>
-          <AlertDialogDescription>
-            The conversation and its answers will be removed. Your documents stay in your library.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction variant="destructive" onClick={() => conversation && remove.mutate(conversation.id)}>
-            Delete
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
   );
 }

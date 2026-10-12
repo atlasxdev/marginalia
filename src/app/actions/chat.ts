@@ -51,6 +51,42 @@ export async function askQuestion(_prev: AskState, formData: FormData): Promise<
   return { ok: true, conversationId };
 }
 
+const titleSchema = z.string().trim().min(1, "Give it a name.").max(200, "Keep it under 200 characters.");
+
+export async function renameConversation(id: string, title: string): Promise<ActionState> {
+  const parsed = titleSchema.safeParse(title);
+  if (!parsed.success) return { ok: false, message: parsed.error.issues[0].message };
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("conversations")
+    .update({ title: parsed.data })
+    .eq("id", z.uuid().parse(id))
+    .select("id");
+  if (error || !data?.length) return { ok: false, message: "Couldn't rename this conversation. Try again." };
+  return { ok: true };
+}
+
+export async function pinConversation(id: string, pinned: boolean): Promise<ActionState> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("conversations")
+    .update({ pinned })
+    .eq("id", z.uuid().parse(id))
+    .select("id");
+  if (error || !data?.length) return { ok: false, message: `Couldn't ${pinned ? "pin" : "unpin"} this conversation. Try again.` };
+  return { ok: true };
+}
+
+/** Saves the manual order: the first id goes first. */
+export async function reorderConversations(ids: string[]): Promise<ActionState> {
+  const parsed = z.array(z.uuid()).max(500).safeParse(ids);
+  if (!parsed.success) return { ok: false, message: "Couldn't save the order. Try again." };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("reorder_conversations", { ids: parsed.data });
+  if (error) return { ok: false, message: "Couldn't save the order. Try again." };
+  return { ok: true };
+}
+
 export async function deleteConversation(id: string): Promise<ActionState> {
   const supabase = await createClient();
   const { data, error } = await supabase.from("conversations").delete().eq("id", z.uuid().parse(id)).select("id");

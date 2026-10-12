@@ -42,7 +42,13 @@ export type ConversationSummary = {
   updatedAt: string;
   /** The space it was started in; null searches every document. */
   spaceId: string | null;
+  pinned: boolean;
+  /** Manual order, lower first; null until you reorder. */
+  position: number | null;
 };
+
+/** A conversation found by search, with the line that matched. */
+export type ConversationHit = ConversationSummary & { snippet: string | null };
 
 export type Conversation = ConversationSummary & {
   space: { id: string; name: string } | null;

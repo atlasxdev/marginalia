@@ -2,10 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowDownIcon, DownloadIcon, LayersIcon, MessageSquareIcon } from "lucide-react";
+import { useSearchParams } from "next/navigation";
+import { ArrowDownIcon, LayersIcon, MessageSquareIcon, PinIcon } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { toast } from "sonner";
-import { conversationToMarkdown, downloadText } from "@/lib/export-markdown";
 import { conversationQuery } from "@/lib/queries";
 import { useAnswerStream } from "@/lib/use-answer-stream";
 import { useHydrated } from "@/lib/use-hydrated";
@@ -14,6 +13,7 @@ import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTi
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { Answer } from "./answer";
+import { ChatMenu, FindInChat } from "./chat-tools";
 import { Composer } from "./composer";
 import { SourcesProvider, SourcesView } from "./sources";
 
@@ -25,6 +25,21 @@ export function ConversationView({ id }: { id: string }) {
   const error = hydrated ? query.error : null;
   const stream = useAnswerStream(conversation);
   const endRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const messagesRef = useRef<HTMLDivElement>(null);
+  // Find in chat: opened from the menu, ⌘F, or a search result (?find=…)
+  const findParam = useSearchParams().get("find") ?? "";
+  const [finding, setFinding] = useState(!!findParam);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "f") {
+        e.preventDefault();
+        setFinding(true);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
   // Whether the reader is at the latest message; scrolling up stops the answer pulling them down
   const [atEnd, setAtEnd] = useState(true);
   const atEndRef = useRef(true);
@@ -71,44 +86,35 @@ export function ConversationView({ id }: { id: string }) {
       <div className="flex h-full">
         <div className="relative h-full min-w-0 flex-1">
           {/* Messages scroll under the floating composer */}
-          <div className="h-full overflow-y-auto" onScroll={onScroll}>
-            <div className="mx-auto max-w-4xl px-5 sm:px-8 lg:px-12 pt-14 pb-44">
-              {isPending ? (
-                <ConversationSkeleton />
-              ) : (
-                <>
-                  {conversation?.space && (
-                    <Link
-                      href={`/spaces/${conversation.space.id}`}
-                      className="glass mb-4 inline-flex max-w-full items-center gap-1.5 rounded-full border border-glass-border bg-glass px-3 py-1 text-sm hover:bg-glass-strong"
-                    >
-                      <LayersIcon className="size-3.5 shrink-0 text-primary" />
-                      <span className="truncate">{conversation.space.name}</span>
-                    </Link>
-                  )}
-                  <div className="flex items-start gap-3">
-                    <h1 className="min-w-0 flex-1 text-3xl font-bold tracking-tight text-balance wrap-anywhere">{conversation?.title}</h1>
-                    {conversation && conversation.messages.length > 0 && (
-                      <Button
-                        variant="glass"
-                        className="mt-0.5 shrink-0"
-                        onClick={() => {
-                          downloadText(
-                            `${conversation.title.replace(/[\\/:*?"<>|]+/g, "").slice(0, 80) || "Conversation"}.md`,
-                            conversationToMarkdown(conversation.title, conversation.messages)
-                          );
-                          toast.success("Exported as Markdown");
-                        }}
+          <div ref={scrollRef} className="h-full overflow-y-auto" onScroll={onScroll}>
+            {/* The title and the chat's menu stay in reach while you scroll */}
+            <header className="sticky top-0 z-10 px-5 pt-3 sm:px-8 lg:px-12">
+              <div className="glass mx-auto flex h-14 max-w-4xl items-center gap-2 rounded-2xl border border-glass-border bg-glass-strong pr-2 pl-4">
+                {isPending ? (
+                  <Skeleton className="h-5 w-1/2" />
+                ) : (
+                  <>
+                    {conversation?.pinned && <PinIcon aria-label="Pinned" className="size-4 shrink-0 text-primary" />}
+                    <h1 className="min-w-0 flex-1 truncate font-semibold tracking-tight">{conversation?.title}</h1>
+                    {conversation?.space && (
+                      <Link
+                        href={`/spaces/${conversation.space.id}`}
+                        className="hidden max-w-48 shrink-0 items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary hover:bg-primary/15 sm:inline-flex"
                       >
-                        <DownloadIcon />
-                        Export
-                      </Button>
+                        <LayersIcon className="size-3.5 shrink-0" />
+                        <span className="truncate">{conversation.space.name}</span>
+                      </Link>
                     )}
-                  </div>
-                </>
-              )}
+                    {conversation && <ChatMenu conversation={conversation} onFind={() => setFinding(true)} />}
+                  </>
+                )}
+              </div>
+            </header>
 
-              <div className="mt-10 space-y-12">
+            <div className="mx-auto max-w-4xl px-5 sm:px-8 lg:px-12 pt-6 pb-44">
+              {isPending && <ConversationSkeleton />}
+
+              <div ref={messagesRef} className="space-y-12">
                 {conversation?.messages.map((m) =>
                   m.role === "user" ? (
                     <p
@@ -144,6 +150,15 @@ export function ConversationView({ id }: { id: string }) {
               <div ref={endRef} className="scroll-mb-44" />
             </div>
           </div>
+
+          <FindInChat
+            open={finding}
+            initial={findParam}
+            onClose={() => setFinding(false)}
+            root={messagesRef}
+            scroller={scrollRef}
+            version={`${messageCount}-${streamedLength}`}
+          />
 
           {!atEnd && (
             <Button
