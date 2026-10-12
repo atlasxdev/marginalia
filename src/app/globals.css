@@ -348,3 +348,13 @@
   .caret *::after { animation: none; }
   *, *::before, *::after { transition-duration: 0ms !important; }
 }
+
+/* Landing page: the colour drifting behind the glass, and a find bar that shakes on no results */
+@keyframes drift {
+  from { transform: translate(0, 0) scale(1); }
+  to { transform: translate(6rem, 4rem) scale(1.15); }
+}
+@keyframes shake {
+  20%, 60% { transform: translateX(-6px); }
+  40%, 80% { transform: translateX(6px); }
+}

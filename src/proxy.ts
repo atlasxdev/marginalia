@@ -26,7 +26,8 @@ export async function proxy(request: NextRequest) {
   const { data } = await supabase.auth.getClaims();
   const signedIn = !!data?.claims;
   const path = request.nextUrl.pathname;
-  const isPublic = PUBLIC_PATHS.some((p) => path === p || path.startsWith(p + "/"));
+  // "/" is the landing page for visitors; signed-in users go straight to the chat
+  const isPublic = path === "/" || PUBLIC_PATHS.some((p) => path === p || path.startsWith(p + "/"));
 
   if (!signedIn && !isPublic) {
     if (path.startsWith("/api/")) {
@@ -34,12 +35,12 @@ export async function proxy(request: NextRequest) {
     }
     return NextResponse.redirect(new URL("/sign-in", request.url));
   }
-  if (signedIn && (path === "/sign-in" || path === "/sign-up")) {
+  if (signedIn && (path === "/" || path === "/sign-in" || path === "/sign-up")) {
     return NextResponse.redirect(new URL("/chat", request.url));
   }
   return response;
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|icon.svg|.*\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|icon.svg|.*\.(?:svg|png|jpg|jpeg|gif|webp|mp4)$).*)"],
 };
