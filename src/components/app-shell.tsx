@@ -76,8 +76,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <SidebarTrigger aria-label="Open menu" />
           <Wordmark className="text-[22px]" />
         </header>
-        {/* Pages render from client data, so they stream in after the shell */}
-        <div className="min-h-0 flex-1">
+        {/* Pages render from client data, so they stream in after the shell; each lifts in as you move to it */}
+        <div className="page-in min-h-0 flex-1">
           <Suspense>{children}</Suspense>
         </div>
       </SidebarInset>
@@ -159,7 +159,7 @@ function AppSidebar() {
               {spaces?.map((s) => {
                 const href = `/spaces/${s.id}`;
                 return (
-                  <SidebarMenuItem key={s.id}>
+                  <SidebarMenuItem key={s.id} className="animate-in fade-in slide-in-from-left-2 duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:animate-none">
                     <SidebarMenuButton asChild isActive={pathname === href}>
                       <Link href={href} onClick={close}>
                         <LayersIcon className="text-primary" />
@@ -189,7 +189,7 @@ function AppSidebar() {
               {conversations?.map((c) => {
                 const href = `/chat/${c.id}`;
                 return (
-                  <SidebarMenuItem key={c.id}>
+                  <SidebarMenuItem key={c.id} className="animate-in fade-in slide-in-from-left-2 duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:animate-none">
                     <SidebarMenuButton asChild isActive={pathname === href}>
                       <Link href={href} onClick={close}>
                         <span>{c.title}</span>

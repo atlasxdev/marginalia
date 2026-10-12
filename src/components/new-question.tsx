@@ -115,8 +115,12 @@ export function NewQuestion() {
             </div>
             {suggestions.length > 0 && (
               <ul className="mt-8 flex flex-wrap justify-center gap-2.5" aria-label="Questions your documents can answer">
-                {suggestions.map((s) => (
-                  <li key={s}>
+                {suggestions.map((s, i) => (
+                  <li
+                    key={s}
+                    style={{ animationDelay: `${120 + i * 60}ms` }}
+                    className="animate-in fade-in zoom-in-95 slide-in-from-bottom-2 fill-mode-backwards duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] motion-reduce:animate-none"
+                  >
                     <Button
                       type="button"
                       variant="glass"

@@ -89,7 +89,11 @@ export function Answer({ id, content, sources, streaming = false }: AnswerProps)
           variant="glass"
           aria-expanded={open}
           onClick={() => (open ? view.close() : view.show(id, cited))}
-          className="mt-8 h-auto w-full justify-start gap-3 rounded-xl px-5 py-4 text-left font-normal aria-expanded:bg-glass-strong aria-expanded:ring-2 aria-expanded:ring-primary/40"
+          className={cn(
+            "mt-8 h-auto w-full justify-start gap-3 rounded-xl px-5 py-4 text-left font-normal aria-expanded:bg-glass-strong aria-expanded:ring-2 aria-expanded:ring-primary/40",
+            // Rises in while the answer is written; the finished answer replaces it in place
+            streaming && "animate-in fade-in slide-in-from-bottom-2 duration-300 motion-reduce:animate-none"
+          )}
         >
           <span className="font-semibold">
             {cited.length} {cited.length === 1 ? "source" : "sources"}
@@ -120,7 +124,7 @@ function CopyAnswer({ text }: { text: () => string }) {
         setTimeout(() => setCopied(false), 1500);
       }}
     >
-      {copied ? <CheckIcon /> : <CopyIcon />}
+      {copied ? <CheckIcon key="done" className="animate-in zoom-in-50 duration-200 motion-reduce:animate-none" /> : <CopyIcon key="copy" />}
       {copied ? "Copied" : "Copy"}
     </Button>
   );

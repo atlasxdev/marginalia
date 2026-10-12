@@ -358,3 +358,52 @@
   20%, 60% { transform: translateX(-6px); }
   40%, 80% { transform: translateX(6px); }
 }
+
+/*
+  App motion: quick and small (≤300ms, out-expo), and gone with reduced motion.
+  Fills only backwards, so nothing keeps a transform once it has played
+  (a lingering transform would trap fixed overlays like the drop zone).
+*/
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(6px); }
+}
+@keyframes cite-pop {
+  0% { opacity: 0; transform: scale(0.5); }
+  70% { transform: scale(1.12); }
+}
+@keyframes mark-sweep {
+  from { background-size: 0% 100%; }
+}
+@keyframes match-in {
+  from { background-color: transparent; box-shadow: 0 0 0 0.3em transparent; }
+}
+@keyframes shimmer {
+  from { background-position: 150% 0; }
+  to { background-position: -50% 0; }
+}
+
+/* A page lifts in when you move to it (pages kept in the background replay it when shown) */
+.page-in > * { animation: rise-in 260ms cubic-bezier(0.16, 1, 0.3, 1) backwards; }
+/* A streaming answer: each new block rises in, citations pop as they're written */
+.caret > * { animation: rise-in 220ms cubic-bezier(0.16, 1, 0.3, 1) backwards; }
+.caret .cite { animation: cite-pop 280ms cubic-bezier(0.34, 1.56, 0.64, 1) backwards; }
+/* A source's passage: the highlighter sweeps across when the sources open */
+.excerpt .mark {
+  background: linear-gradient(var(--highlight-soft), var(--highlight-soft)) no-repeat;
+  background-size: 100% 100%;
+  animation: mark-sweep 420ms cubic-bezier(0.16, 1, 0.3, 1) 120ms backwards;
+}
+.excerpt .mark[data-active="true"] { background-image: linear-gradient(var(--highlight), var(--highlight)); }
+/* The cited passage inside its document */
+.source-match { animation: match-in 500ms ease-out 150ms backwards; }
+/* Skeletons shimmer instead of pulsing */
+[data-slot="skeleton"] {
+  background-image: linear-gradient(90deg, transparent 0%, color-mix(in srgb, var(--foreground) 7%, transparent) 50%, transparent 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.3s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-in > *, .caret > *, .caret .cite, .excerpt .mark, .source-match { animation: none; }
+  [data-slot="skeleton"] { animation: none; background-image: none; }
+}

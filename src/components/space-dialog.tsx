@@ -193,7 +193,7 @@ function SpaceForm({ space, onDone }: { space?: Space; onDone: (id: string) => v
                 {chosen.map((doc, i) => (
                   <Fragment key={doc.id}>
                     {i > 0 && <ItemSeparator className="my-0 bg-glass-divider" />}
-                    <Item size="sm" className="py-2 pr-2 pl-3.5">
+                    <Item size="sm" className="py-2 pr-2 pl-3.5 animate-in fade-in slide-in-from-top-1 duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:animate-none">
                       <ItemMedia>
                         <KindIcon doc={doc} />
                       </ItemMedia>

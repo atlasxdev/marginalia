@@ -94,15 +94,17 @@ export function UploadForm() {
 
       <p role="status" className="col-span-full text-sm empty:hidden">
         {mutation.isError ? (
-          <span className="text-destructive">{mutation.error.message}</span>
+          <span className="block text-destructive animate-in fade-in slide-in-from-top-1 duration-200 motion-reduce:animate-none">{mutation.error.message}</span>
         ) : mutation.isSuccess ? (
-          <span className="text-muted-foreground">{mutation.data} It&apos;ll be ready to search in a moment.</span>
+          <span className="block text-muted-foreground animate-in fade-in slide-in-from-top-1 duration-200 motion-reduce:animate-none">
+            {mutation.data} It&apos;ll be ready to search in a moment.
+          </span>
         ) : null}
       </p>
 
       {dragging && (
-        <div className="pointer-events-none fixed inset-0 z-50 grid place-items-center bg-background/80 backdrop-blur-sm">
-          <div className="rounded-2xl border-2 border-dashed border-primary px-10 py-8 text-center">
+        <div className="pointer-events-none fixed inset-0 z-50 grid place-items-center bg-background/80 backdrop-blur-sm animate-in fade-in duration-150 motion-reduce:animate-none">
+          <div className="rounded-2xl border-2 border-dashed border-primary px-10 py-8 text-center animate-in zoom-in-95 duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)] motion-reduce:animate-none">
             <p className="text-lg font-semibold">Drop to upload</p>
             <p className="mt-1 text-sm text-muted-foreground">Markdown, PDF, or Word, up to 10 MB</p>
           </div>

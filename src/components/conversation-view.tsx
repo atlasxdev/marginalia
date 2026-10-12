@@ -96,7 +96,7 @@ export function ConversationView({ id }: { id: string }) {
                   m.role === "user" ? (
                     <p
                       key={m.id}
-                      className="glass border border-glass-border bg-glass-strong ml-auto w-fit max-w-[80%] rounded-2xl px-4 py-2.5 wrap-anywhere"
+                      className="glass border border-glass-border bg-glass-strong ml-auto w-fit max-w-[80%] origin-bottom-right rounded-2xl px-4 py-2.5 wrap-anywhere animate-in fade-in zoom-in-95 slide-in-from-bottom-4 duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:animate-none"
                     >
                       {m.content}
                     </p>
@@ -109,7 +109,7 @@ export function ConversationView({ id }: { id: string }) {
                   (stream.text ? (
                     <Answer id="streaming" content={stream.text} sources={stream.sources} streaming />
                   ) : (
-                    <p className="flex items-center gap-2 text-muted-foreground" role="status">
+                    <p className="flex items-center gap-2 text-muted-foreground animate-in fade-in duration-200 motion-reduce:animate-none" role="status">
                       <Spinner />
                       Searching your documents…
                     </p>

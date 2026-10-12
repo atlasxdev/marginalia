@@ -28,7 +28,7 @@ function isPartOf(text: string, passage: string, minLength: number) {
 export function SourceViewer({ source, onClose }: { source: CitedSource | null; onClose: () => void }) {
   return (
     <Dialog open={!!source} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="glass flex h-[90dvh] max-w-[calc(100%-1.5rem)] flex-col gap-0 overflow-hidden border border-glass-border bg-glass-strong p-0 sm:max-w-5xl">
+      <DialogContent className="glass flex h-[90dvh] max-w-[calc(100%-1.5rem)] flex-col gap-0 overflow-hidden border border-glass-border bg-glass-strong p-0 duration-200 data-open:slide-in-from-bottom-6 sm:max-w-5xl">
         {source && <Viewer key={source.chunkId} source={source} />}
       </DialogContent>
     </Dialog>

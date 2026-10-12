@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { MotionConfig } from "motion/react";
 
 let browserQueryClient: QueryClient | undefined;
 
@@ -17,5 +18,10 @@ function getQueryClient() {
 }
 
 export function Providers({ children }: { children: ReactNode }) {
-  return <QueryClientProvider client={getQueryClient()}>{children}</QueryClientProvider>;
+  // Motion settles to its end state when the visitor prefers reduced motion
+  return (
+    <QueryClientProvider client={getQueryClient()}>
+      <MotionConfig reducedMotion="user">{children}</MotionConfig>
+    </QueryClientProvider>
+  );
 }

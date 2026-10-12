@@ -75,9 +75,11 @@ export function Composer({ conversationId, spaceId, placeholder = "Ask about you
             size="icon-sm"
             disabled={disabled}
             aria-label={pending ? "Sending" : "Ask"}
-            className="rounded-full"
+            className="rounded-full transition-transform duration-150 ease-[cubic-bezier(0.34,1.56,0.64,1)] active:scale-85 data-[pending=true]:scale-90"
+            data-pending={pending}
           >
-            <ArrowUpIcon />
+            {/* The arrow flies up while the question is sent */}
+            <ArrowUpIcon className={cn("transition-transform duration-200", pending && "-translate-y-0.5 animate-pulse motion-reduce:animate-none")} />
           </InputGroupButton>
         </InputGroupAddon>
       </InputGroup>

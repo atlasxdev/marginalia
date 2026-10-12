@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { createContext, use, useEffect, useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -118,6 +119,14 @@ const columns: ColumnDef<DocumentItem>[] = [
 
 const metaClass = (meta: unknown) => (meta as { className?: string } | undefined)?.className;
 
+/*
+ * Rows being deleted slide out before the optimistic update removes them.
+ * A row's actions live in a cell, so they reach the row through context.
+ */
+const LEAVE_MS = 180;
+type Leaving = { leave: (id: string) => void; stay: (id: string) => void };
+const LeavingContext = createContext<Leaving>({ leave: () => {}, stay: () => {} });
+
 export function LibraryView() {
   const query = useQuery(documentsQuery);
   const hydrated = useHydrated();
@@ -128,6 +137,16 @@ export function LibraryView() {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: PAGE_SIZE });
+  const [leavingIds, setLeavingIds] = useState<ReadonlySet<string>>(new Set());
+  const leaving: Leaving = {
+    leave: (id) => setLeavingIds((s) => new Set(s).add(id)),
+    stay: (id) =>
+      setLeavingIds((s) => {
+        const next = new Set(s);
+        next.delete(id);
+        return next;
+      }),
+  };
 
   // TanStack Table can't be memoized by the React Compiler, so it skips this component
   // eslint-disable-next-line react-hooks/incompatible-library
@@ -253,6 +272,7 @@ export function LibraryView() {
                 </Select>
               </div>
 
+              <LeavingContext value={leaving}>
               <div className="glass overflow-hidden rounded-xl border border-glass-border bg-glass">
                 <Table>
                   <TableHeader>
@@ -274,8 +294,18 @@ export function LibraryView() {
                         </TableCell>
                       </TableRow>
                     ) : (
-                      table.getRowModel().rows.map((row) => (
-                        <TableRow key={row.id} className="group border-glass-divider hover:bg-glass-strong">
+                      table.getRowModel().rows.map((row, i) => (
+                        <TableRow
+                          key={row.id}
+                          // Rows come in one after another; a deleted row slides out
+                          style={{ animationDelay: leavingIds.has(row.id) ? undefined : `${Math.min(i, 10) * 35}ms` }}
+                          className={cn(
+                            "group border-glass-divider hover:bg-glass-strong motion-reduce:animate-none",
+                            leavingIds.has(row.id)
+                              ? "pointer-events-none animate-out fade-out slide-out-to-left-4 fill-mode-forwards duration-200"
+                              : "animate-in fade-in slide-in-from-bottom-1 fill-mode-backwards duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
+                          )}
+                        >
                           {row.getVisibleCells().map((cell) => (
                             <TableCell key={cell.id} className={cn("px-3 py-4 text-muted-foreground first:pl-4 sm:px-5", metaClass(cell.column.columnDef.meta))}>
                               {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -287,6 +317,7 @@ export function LibraryView() {
                   </TableBody>
                 </Table>
               </div>
+              </LeavingContext>
 
               {/* Pagination, once there's more than a page */}
               {filteredCount > pageSize && (
@@ -345,25 +376,59 @@ function NameCell({ doc }: { doc: DocumentItem }) {
   );
 }
 
+// A document that just finished indexing says so for a moment before showing its size
+const READY_FLASH_MS = 2000;
+const swap = {
+  initial: { opacity: 0, y: 4 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -4 },
+  transition: { duration: 0.18, ease: [0.16, 1, 0.3, 1] as const },
+};
+
 function Status({ doc }: { doc: DocumentItem }) {
   const queryClient = useQueryClient();
   const retry = useMutation({
     mutationFn: retryDocument,
     onSettled: () => queryClient.invalidateQueries({ queryKey: ["documents"] }),
   });
+  // Remember the last status seen, to notice the moment it becomes ready
+  const [seen, setSeen] = useState(doc.status);
+  const [justReady, setJustReady] = useState(false);
+  if (seen !== doc.status) {
+    setSeen(doc.status);
+    setJustReady(doc.status === "ready" && (seen === "processing" || seen === "pending"));
+  }
+  useEffect(() => {
+    if (!justReady) return;
+    const id = setTimeout(() => setJustReady(false), READY_FLASH_MS);
+    return () => clearTimeout(id);
+  }, [justReady]);
+
+  if (doc.status !== "failed") {
+    const label =
+      doc.status === "processing" ? "indexing" : doc.status === "pending" ? "waiting" : justReady ? "just-ready" : "ready";
+    return (
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.span key={label} {...swap} className="flex items-center gap-1.5 whitespace-nowrap" role={label === "ready" ? undefined : "status"}>
+          {label === "indexing" && (
+            <>
+              <Spinner />
+              Indexing
+            </>
+          )}
+          {label === "waiting" && "Waiting"}
+          {label === "just-ready" && <span className="font-medium text-success">Ready to ask ✓</span>}
+          {label === "ready" && (
+            <span className="tabular-nums">
+              {doc.chunkCount} {doc.chunkCount === 1 ? "section" : "sections"}
+            </span>
+          )}
+        </motion.span>
+      </AnimatePresence>
+    );
+  }
 
   switch (doc.status) {
-    case "ready":
-      return <span className="whitespace-nowrap tabular-nums">{doc.chunkCount} {doc.chunkCount === 1 ? "section" : "sections"}</span>;
-    case "processing":
-      return (
-        <span className="flex items-center gap-1.5 whitespace-nowrap">
-          <Spinner />
-          Indexing
-        </span>
-      );
-    case "pending":
-      return <span role="status">Waiting</span>;
     case "failed":
       return (
         <span className="flex items-center gap-3 whitespace-nowrap">
@@ -378,6 +443,7 @@ function Status({ doc }: { doc: DocumentItem }) {
 
 function RowActions({ doc }: { doc: DocumentItem }) {
   const queryClient = useQueryClient();
+  const leaving = use(LeavingContext);
   const [confirming, setConfirming] = useState(false);
   const retry = useMutation({
     mutationFn: retryDocument,
@@ -395,7 +461,9 @@ function RowActions({ doc }: { doc: DocumentItem }) {
       if (!result.ok) queryClient.setQueryData(["documents"], ctx?.previous);
     },
     onError: (_err, _id, ctx) => queryClient.setQueryData(["documents"], ctx?.previous),
-    onSettled: () => {
+    onSettled: (_result, _err, id) => {
+      // Gone on success; back in place if the delete failed
+      leaving.stay(id);
       queryClient.invalidateQueries({ queryKey: ["documents"] });
       queryClient.invalidateQueries({ queryKey: ["spaces"] });
     },
@@ -444,7 +512,14 @@ function RowActions({ doc }: { doc: DocumentItem }) {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction variant="destructive" onClick={() => remove.mutate(doc.id)}>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={() => {
+                // Let the row slide out, then remove it
+                leaving.leave(doc.id);
+                setTimeout(() => remove.mutate(doc.id), LEAVE_MS);
+              }}
+            >
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>

@@ -29,6 +29,9 @@ import { Composer } from "./composer";
 import { KindIcon, SpaceDialog } from "./space-dialog";
 
 const groupClass = "glass rounded-xl border border-glass-border bg-glass";
+// Lists come in one row after another
+const staggerClass =
+  "animate-in fade-in slide-in-from-bottom-1 fill-mode-backwards duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:animate-none";
 
 export function SpaceView({ id }: { id: string }) {
   const hydrated = useHydrated();
@@ -151,7 +154,7 @@ function SpaceDetail({ space }: { space: Space }) {
               {inSpace.map((doc, i) => (
                 <Fragment key={doc.id}>
                   {i > 0 && <ItemSeparator className="my-0 bg-glass-divider" />}
-                  <Item className="px-5 py-4">
+                  <Item style={{ animationDelay: `${Math.min(i, 10) * 35}ms` }} className={`px-5 py-4 ${staggerClass}`}>
                     <ItemMedia>
                       <KindIcon doc={doc} className="size-9 rounded-lg" />
                     </ItemMedia>
@@ -194,7 +197,11 @@ function SpaceDetail({ space }: { space: Space }) {
               {chats.map((c, i) => (
                 <Fragment key={c.id}>
                   {i > 0 && <ItemSeparator className="my-0 bg-glass-divider" />}
-                  <Item asChild className="rounded-none px-5 py-4 first:rounded-t-xl last:rounded-b-xl hover:bg-glass-strong">
+                  <Item
+                    asChild
+                    style={{ animationDelay: `${Math.min(i, 10) * 35}ms` }}
+                    className={`rounded-none px-5 py-4 first:rounded-t-xl last:rounded-b-xl hover:bg-glass-strong ${staggerClass}`}
+                  >
                     <Link href={`/chat/${c.id}`}>
                       <ItemMedia>
                         <MessageSquareIcon className="size-4 text-muted-foreground" />
@@ -237,9 +244,9 @@ function SpaceDetail({ space }: { space: Space }) {
 
 function DocStatus({ doc }: { doc: DocumentItem }) {
   if (doc.status === "ready") return null;
-  if (doc.status === "failed") return <span className="shrink-0 text-sm text-destructive">Couldn&apos;t read</span>;
+  if (doc.status === "failed") return <span className="shrink-0 text-sm text-destructive animate-in fade-in duration-200 motion-reduce:animate-none">Couldn&apos;t read</span>;
   return (
-    <span className="flex shrink-0 items-center gap-1.5 text-sm text-muted-foreground">
+    <span className="flex shrink-0 items-center gap-1.5 text-sm text-muted-foreground animate-in fade-in duration-200 motion-reduce:animate-none">
       <Spinner />
       Indexing
     </span>

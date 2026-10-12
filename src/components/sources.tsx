@@ -98,7 +98,7 @@ function SourcesPanel() {
               <SheetTitle className="font-semibold">{countOf(content.sources.length)}</SheetTitle>
               <SheetDescription className="truncate">{documentsOf(content.sources)}</SheetDescription>
             </SheetHeader>
-            <SourceList shown={content} className="min-h-0 flex-1 overflow-y-auto" />
+            <SourceList key={content.key} shown={content} className="min-h-0 flex-1 overflow-y-auto" />
           </>
         )}
       </SheetContent>
@@ -119,7 +119,7 @@ function SourcesDrawer() {
               <DrawerTitle className="font-semibold">{countOf(content.sources.length)}</DrawerTitle>
               <DrawerDescription className="truncate">{documentsOf(content.sources)}</DrawerDescription>
             </DrawerHeader>
-            <SourceList shown={content} className="overflow-y-auto pb-[max(1rem,env(safe-area-inset-bottom))]" />
+            <SourceList key={content.key} shown={content} className="overflow-y-auto pb-[max(1rem,env(safe-area-inset-bottom))]" />
           </>
         )}
       </DrawerContent>
@@ -212,7 +212,9 @@ function SourceList({ shown, className }: { shown: Shown; className?: string }) 
           <Item
             role="listitem"
             data-source={s.index}
-            className="scroll-my-4 items-start rounded-none px-6 py-5"
+            // Passages come in one after another when the sources open
+            style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}
+            className="scroll-my-4 items-start rounded-none px-6 py-5 animate-in fade-in slide-in-from-right-3 fill-mode-backwards duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:animate-none"
             onMouseEnter={() => setActive(shown.key, s.index)}
             onMouseLeave={() => setActive(shown.key, null)}
           >
