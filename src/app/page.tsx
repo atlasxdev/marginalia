@@ -5,6 +5,7 @@ import {
   DocChip, FindPlayground, LiveDemo, NavShell, OpeningWordmark, Reveal, SpotlightCard, Steps, StreamedAnswer, Tour,
 } from "@/components/landing";
 import { Wordmark } from "@/components/logo";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 
 export const metadata: Metadata = {
@@ -67,6 +68,7 @@ export default function Landing() {
             <a href="#how" className="transition-colors hover:text-foreground">How it works</a>
           </div>
           <div className="flex items-center gap-1">
+            <ThemeToggle />
             <Button asChild variant="ghost" size="lg">
               <Link href="/sign-in">Sign in</Link>
             </Button>
