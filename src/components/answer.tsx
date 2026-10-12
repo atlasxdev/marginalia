@@ -7,9 +7,10 @@ import remarkGfm from "remark-gfm";
 import rehypeSanitize from "rehype-sanitize";
 import { answerToMarkdown } from "@/lib/export-markdown";
 import { formatResponse } from "@/lib/format-response";
-import type { Source } from "@/lib/types";
+import type { Action, Source } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { ActionBar, ActionCard } from "./actions";
 import { SmartLink } from "./smart-link";
 import { useSources } from "./sources";
 
@@ -55,9 +56,12 @@ type AnswerProps = {
   content: string;
   sources: Source[];
   streaming?: boolean;
+  /** Set once the answer is saved, so things can be made from it. */
+  conversationId?: string;
+  actions?: Action[];
 };
 
-export function Answer({ id, content, sources, streaming = false }: AnswerProps) {
+export function Answer({ id, content, sources, streaming = false, conversationId, actions = [] }: AnswerProps) {
   const { markdown, cited } = formatResponse(content, sources, streaming);
   const view = useSources();
   const open = view.shown?.key === id;
@@ -102,7 +106,16 @@ export function Answer({ id, content, sources, streaming = false }: AnswerProps)
           <ChevronRightIcon aria-hidden className="size-4 shrink-0 text-muted-foreground" />
         </Button>
       )}
-      {!streaming && <CopyAnswer text={() => answerToMarkdown(content, sources)} />}
+      {!streaming && (
+        <div className="mt-3 -ml-2.5 flex flex-wrap items-center gap-1">
+          <CopyAnswer text={() => answerToMarkdown(content, sources)} />
+          {conversationId && cited.length > 0 && <ActionBar conversationId={conversationId} messageId={id} />}
+        </div>
+      )}
+      {conversationId &&
+        actions.map((action) => (
+          <ActionCard key={action.id} conversationId={conversationId} action={action} sources={sources} />
+        ))}
     </CiteContext>
   );
 }
@@ -115,7 +128,7 @@ function CopyAnswer({ text }: { text: () => string }) {
       type="button"
       variant="ghost"
       size="sm"
-      className="mt-3 -ml-2.5 text-muted-foreground"
+      className="text-muted-foreground"
       onClick={async () => {
         await navigator.clipboard.writeText(text());
         setCopied(true);

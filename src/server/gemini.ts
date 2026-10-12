@@ -49,6 +49,25 @@ export async function generateText(prompt: string) {
   return response.text?.trim() ?? "";
 }
 
+/* Structured output: the model must reply with JSON matching `schema`.
+   The caller still validates it, since the schema only guides the model. */
+export async function generateJson(systemInstruction: string, prompt: string, schema: object): Promise<unknown> {
+  const response = await withFallback((model) =>
+    ai.models.generateContent({
+      model,
+      contents: prompt,
+      config: {
+        systemInstruction,
+        temperature: 0.2,
+        responseMimeType: "application/json",
+        responseJsonSchema: schema,
+        thinkingConfig: thinkingFor(model),
+      },
+    })
+  );
+  return JSON.parse(response.text ?? "null");
+}
+
 type EmbedTask = "RETRIEVAL_DOCUMENT" | "RETRIEVAL_QUERY";
 
 const EMBED_BATCH = 100;

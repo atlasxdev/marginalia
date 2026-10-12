@@ -124,7 +124,7 @@ export function ConversationView({ id }: { id: string }) {
                       {m.content}
                     </p>
                   ) : (
-                    <Answer key={m.id} id={m.id} content={m.content} sources={m.sources} />
+                    <Answer key={m.id} id={m.id} content={m.content} sources={m.sources} conversationId={id} actions={m.actions} />
                   )
                 )}
 

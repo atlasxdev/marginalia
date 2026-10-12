@@ -34,6 +34,29 @@ export type Message = {
   content: string;
   sources: Source[];
   createdAt: string;
+  /** Things made from this answer, oldest first. */
+  actions: Action[];
+};
+
+export type ActionKind = "checklist" | "calendar" | "email" | "flashcards";
+
+export type ChecklistItem = {
+  text: string;
+  /** As written in the document, like "by 5 March". */
+  due: string | null;
+  /** The chunk it came from. */
+  sourceId: string | null;
+};
+
+export type Action = {
+  id: string;
+  messageId: string;
+  createdAt: string;
+} & {
+  kind: "checklist";
+  payload: { title: string; items: ChecklistItem[] };
+  /** Indexes of ticked items. */
+  state: { done?: number[] };
 };
 
 export type ConversationSummary = {

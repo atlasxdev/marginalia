@@ -1,6 +1,7 @@
 import "server-only";
 import type { createClient } from "@/lib/supabase/server";
 import type {
+  Action,
   Conversation,
   ConversationHit,
   ConversationSummary,
@@ -131,6 +132,7 @@ export async function getConversation(supabase: Supabase, id: string): Promise<C
     messages: { id: string; role: Message["role"]; content: string; sources: unknown; created_at: string }[];
   };
   const space = data.space;
+  const actions = await listActions(supabase, data.messages.map((m) => m.id));
   return {
     ...toSummary(data),
     space: space ? { id: space.id, name: space.name } : null,
@@ -141,9 +143,34 @@ export async function getConversation(supabase: Supabase, id: string): Promise<C
         content: m.content,
         sources: m.sources as Source[],
         createdAt: m.created_at,
+        actions: actions.filter((a) => a.messageId === m.id),
       })
     ),
   };
+}
+
+type ActionRow = { id: string; message_id: string; kind: string; payload: unknown; state: unknown; created_at: string };
+
+export const toAction = (a: ActionRow): Action =>
+  ({
+    id: a.id,
+    messageId: a.message_id,
+    kind: a.kind,
+    payload: a.payload,
+    state: a.state ?? {},
+    createdAt: a.created_at,
+  }) as Action;
+
+// Empty until the actions migration has run, so conversations still load without it
+async function listActions(supabase: Supabase, messageIds: string[]): Promise<Action[]> {
+  if (messageIds.length === 0) return [];
+  const { data, error } = await supabase
+    .from("actions")
+    .select("id, message_id, kind, payload, state, created_at")
+    .in("message_id", messageIds)
+    .order("created_at", { ascending: true });
+  if (error) return [];
+  return (data as ActionRow[]).map(toAction);
 }
 
 const toSpace = (s: {
