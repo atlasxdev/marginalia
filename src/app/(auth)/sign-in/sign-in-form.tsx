@@ -8,7 +8,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { FieldGroup } from "@/components/ui/field";
 import { Button } from "@/components/ui/button";
 
-export function SignInForm() {
+export function SignInForm({ linkFailed = false }: { linkFailed?: boolean }) {
   const [state, formAction, pending] = useActionState(signIn, { ok: false });
   const errors = state.fieldErrors ?? {};
 
@@ -16,6 +16,17 @@ export function SignInForm() {
     <>
       <h1 className="text-3xl font-semibold tracking-tight">Sign in</h1>
       <p className="mt-2 text-muted-foreground">Ask questions about your documents.</p>
+
+      {linkFailed && (
+        <Alert variant="destructive" role="alert" className="mt-8 text-left">
+          <AlertDescription>
+            That link has expired or was already used.{" "}
+            <Link href="/forgot-password" className="text-primary underline-offset-4 hover:underline">
+              Get a new reset link
+            </Link>
+          </AlertDescription>
+        </Alert>
+      )}
 
       <form action={formAction} className="mt-8 grid gap-6 text-left" noValidate>
         <FieldGroup>
