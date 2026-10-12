@@ -1,6 +1,6 @@
 import { queryOptions } from "@tanstack/react-query";
 import { getBrowserClient } from "./supabase/client";
-import type { Conversation, ConversationHit, ConversationSummary, DocumentItem, EditableDocument, Space } from "./types";
+import type { Conversation, ConversationHit, ConversationSummary, DocumentItem, EditableDocument, Pet, Space } from "./types";
 
 async function getJson<T>(url: string): Promise<T> {
   const res = await fetch(url);
@@ -21,6 +21,12 @@ export const documentsQuery = queryOptions({
 export const conversationsQuery = queryOptions({
   queryKey: ["conversations"],
   queryFn: () => getJson<ConversationSummary[]>("/api/conversations"),
+});
+
+export const petQuery = queryOptions({
+  queryKey: ["pet"],
+  queryFn: () => getJson<Pet | null>("/api/pet"),
+  staleTime: Infinity,
 });
 
 export const conversationSearchQuery = (q: string) =>

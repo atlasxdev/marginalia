@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { fileLabel, petSignal } from "@/lib/pet-events";
 import { PlusIcon } from "lucide-react";
 import { registerDocument } from "@/app/actions/documents";
 import { Button } from "@/components/ui/button";
@@ -42,6 +43,7 @@ export function UploadForm() {
   const [dragging, setDragging] = useState(false);
   const mutation = useMutation({
     mutationFn: (file: File) => uploadFile(file).then((r) => r.message),
+    onSuccess: (_message, file) => petSignal({ kind: "eat", label: fileLabel(file.name) }),
     onSettled: () => queryClient.invalidateQueries({ queryKey: ["documents"] }),
   });
   const { mutate } = mutation;

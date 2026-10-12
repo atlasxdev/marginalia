@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { petSignal } from "./pet-events";
 import { useQueryClient } from "@tanstack/react-query";
 import type { Conversation, Source } from "./types";
 
@@ -21,6 +22,7 @@ export function useAnswerStream(conversation: Conversation | undefined) {
   const run = useCallback(
     async (conversationId: string) => {
       setState({ status: "streaming", text: "", sources: [] });
+      petSignal({ kind: "reading" });
       try {
         const res = await fetch(`/api/conversations/${conversationId}/answer`, { method: "POST" });
         if (!res.ok || !res.body) {
@@ -50,8 +52,11 @@ export function useAnswerStream(conversation: Conversation | undefined) {
 
         await queryClient.invalidateQueries({ queryKey: ["conversations"] });
         setState({ status: "idle" });
+        // Cited your files, or came back empty-handed
+        petSignal(sources?.length ? { kind: "found", count: sources.length } : { kind: "shrug" });
       } catch (err) {
         setState({ status: "error", error: (err as Error).message });
+        petSignal({ kind: "shrug" });
       }
     },
     [queryClient]

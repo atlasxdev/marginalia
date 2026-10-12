@@ -3,6 +3,7 @@
 import { Fragment, useId, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { fileLabel, petSignal } from "@/lib/pet-events";
 import { ChevronsUpDownIcon, FileTextIcon, PlusIcon, XIcon } from "lucide-react";
 import { saveSpace } from "@/app/actions/spaces";
 import { Button } from "@/components/ui/button";
@@ -64,7 +65,10 @@ function SpaceForm({ space, onDone }: { space?: Space; onDone: (id: string) => v
       await queryClient.invalidateQueries({ queryKey: ["documents"] });
       return result;
     },
-    onSuccess: ({ id }) => setPicked((p) => new Set(p).add(id)),
+    onSuccess: ({ id }, file) => {
+      setPicked((p) => new Set(p).add(id));
+      petSignal({ kind: "eat", label: fileLabel(file.name) });
+    },
     onError: (e) => toast.error(e instanceof Error && e.message ? e.message : "Couldn't upload that file. Try again."),
   });
 
