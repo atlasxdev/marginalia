@@ -4,6 +4,7 @@ import { Fragment, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { ChevronRightIcon, FileTextIcon, LayersIcon, MessageSquareIcon, MoreHorizontalIcon, PencilIcon, Trash2Icon } from "lucide-react";
 import { deleteSpace } from "@/app/actions/spaces";
 import {
@@ -87,7 +88,11 @@ function SpaceDetail({ space }: { space: Space }) {
   const remove = useMutation({
     mutationFn: () => deleteSpace(space.id),
     onSuccess: (result) => {
-      if (!result.ok) return;
+      if (!result.ok) {
+        toast.error(result.message ?? "Couldn't delete this space. Try again.");
+        return;
+      }
+      toast.success(`“${space.name}” deleted`);
       queryClient.removeQueries({ queryKey: ["spaces", space.id] });
       queryClient.invalidateQueries({ queryKey: ["spaces"] });
       queryClient.invalidateQueries({ queryKey: ["conversations"] });

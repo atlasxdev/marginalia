@@ -2,6 +2,7 @@
 
 import { Fragment, useId, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { ChevronsUpDownIcon, FileTextIcon, PlusIcon, XIcon } from "lucide-react";
 import { saveSpace } from "@/app/actions/spaces";
 import { Button } from "@/components/ui/button";
@@ -64,6 +65,7 @@ function SpaceForm({ space, onDone }: { space?: Space; onDone: (id: string) => v
       return result;
     },
     onSuccess: ({ id }) => setPicked((p) => new Set(p).add(id)),
+    onError: (e) => toast.error(e instanceof Error && e.message ? e.message : "Couldn't upload that file. Try again."),
   });
 
   const save = useMutation({
@@ -74,7 +76,10 @@ function SpaceForm({ space, onDone }: { space?: Space; onDone: (id: string) => v
         queryClient.invalidateQueries({ queryKey: ["spaces"] });
         queryClient.invalidateQueries({ queryKey: ["conversations"] });
       }
-      if (result.ok && result.id) onDone(result.id);
+      if (result.ok && result.id) {
+        toast.success(space ? "Space saved" : `“${name.trim()}” created`);
+        onDone(result.id);
+      }
     },
   });
   const error = save.data && !save.data.ok

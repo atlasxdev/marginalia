@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowDownIcon, DownloadIcon, LayersIcon, MessageSquareIcon } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { conversationToMarkdown, downloadText } from "@/lib/export-markdown";
 import { conversationQuery } from "@/lib/queries";
 import { useAnswerStream } from "@/lib/use-answer-stream";
@@ -91,12 +92,13 @@ export function ConversationView({ id }: { id: string }) {
                       <Button
                         variant="glass"
                         className="mt-0.5 shrink-0"
-                        onClick={() =>
+                        onClick={() => {
                           downloadText(
                             `${conversation.title.replace(/[\\/:*?"<>|]+/g, "").slice(0, 80) || "Conversation"}.md`,
                             conversationToMarkdown(conversation.title, conversation.messages)
-                          )
-                        }
+                          );
+                          toast.success("Exported as Markdown");
+                        }}
                       >
                         <DownloadIcon />
                         Export

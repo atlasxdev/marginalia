@@ -1,13 +1,22 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { MutationCache, QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { MotionConfig } from "motion/react";
 
 let browserQueryClient: QueryClient | undefined;
 
 function makeClient() {
-  return new QueryClient({ defaultOptions: { queries: { staleTime: 30_000 } } });
+  return new QueryClient({
+    defaultOptions: { queries: { staleTime: 30_000 } },
+    // A request that fails outright (offline, server error) says so instead of failing silently
+    mutationCache: new MutationCache({
+      onError: (_error, _vars, _ctx, mutation) => {
+        if (!mutation.options.onError) toast.error("Something went wrong. Check your connection and try again.");
+      },
+    }),
+  });
 }
 
 function getQueryClient() {

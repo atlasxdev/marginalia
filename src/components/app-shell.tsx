@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import {
   ChevronsUpDownIcon,
   LayersIcon,
@@ -307,7 +308,11 @@ export function DeleteConversation({
     },
     onError: (_err, _id, ctx) => queryClient.setQueryData(["conversations"], ctx?.previous),
     onSuccess: (result, id, ctx) => {
-      if (!result.ok) return queryClient.setQueryData(["conversations"], ctx?.previous);
+      if (!result.ok) {
+        toast.error(result.message ?? "Couldn't delete this conversation. Try again.");
+        return queryClient.setQueryData(["conversations"], ctx?.previous);
+      }
+      toast.success("Conversation deleted");
       queryClient.removeQueries({ queryKey: ["conversations", id], exact: true });
       onDeleted?.(id);
     },

@@ -3,6 +3,7 @@
 import { createContext, use, useEffect, useState } from "react";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import {
   type ColumnDef,
   type ColumnFiltersState,
@@ -435,6 +436,7 @@ function RowActions({ doc }: { doc: DocumentItem }) {
   const [confirming, setConfirming] = useState(false);
   const retry = useMutation({
     mutationFn: retryDocument,
+    onSuccess: (result) => (result.ok ? toast.success(`Reading “${doc.filename}” again`) : toast.error(result.message ?? "Couldn't retry. Try again.")),
     onSettled: () => queryClient.invalidateQueries({ queryKey: ["documents"] }),
   });
   const remove = useMutation({
@@ -446,7 +448,11 @@ function RowActions({ doc }: { doc: DocumentItem }) {
       return { previous };
     },
     onSuccess: (result, _id, ctx) => {
-      if (!result.ok) queryClient.setQueryData(["documents"], ctx?.previous);
+      if (!result.ok) {
+        toast.error(result.message ?? "Couldn't delete this document. Try again.");
+        return queryClient.setQueryData(["documents"], ctx?.previous);
+      }
+      toast.success(`“${doc.filename}” deleted`);
     },
     onError: (_err, _id, ctx) => queryClient.setQueryData(["documents"], ctx?.previous),
     onSettled: (_result, _err, id) => {
