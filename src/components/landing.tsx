@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { ArrowUp, FileText, Play, Search } from "lucide-react";
+import { ArrowUp, BookOpen, FileText, GraduationCap, House, Play, Search } from "lucide-react";
+import { motion } from "motion/react";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { cn } from "@/lib/utils";
 
@@ -16,18 +17,18 @@ const BRACKET =
 
 /* ---------- hooks ---------- */
 
-const REDUCED = "(prefers-reduced-motion: reduce)";
-function useReducedMotion() {
+function useMedia(query: string, serverValue = false) {
   return useSyncExternalStore(
     (on) => {
-      const q = window.matchMedia(REDUCED);
+      const q = window.matchMedia(query);
       q.addEventListener("change", on);
       return () => q.removeEventListener("change", on);
     },
-    () => window.matchMedia(REDUCED).matches,
-    () => false,
+    () => window.matchMedia(query).matches,
+    () => serverValue,
   );
 }
+const useReducedMotion = () => useMedia("(prefers-reduced-motion: reduce)");
 
 function useInView<T extends Element>(options: { once?: boolean; margin?: string } = {}) {
   const { once = true, margin = "0px 0px -15% 0px" } = options;
@@ -245,6 +246,60 @@ const EXAMPLES = [
   },
 ] as const;
 const TARGET = 1;
+const EXAMPLE_ICONS: Record<string, React.ReactNode> = {
+  handbook: <BookOpen />,
+  lease: <House />,
+  lecture: <GraduationCap />,
+};
+
+/**
+ * A segmented control: a frosted track with a thumb that slides to the chosen
+ * option. Built on the shadcn ToggleGroup, so it keeps its keyboard handling.
+ */
+function Segmented({ id, label, value, onChange, items }: {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  items: { value: string; label: string; icon?: React.ReactNode }[];
+}) {
+  const reduced = useReducedMotion();
+  return (
+    <ToggleGroup
+      type="single"
+      value={value}
+      onValueChange={(v) => v && onChange(v)}
+      aria-label={label}
+      className="glass gap-0.5 rounded-full border border-glass-border bg-glass p-1"
+    >
+      {items.map((it) => {
+        const on = it.value === value;
+        return (
+          <ToggleGroupItem
+            key={it.value}
+            value={it.value}
+            className={cn(
+              "relative h-9 gap-2 rounded-full! border-0 bg-transparent! px-3.5 text-sm font-medium transition-colors duration-200 hover:bg-transparent sm:px-4",
+              on ? "text-foreground" : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            {on && (
+              <motion.span
+                layoutId={`${id}-thumb`}
+                transition={reduced ? { duration: 0 } : { type: "spring", stiffness: 500, damping: 34 }}
+                className="absolute inset-0 rounded-full bg-card shadow-sm ring-1 ring-foreground/10"
+              />
+            )}
+            {it.icon && (
+              <span className={cn("relative grid size-5 place-items-center transition-colors [&_svg]:size-4", on ? "text-primary" : "")}>{it.icon}</span>
+            )}
+            <span className={cn("relative", it.icon && "max-sm:hidden sm:inline", on && "max-sm:inline")}>{it.label}</span>
+          </ToggleGroupItem>
+        );
+      })}
+    </ToggleGroup>
+  );
+}
 
 export function LiveDemo() {
   const reduced = useReducedMotion();
@@ -274,31 +329,20 @@ export function LiveDemo() {
   const noteIn = now >= noteAt;
   const shown = Math.max(0, Math.floor((now - noteAt) / 45));
   const done = now >= doneAt;
-  const progress = Math.min(1, now / endAt);
 
   return (
     <div ref={ref}>
-      <div className="mb-4 flex justify-center">
-        <ToggleGroup
-          type="single"
+      <div className="mb-5 flex justify-center">
+        <Segmented
+          id="example"
+          label="Example document"
           value={ex.id}
-          onValueChange={(v) => {
+          onChange={(v) => {
             const n = EXAMPLES.findIndex((e) => e.id === v);
             if (n >= 0) { setI(n); setRound((r) => r + 1); }
           }}
-          variant="outline"
-          className="glass rounded-lg border border-glass-border bg-glass p-1"
-          aria-label="Example document"
-        >
-          {EXAMPLES.map((e) => (
-            <ToggleGroupItem key={e.id} value={e.id} className="relative overflow-hidden rounded-md border-0 px-3 data-[state=on]:bg-card data-[state=on]:shadow-sm">
-              {e.label}
-              {e.id === ex.id && !reduced && (
-                <span className="absolute inset-x-2 bottom-0.5 h-0.5 origin-left rounded-full bg-primary/60" style={{ transform: `scaleX(${progress})` }} />
-              )}
-            </ToggleGroupItem>
-          ))}
-        </ToggleGroup>
+          items={EXAMPLES.map((e) => ({ value: e.id, label: e.label, icon: EXAMPLE_ICONS[e.id] }))}
+        />
       </div>
 
       <div className="glass rounded-2xl border border-glass-border bg-glass p-2 sm:p-3">
@@ -461,41 +505,189 @@ export function SpotlightCard({ children, className }: { children: React.ReactNo
   );
 }
 
-/* ---------- how it works: connected steps that light up in turn ---------- */
+/* ---------- how it works: the steps as a fanned stack of cards ---------- */
 
-export function Steps({ steps }: { steps: { icon: React.ReactNode; title: string; body: string }[] }) {
-  const [ref, inView] = useInView<HTMLOListElement>();
+/*
+ * Like the certifications fan on aceguevarra.xyz: the current step stands
+ * upright in the middle, the others tilt out behind it. Each card plays its
+ * own small moment when it comes forward. It advances by itself while on
+ * screen; clicking a card, a tab or the arrow keys brings a step forward.
+ */
+const FAN_OFFSET = [0, 62];
+const FAN_ROTATE = 8;
+const FAN_SCALE = 0.1;
+const STEP_MS = 3400;
+
+/** A card's own moment, replayed each time it comes to the front. */
+function useStepClock(front: boolean) {
+  const reduced = useReducedMotion();
+  const [round, setRound] = useState(0);
+  const [wasFront, setWasFront] = useState(front);
+  if (front !== wasFront) {
+    setWasFront(front);
+    if (front) setRound((r) => r + 1);
+  }
+  const t = useClock(front, round);
+  return reduced ? Infinity : t;
+}
+
+function SignUpCard({ front }: { front: boolean }) {
+  const t = useStepClock(front);
+  const email = "you@example.com".slice(0, Math.max(0, Math.floor((t - 200) / 40)));
+  const dots = Math.min(10, Math.max(0, Math.floor((t - 900) / 45)));
+  const pressed = t > 1500 && t < 1650;
+  const done = t >= 1650;
   return (
-    <div className="glass mt-10 rounded-2xl border border-glass-border bg-glass p-6 sm:p-10">
-      <ol ref={ref} className="relative grid gap-8 md:grid-cols-3 md:gap-6">
-        {/* The track, and the line that fills along it: down the left on phones, across on desktop */}
-        <span aria-hidden className="absolute top-5 bottom-5 left-5 w-px bg-border md:right-[16.67%] md:bottom-auto md:left-[16.67%] md:h-px md:w-auto" />
-        <span
-          aria-hidden
-          className={cn(
-            "absolute top-5 bottom-5 left-5 w-px origin-top bg-primary transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none md:right-[16.67%] md:bottom-auto md:left-[16.67%] md:h-px md:w-auto md:origin-left",
-            inView ? "scale-100" : "scale-y-0 md:scale-x-0 md:scale-y-100",
-          )}
-        />
-        {steps.map((s, i) => (
-          <li key={s.title} className="relative flex gap-5 md:flex-col md:items-center md:text-center">
-            <span
+    <div className="space-y-2.5">
+      <div className="rounded-lg border border-input bg-background px-3 py-2 text-sm">
+        <span className="text-xs text-muted-foreground">Email</span>
+        <p className="h-5 truncate">{email}{t < 900 && <span className="ml-px inline-block h-4 w-px translate-y-0.5 animate-pulse bg-primary" />}</p>
+      </div>
+      <div className="rounded-lg border border-input bg-background px-3 py-2 text-sm">
+        <span className="text-xs text-muted-foreground">Password</span>
+        <p className="h-5 tracking-widest">{"•".repeat(dots)}</p>
+      </div>
+      <div className={cn("raised flex h-9 items-center justify-center gap-1.5 rounded-lg bg-primary text-sm font-medium text-primary-foreground transition-transform duration-150", pressed && "scale-95")}>
+        {done ? <span className="animate-in fade-in zoom-in-75 duration-200">Account created ✓</span> : "Create account"}
+      </div>
+    </div>
+  );
+}
+
+const DROPPED: [string, string, string][] = [
+  ["PDF", "bg-destructive", "Employee handbook.pdf"],
+  ["DOC", "bg-primary", "Lease agreement.docx"],
+  ["MD", "bg-muted-foreground", "Lecture 4 notes.md"],
+];
+function FilesCard({ front }: { front: boolean }) {
+  const t = useStepClock(front);
+  return (
+    <div className="rounded-xl border-2 border-dashed border-primary/30 bg-primary/5 p-2.5">
+      <ul className="space-y-1.5">
+        {DROPPED.map(([tag, color, name], i) => {
+          const at = 250 + i * 380;
+          const ready = t > at + 900;
+          return (
+            <li
+              key={name}
               className={cn(
-                "relative grid size-10 shrink-0 place-items-center rounded-full ring-1 transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] motion-reduce:transition-none [&_svg]:size-5",
-                inView ? "scale-100 bg-primary text-primary-foreground ring-primary" : "scale-75 bg-card text-muted-foreground ring-border",
+                "flex items-center gap-2 rounded-lg bg-card px-2.5 py-2 text-xs ring-1 ring-foreground/10 transition-[opacity,translate] duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)]",
+                t > at ? "translate-y-0 opacity-100" : "-translate-y-3 opacity-0",
               )}
-              style={{ transitionDelay: `${150 + i * 220}ms` }}
             >
-              {s.icon}
-            </span>
-            <div>
-              <p className="text-xs font-medium text-muted-foreground">Step {i + 1}</p>
-              <h3 className="mt-1 text-lg font-semibold">{s.title}</h3>
-              <p className="mt-1 text-muted-foreground md:mx-auto md:max-w-56">{s.body}</p>
-            </div>
-          </li>
-        ))}
-      </ol>
+              <span className={cn("rounded px-1.5 py-0.5 text-[10px] font-bold text-white", color)}>{tag}</span>
+              <span className="flex-1 truncate font-medium">{name}</span>
+              <span className={cn("shrink-0 font-medium transition-colors", ready ? "text-success" : "text-muted-foreground")}>
+                {ready ? "Ready ✓" : t > at ? "Reading…" : ""}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
+function AskCard({ front }: { front: boolean }) {
+  const t = useStepClock(front);
+  const q = "Does unused leave carry over?";
+  const typed = q.slice(0, Math.max(0, Math.floor((t - 150) / 28)));
+  const sent = t > 150 + q.length * 28 + 150;
+  const shown = sent ? Math.max(0, Math.floor((t - (150 + q.length * 28 + 350)) / 45)) : 0;
+  return (
+    <div className="space-y-2.5">
+      {sent ? (
+        <AnswerNote question={q} answer="Yes. Up to **5 unused days** roll over to next year." shown={shown} className="animate-in fade-in zoom-in-95 duration-200 p-3" />
+      ) : (
+        <div className="h-[7.6rem] rounded-xl border border-dashed border-border" />
+      )}
+      <div className="flex h-10 items-center gap-2 rounded-lg border border-input bg-background pr-1 pl-3 text-sm">
+        <span className={cn("flex-1 truncate", sent || !typed ? "text-muted-foreground" : "")}>
+          {sent || !typed ? "Ask about your documents" : typed}
+        </span>
+        <span className={cn("raised grid size-8 place-items-center rounded-md bg-primary text-primary-foreground transition-transform duration-150", t > 150 + q.length * 28 && t < 150 + q.length * 28 + 200 && "scale-90")}>
+          <ArrowUp className="size-4" />
+        </span>
+      </div>
+    </div>
+  );
+}
+
+const STEP_SCENES = [SignUpCard, FilesCard, AskCard];
+
+export function Steps({ steps }: { steps: { title: string; body: string }[] }) {
+  const reduced = useReducedMotion();
+  const [ref, inView] = useInView<HTMLDivElement>({ once: false, margin: "0px" });
+  const [active, setActive] = useState(0);
+  const [hold, setHold] = useState(false);
+  const desktop = useMedia("(min-width: 768px)", true);
+  const n = steps.length;
+  const go = (i: number) => setActive(((i % n) + n) % n);
+  useClock(inView && !hold && !reduced, active, STEP_MS, () => go(active + 1));
+  const offset = desktop ? FAN_OFFSET : [0, 34];
+
+  return (
+    <div ref={ref} className="mt-10" onMouseEnter={() => setHold(true)} onMouseLeave={() => setHold(false)}>
+      <div
+        role="group"
+        aria-label="How it works"
+        onKeyDown={(e) => {
+          if (e.key === "ArrowRight") go(active + 1);
+          else if (e.key === "ArrowLeft") go(active - 1);
+          else return;
+          e.preventDefault();
+        }}
+        className="relative flex h-[25rem] items-center justify-center overflow-x-clip sm:h-[27rem]"
+      >
+        {steps.map((s, i) => {
+          const half = Math.floor(n / 2);
+          const d = ((i - active + n + half) % n) - half;
+          const dist = Math.min(Math.abs(d), offset.length - 1);
+          const sign = Math.sign(d);
+          const front = d === 0;
+          const Scene = STEP_SCENES[i];
+          return (
+            <motion.div
+              key={s.title}
+              initial={false}
+              animate={{ x: `${sign * offset[dist]}%`, rotate: sign * dist * FAN_ROTATE, scale: 1 - dist * FAN_SCALE }}
+              transition={reduced ? { duration: 0 } : { type: "spring", stiffness: 300, damping: 26 }}
+              style={{ zIndex: 10 - dist }}
+              className="absolute"
+            >
+              <div
+                className={cn(
+                  "relative flex h-[22rem] w-[17rem] flex-col overflow-hidden rounded-2xl bg-card shadow-xl ring-1 ring-foreground/10 transition-[filter] duration-200 sm:h-[24rem] sm:w-[21rem] dark:shadow-black/40",
+                  !front && "brightness-[0.97] saturate-50 hover:brightness-100 dark:brightness-75",
+                )}
+              >
+                <div className="flex flex-1 flex-col justify-center bg-[radial-gradient(120%_80%_at_0%_0%,color-mix(in_srgb,var(--primary)_10%,transparent),transparent_70%)] p-4 sm:p-5">
+                  <Scene front={front && inView} />
+                </div>
+                <div className="border-t border-border px-5 py-4">
+                  <p className="text-xs font-medium text-primary">Step {i + 1}</p>
+                  <h3 className="mt-0.5 text-lg font-semibold tracking-tight">{s.title}</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">{s.body}</p>
+                </div>
+                {/* Selects the card when it's behind */}
+                {!front && (
+                  <button type="button" onClick={() => go(i)} aria-label={`Step ${i + 1}: ${s.title}`} className="absolute inset-0 rounded-2xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring" />
+                )}
+              </div>
+            </motion.div>
+          );
+        })}
+      </div>
+
+      <div className="mt-6 flex justify-center">
+        <Segmented
+          id="steps"
+          label="Steps"
+          value={String(active)}
+          onChange={(v) => go(Number(v))}
+          items={steps.map((s, i) => ({ value: String(i), label: s.title, icon: <span className="text-xs tabular-nums">{i + 1}</span> }))}
+        />
+      </div>
     </div>
   );
 }
@@ -577,3 +769,29 @@ export const DocChip = ({ name }: { name: string }) => (
     <span className="truncate">{name}</span>
   </span>
 );
+
+/* ---------- the auth screens' showcase panel ---------- */
+
+/** The right half of sign-in and sign-up: a page, its passage marked, the answer beside it. */
+export function AuthShowcase() {
+  const [ref, inView] = useInView<HTMLDivElement>({ margin: "0px" });
+  return (
+    <div ref={ref} className="w-full max-w-lg">
+      <div className="relative rounded-2xl bg-card p-7 text-left shadow-xl ring-1 ring-foreground/10 dark:shadow-black/40">
+        <p className="text-xs text-muted-foreground">Employee handbook, page 31</p>
+        <h3 className="mt-2 text-xl font-semibold tracking-tight">8.3 Annual leave</h3>
+        <p className="mt-3 text-sm leading-relaxed text-muted-foreground">Full-time employees receive 15 days of paid annual leave a year, credited monthly.</p>
+        <p className="relative mt-3 ml-5 text-sm leading-relaxed">
+          <MarginBracket drawn={inView} />
+          <Marked on={inView}>Up to 5 unused days roll over to the next year. Anything above that is forfeited on 31 December.</Marked>
+        </p>
+        <p className="mt-3 text-sm leading-relaxed text-muted-foreground">Leave requests should be made at least 10 working days in advance.</p>
+        <div className="mt-5 lg:absolute lg:top-full lg:-right-8 lg:-mt-8 lg:w-80">
+          <StreamedAnswer question="Does unused leave carry over?" answer="Yes. Up to **5 unused days** roll over to next year." source="Employee handbook, page 31" delay={500} />
+        </div>
+      </div>
+      <p className="mt-10 text-2xl font-semibold tracking-tight text-balance lg:mt-44">Ask your documents. See where every answer came from.</p>
+      <p className="mt-2 text-muted-foreground">PDFs, Word docs and your own notes, answered in the margin.</p>
+    </div>
+  );
+}

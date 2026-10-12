@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, Mail, MapPin, MessageSquareText, NotebookPen, Quote, SearchX, Upload, UserPlus } from "lucide-react";
+import { ArrowRight, Mail, MapPin, NotebookPen, Quote, SearchX } from "lucide-react";
 import {
   DocChip, FindPlayground, LiveDemo, NavShell, OpeningWordmark, Reveal, SpotlightCard, Steps, StreamedAnswer, Tour,
 } from "@/components/landing";
@@ -25,9 +25,9 @@ const USES = [
 ];
 
 const STEPS = [
-  { icon: <UserPlus />, title: "Sign up", body: "Just an email and a password." },
-  { icon: <Upload />, title: "Add your files", body: "PDFs, Word documents or your own notes." },
-  { icon: <MessageSquareText />, title: "Ask anything", body: "In plain words. Every answer shows where it came from." },
+  { title: "Sign up", body: "Just an email and a password." },
+  { title: "Add your files", body: "PDFs, Word documents or your own notes." },
+  { title: "Ask anything", body: "In plain words. Every answer shows where it came from." },
 ];
 
 const ME = {
@@ -172,7 +172,10 @@ export default function Landing() {
 
         {/* How it works */}
         <section id="how" className="mx-auto max-w-6xl scroll-mt-24 px-5 py-20">
-          <Reveal><h2 className="max-w-2xl text-3xl font-semibold tracking-tight sm:text-4xl">Start in under a minute.</h2></Reveal>
+          <Reveal>
+            <h2 className="max-w-2xl text-3xl font-semibold tracking-tight sm:text-4xl">Start in under a minute.</h2>
+            <p className="mt-4 max-w-2xl text-lg text-muted-foreground">Three steps from sign-up to your first cited answer.</p>
+          </Reveal>
           <Steps steps={STEPS} />
         </section>
 
