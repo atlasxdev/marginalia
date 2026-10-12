@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import { useQueryClient } from "@tanstack/react-query";
-import { BarChart3Icon, CookieIcon, MoonIcon, PaletteIcon, ToyBrickIcon } from "lucide-react";
 import { carePet } from "@/app/actions/pet";
 import { palette } from "@/lib/pet-art";
 import { petMood, petStats } from "@/lib/pet-care";
@@ -14,24 +13,30 @@ import { cn } from "@/lib/utils";
 import { PetSprite, type Face } from "./pet-sprite";
 
 /*
- * The pet's handheld: an egg-shaped shell in its colour, a screen with its
- * little room, and ◀ ▶ A B buttons. ◀ ▶ pick from the menu, A does it, B goes
- * back. The keyboard works too (arrow keys, Enter or Z for A, X or Backspace
- * for B), and everything on the screen can be tapped.
- *
- * The room is drawn in art pixels on a 48×36 grid; the window shows the real
- * time of day.
+ * The pet's handheld: a Game Boy-style body in the pet's colour (the bottom
+ * right rounder than the rest) with flat colours and hard-edged bevels, and a
+ * pixel-art screen: its room, the pet and the menu. Everything is laid out on
+ * a 72 by 100 grid; one unit (--u) is up to 6.5px, smaller to fit a narrow or
+ * short window, and one room pixel on the screen, so the spacing lines up.
  */
 
-const RW = 48;
+const GW = 72; // shell, in grid units
+const GH = 100;
+const RW = 48; // the screen's room
 const RH = 36;
-const FLOOR = 31; // where the pet's feet rest
+const FLOOR = 31; // where the pet's feet rest in the room
+const SCREEN = { x: 12, y: 22 };
+const LCD = "#e7effc";
+
+const u = (n: number) => `calc(${n} * var(--u))`;
+const place = (x: number, y: number, w: number, h: number) => ({ left: u(x), top: u(y), width: u(w), height: u(h) });
+
 const MENU = [
-  { id: "feed", label: "Feed", icon: CookieIcon },
-  { id: "play", label: "Play", icon: ToyBrickIcon },
-  { id: "sleep", label: "Sleep", icon: MoonIcon },
-  { id: "stats", label: "Stats", icon: BarChart3Icon },
-  { id: "edit", label: "Edit", icon: PaletteIcon },
+  { id: "feed", label: "Feed" },
+  { id: "play", label: "Play" },
+  { id: "sleep", label: "Sleep" },
+  { id: "stats", label: "Stats" },
+  { id: "edit", label: "Edit" },
 ] as const;
 type MenuId = (typeof MENU)[number]["id"];
 type Screen = "home" | "stats" | "game" | "sleep";
@@ -50,6 +55,7 @@ export function PetDevice({ pet, onEdit }: { pet: Pet; onEdit: () => void }) {
   const [bubble, setBubble] = useState<string | null>(null);
   const [cookie, setCookie] = useState(0);
   const [reading, setReading] = useState(false);
+  const [pressed, setPressed] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const later = (fn: () => void, ms: number) => timers.current.push(setTimeout(fn, ms));
@@ -58,6 +64,7 @@ export function PetDevice({ pet, onEdit }: { pet: Pet; onEdit: () => void }) {
   const stats = petStats(pet, now);
   const mood = petMood(pet, now);
   const asleep = screen === "sleep";
+  const colors = palette(pet.color);
 
   const say = (text: string, ms = 2200) => {
     setBubble(text);
@@ -158,14 +165,20 @@ export function PetDevice({ pet, onEdit }: { pet: Pet; onEdit: () => void }) {
       onEdit();
     }
   };
-  const game = useCatchGame(screen === "game", (won, score) => {
-    care("play", won ? 4 : 1);
-    say(won ? `You won! +4 XP` : `${score} caught. +1 XP`, 2600);
-    if (won) react("found", "happy", 1400);
-    setScreen("home");
-  }, pet);
+  const game = useCatchGame(
+    screen === "game",
+    (won, score) => {
+      care("play", won ? 4 : 1);
+      say(won ? "You won! +4 XP" : `${score} caught. +1 XP`, 2600);
+      if (won) react("found", "happy", 1400);
+      setScreen("home");
+    },
+    pet
+  );
 
   const press = (button: "left" | "right" | "a" | "b") => {
+    setPressed(button);
+    later(() => setPressed((p) => (p === button ? null : p)), 120);
     if (screen === "game") return game.press(button, () => setScreen("home"));
     if (screen === "sleep") {
       if (button === "a" || button === "b") {
@@ -189,149 +202,146 @@ export function PetDevice({ pet, onEdit }: { pet: Pet; onEdit: () => void }) {
   };
 
   const onKey = (e: React.KeyboardEvent) => {
-    const map: Record<string, "left" | "right" | "a" | "b"> = {
-      ArrowLeft: "left",
-      ArrowRight: "right",
-      Enter: "a",
-      z: "a",
-      " ": "a",
-      x: "b",
-      Backspace: "b",
-    };
+    const map: Record<string, "left" | "right" | "a" | "b"> = { ArrowLeft: "left", ArrowRight: "right", Enter: "a", z: "a", " ": "a", x: "b", Backspace: "b" };
     const b = map[e.key];
     if (!b) return;
     e.preventDefault();
     press(b);
   };
 
-  const colors = palette(pet.color);
   const hour = new Date(now).getHours();
+  const text = "font-pixel leading-none";
 
   return (
-    <div className="mx-auto w-full max-w-[340px] select-none" onKeyDown={onKey}>
-      {/* The shell */}
+    <div
+      onKeyDown={onKey}
+      className="relative mx-auto select-none"
+      style={{ ["--u" as string]: "min(6.5px, calc((100vw - 2rem) / 72), calc((100dvh - 3rem) / 100))", width: u(GW), height: u(GH) }}
+    >
+      {/* The body: flat colour, a hard bevel, a soft shadow underneath */}
       <div
-        className="relative rounded-[48%_48%_42%_42%/30%_30%_34%_34%] px-7 pt-9 pb-9 shadow-[inset_0_-10px_24px_rgb(0_0_0/0.18),inset_0_8px_18px_rgb(255_255_255/0.45),0_24px_40px_-18px_rgb(1_40_110/0.45)]"
-        style={{ background: `radial-gradient(120% 90% at 30% 15%, ${colors.L}, ${pet.color} 55%, ${colors.D})` }}
+        aria-hidden
+        className="absolute inset-0"
+        style={{
+          background: pet.color,
+          borderRadius: `${u(4)} ${u(4)} ${u(14)} ${u(4)}`,
+          border: `${u(0.6)} solid ${colors.O}`,
+          boxShadow: `inset ${u(1.2)} ${u(1.2)} 0 ${colors.L}88, inset ${u(-1.4)} ${u(-1.4)} 0 ${colors.D}, 0 ${u(4)} ${u(6)} -${u(2)} rgb(1 40 110 / 0.35)`,
+        }}
+      />
+
+      {/* Name */}
+      <p className={cn(text, "absolute flex items-center justify-center font-semibold text-white")} style={{ ...place(8, 10, 56, 6), fontSize: u(3.4), textShadow: `0 ${u(0.5)} 0 ${colors.O}` }}>
+        {pet.name}
+      </p>
+
+      {/* Bezel */}
+      <div
+        aria-hidden
+        className="absolute bg-[#1d2433]"
+        style={{ ...place(8, 18, 56, 52), borderRadius: `${u(2)} ${u(2)} ${u(8)} ${u(2)}`, boxShadow: `inset 0 ${u(0.8)} 0 #2b3446, inset 0 ${u(-0.8)} 0 #0f1520` }}
+      />
+      <span aria-hidden className="absolute rounded-full bg-[#ef4444] shadow-[0_0_6px_#ef4444]" style={place(10, 39, 1.2, 1.2)} />
+
+      {/* Screen */}
+      <div
+        tabIndex={0}
+        role="application"
+        aria-label={`${pet.name}'s screen. ${mood}. Use the arrow keys to choose, Enter for A, X for B.`}
+        className="absolute overflow-hidden outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+        style={{ ...place(SCREEN.x, SCREEN.y, RW, RH), background: LCD, boxShadow: `0 0 0 ${u(0.4)} #0f1520` }}
+        autoFocus
       >
-        <div aria-hidden className="pointer-events-none absolute top-5 left-10 h-10 w-20 -rotate-12 rounded-full bg-white/35 blur-md" />
-        <p className="mb-3 text-center font-serif text-sm font-semibold tracking-wide text-white/90 [text-shadow:0_1px_0_rgb(0_0_0/0.25)]">
-          [ {pet.name} ]
-        </p>
-
-        {/* Screen */}
-        <div className="rounded-2xl bg-[#1d2433] p-2.5 shadow-[inset_0_2px_6px_rgb(0_0_0/0.6)]">
-          <div
-            tabIndex={0}
-            role="application"
-            aria-label={`${pet.name}'s screen. ${mood}. Use the arrow keys to choose, Enter for A, X for B.`}
-            className="relative aspect-[4/3] overflow-hidden rounded-lg bg-[#e7effc] outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            autoFocus
-          >
-            {screen === "stats" ? (
-              <Stats pet={pet} stats={stats} mood={mood} />
+        {screen === "stats" ? (
+          <Stats pet={pet} stats={stats} mood={mood} />
+        ) : (
+          <svg viewBox={`0 0 ${RW} ${RH}`} shapeRendering="crispEdges" className="absolute inset-0 size-full" aria-hidden>
+            <Room hour={hour} dark={asleep} />
+            {screen === "game" ? (
+              game.scene()
             ) : (
-              <svg viewBox={`0 0 ${RW} ${RH}`} shapeRendering="crispEdges" className="absolute inset-0 size-full" aria-hidden>
-                <Room hour={hour} dark={asleep} />
-                {screen === "game" ? (
-                  game.scene()
-                ) : (
-                  <>
-                    {cookie > 0 && (
-                      <motion.g key={cookie} initial={{ y: -12, opacity: 1 }} animate={{ y: FLOOR - 4, opacity: [1, 1, 0] }} transition={{ duration: 0.45, ease: "easeIn" }}>
-                        <rect x={x + 7} y={0} width={3} height={2} fill="#c7893b" />
-                        <rect x={x + 8} y={0} width={1} height={1} fill="#5b3a1a" />
-                      </motion.g>
-                    )}
-                    <motion.g animate={{ x }} transition={{ duration: reduced ? 0 : 0.9, ease: "linear" }}>
-                      <motion.g
-                        key={reaction?.seq ?? 0}
-                        animate={reaction && !reduced ? MOVES[reaction.kind] : undefined}
-                        style={{ originX: "8px", originY: `${FLOOR}px` }}
-                        onClick={() => {
-                          if (screen !== "home") return;
-                          react("pet", "happy", 800);
-                          say("♥");
-                        }}
-                        className="cursor-pointer"
-                      >
-                        <g transform={`translate(0 ${FLOOR - 14}) ${facing === -1 ? "translate(16 0) scale(-1 1)" : ""}`}>
-                          <PetSprite look={pet} face={asleep ? "closed" : face ?? (reading ? "side" : blink ? "closed" : "open")} book={reading} bare />
-                        </g>
-                      </motion.g>
-                    </motion.g>
-                    {asleep && !reduced && <Zzz x={x + 14} />}
-                  </>
+              <>
+                {cookie > 0 && (
+                  <motion.g key={cookie} initial={{ y: -12, opacity: 1 }} animate={{ y: FLOOR - 4, opacity: [1, 1, 0] }} transition={{ duration: 0.45, ease: "easeIn" }}>
+                    <rect x={x + 7} y={0} width={3} height={2} fill="#c7893b" />
+                    <rect x={x + 8} y={0} width={1} height={1} fill="#5b3a1a" />
+                  </motion.g>
                 )}
-              </svg>
+                <motion.g animate={{ x }} transition={{ duration: reduced ? 0 : 0.9, ease: "linear" }}>
+                  <motion.g
+                    key={reaction?.seq ?? 0}
+                    animate={reaction && !reduced ? MOVES[reaction.kind] : undefined}
+                    style={{ originX: "8px", originY: `${FLOOR}px` }}
+                    onClick={() => {
+                      if (screen !== "home") return;
+                      react("pet", "happy", 800);
+                      say("♥");
+                    }}
+                    className="cursor-pointer"
+                  >
+                    <g transform={`translate(0 ${FLOOR - 14}) ${facing === -1 ? "translate(16 0) scale(-1 1)" : ""}`}>
+                      <PetSprite look={pet} face={asleep ? "closed" : face ?? (reading ? "side" : blink ? "closed" : "open")} book={reading} bare />
+                    </g>
+                  </motion.g>
+                </motion.g>
+                {asleep && !reduced && <Zzz x={x + 14} />}
+              </>
             )}
+          </svg>
+        )}
 
-            {/* Status line */}
-            {screen !== "stats" && (
-              <div className="absolute inset-x-0 top-0 flex items-center justify-between px-2 py-1 text-[10px] font-semibold text-[#1d2433]">
-                <span className="rounded bg-white/70 px-1.5 py-0.5">Lv {stats.level}</span>
-                {screen === "game" ? (
-                  <span className="rounded bg-white/70 px-1.5 py-0.5 tabular-nums">
-                    {game.score} / {GOAL} · misses {game.misses}/3
-                  </span>
-                ) : (
-                  <span className="rounded bg-white/70 px-1.5 py-0.5">{asleep ? "Sleeping" : mood}</span>
-                )}
-              </div>
-            )}
+        {/* Status strip */}
+        {screen !== "stats" && (
+          <div className={cn(text, "absolute inset-x-0 top-0 flex items-center justify-between bg-white/80 text-[#1d2433]")} style={{ height: u(4), padding: `0 ${u(1.5)}`, fontSize: u(2.2) }}>
+            <span>Lv {stats.level}</span>
+            <span>{screen === "game" ? `${game.score}/${GOAL} caught, ${game.misses}/3 missed` : asleep ? "Sleeping" : mood}</span>
+          </div>
+        )}
 
-            {bubble && screen !== "stats" && (
-              <p className="absolute top-7 left-1/2 max-w-[90%] -translate-x-1/2 truncate rounded-full bg-white px-2.5 py-0.5 text-[11px] font-medium text-[#1d2433] shadow animate-in fade-in zoom-in-95 duration-150">
-                {bubble}
-              </p>
-            )}
-            {screen === "game" && !game.running && (
-              <p className="absolute inset-x-0 bottom-3 text-center text-[11px] font-semibold text-[#1d2433]">
-                <span className="rounded bg-white/80 px-2 py-0.5">Catch {GOAL} books · A to start</span>
-              </p>
-            )}
-          </div>
-
-          {/* Menu icons */}
-          <div className="mt-2 grid grid-cols-5 gap-1">
-            {MENU.map((m, i) => {
-              const Icon = m.icon;
-              const on = screen === "home" && i === selected;
-              return (
-                <button
-                  key={m.id}
-                  type="button"
-                  aria-label={m.label}
-                  onClick={() => {
-                    setSelected(i);
-                    if (screen === "home") run(m.id);
-                  }}
-                  disabled={screen !== "home"}
-                  className={cn(
-                    "flex flex-col items-center gap-0.5 rounded-md py-1 text-[10px] font-medium transition-colors duration-150 disabled:opacity-40",
-                    on ? "bg-[#e7effc] text-[#1d2433]" : "text-white/70 hover:text-white"
-                  )}
-                >
-                  <Icon className="size-4" />
-                  {m.label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Buttons */}
-        <div className="mt-6 flex items-center justify-between px-1">
-          <div className="flex gap-2">
-            <ShellButton label="Left" onPress={() => press("left")}>◀</ShellButton>
-            <ShellButton label="Right" onPress={() => press("right")}>▶</ShellButton>
-          </div>
-          <div className="flex items-end gap-3">
-            <ShellButton label="B, back" onPress={() => press("b")} round tone="b">B</ShellButton>
-            <ShellButton label="A, choose" onPress={() => press("a")} round tone="a" className="-translate-y-2">A</ShellButton>
-          </div>
-        </div>
+        {(bubble || (screen === "game" && !game.running)) && screen !== "stats" && (
+          <p
+            className={cn(text, "absolute left-1/2 max-w-[90%] -translate-x-1/2 truncate rounded-[2px] bg-white text-[#1d2433] shadow-[0_1px_0_#1d243333]")}
+            style={{ top: u(6), padding: `${u(1)} ${u(1.6)}`, fontSize: u(2.2) }}
+          >
+            {screen === "game" && !game.running ? `Catch ${GOAL} books. Press A!` : bubble}
+          </p>
+        )}
       </div>
+
+      {/* Menu, on the bezel under the screen */}
+      <div className="absolute grid grid-cols-5" style={{ ...place(SCREEN.x, 62, RW, 6), gap: u(1) }}>
+        {MENU.map((m, i) => {
+          const on = screen === "home" && i === selected;
+          return (
+            <button
+              key={m.id}
+              type="button"
+              aria-label={m.label}
+              disabled={screen !== "home"}
+              onClick={() => {
+                setSelected(i);
+                if (screen === "home") run(m.id);
+              }}
+              className={cn(text, "flex flex-col items-center justify-center rounded-[3px] transition-colors duration-100 disabled:opacity-40", on ? "bg-[#e7effc] text-[#1d2433]" : "text-white/75 hover:bg-white/10")}
+              style={{ fontSize: u(1.8), gap: u(0.6) }}
+            >
+              <PixelIcon name={m.id} color="currentColor" />
+              {m.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Controls */}
+      <DPad pressed={pressed} onPress={(d) => press(d === "up" ? "left" : d === "down" ? "right" : d)} style={place(9, 75, 17, 17)} />
+      <RoundButton label="B, back" letter="B" tone="b" pressed={pressed === "b"} onPress={() => press("b")} style={place(42, 80, 10, 10)} />
+      <RoundButton label="A, choose" letter="A" tone="a" pressed={pressed === "a"} onPress={() => press("a")} style={place(55, 75, 10, 10)} />
+      <PillButton label="Select" onPress={() => press("right")} style={place(25, 93, 8, 2.4)} outline={colors.O} />
+      <PillButton label="Start" onPress={() => press("a")} style={place(36, 93, 8, 2.4)} outline={colors.O} />
+      {/* Speaker slits */}
+      {[0, 1, 2, 3].map((i) => (
+        <span key={i} aria-hidden className="absolute rounded-full" style={{ ...place(54 + i * 2.6, 89, 1, 7), background: colors.D, transform: "rotate(-30deg)" }} />
+      ))}
     </div>
   );
 }
@@ -344,21 +354,107 @@ const MOVES = {
   wake: { scaleY: [1, 1.15, 1], transition: { duration: 0.5 } },
 };
 
-function ShellButton({ label, onPress, round, tone, className, children }: { label: string; onPress: () => void; round?: boolean; tone?: "a" | "b"; className?: string; children: React.ReactNode }) {
+/* ---------- controls ---------- */
+
+// Hard-edged bevels: a light top-left edge and a dark bottom-right edge, no blur
+const bevel = (light: string, dark: string, pressed: boolean) =>
+  pressed ? `inset ${u(0.6)} ${u(0.6)} 0 ${dark}` : `inset ${u(0.6)} ${u(0.6)} 0 ${light}, inset ${u(-0.8)} ${u(-0.8)} 0 ${dark}, 0 ${u(0.8)} 0 rgb(0 0 0 / 0.3)`;
+
+const press = (onPress: () => void) => ({
+  onPointerDown: (e: React.PointerEvent) => {
+    e.preventDefault();
+    onPress();
+  },
+  onKeyDown: (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      e.stopPropagation();
+      onPress();
+    }
+  },
+});
+
+function RoundButton({ label, letter, tone, pressed, onPress, style }: { label: string; letter: string; tone: "a" | "b"; pressed: boolean; onPress: () => void; style: React.CSSProperties }) {
+  const c = tone === "a" ? { bg: "#df2224", light: "#ff8a8a", dark: "#8f1316", text: "#ffffff" } : { bg: "#facc15", light: "#fff3b0", dark: "#a8850a", text: "#3b2f06" };
   return (
     <button
       type="button"
       aria-label={label}
-      onClick={onPress}
-      className={cn(
-        "grid place-items-center font-bold text-white shadow-[inset_0_-3px_0_rgb(0_0_0/0.25),inset_0_2px_0_rgb(255_255_255/0.35),0_3px_6px_rgb(0_0_0/0.25)] transition-transform duration-75 active:translate-y-0.5 active:shadow-[inset_0_-1px_0_rgb(0_0_0/0.25),0_1px_2px_rgb(0_0_0/0.25)]",
-        round ? "size-12 rounded-full text-base" : "h-10 w-11 rounded-xl text-sm",
-        tone === "a" ? "bg-[#df2224]" : tone === "b" ? "bg-[#facc15] text-[#3b2f06]" : "bg-[#1d2433]",
-        className
-      )}
+      {...press(onPress)}
+      className="absolute grid place-items-center rounded-full font-pixel font-semibold outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+      style={{ ...style, background: c.bg, color: c.text, fontSize: u(3.6), boxShadow: bevel(c.light, c.dark, pressed), transform: pressed ? `translateY(${u(0.6)})` : undefined }}
     >
-      {children}
+      {letter}
     </button>
+  );
+}
+
+function PillButton({ label, onPress, style, outline }: { label: string; onPress: () => void; style: React.CSSProperties; outline: string }) {
+  return (
+    <div className="absolute flex flex-col items-center" style={{ ...style, height: "auto" }}>
+      <button
+        type="button"
+        aria-label={label}
+        {...press(onPress)}
+        className="w-full rounded-full bg-[#2b3446] outline-none focus-visible:outline-2 focus-visible:outline-white active:translate-y-px"
+        style={{ height: u(2.4), boxShadow: `inset 0 ${u(0.5)} 0 #4b566b, 0 0 0 ${u(0.4)} ${outline}`, transform: "rotate(-20deg)" }}
+      />
+      <span className="font-pixel leading-none text-white/80" style={{ marginTop: u(1.2), fontSize: u(1.7) }}>
+        {label.toUpperCase()}
+      </span>
+    </div>
+  );
+}
+
+type Dir = "up" | "down" | "left" | "right";
+
+/** A D-pad: a cross with an arrow on each arm; each arm can be pressed. */
+function DPad({ pressed, onPress, style }: { pressed: string | null; onPress: (dir: Dir) => void; style: React.CSSProperties }) {
+  // The menu treats up/down like left/right
+  const down = (d: Dir) => pressed === d || (pressed === "left" && d === "up") || (pressed === "right" && d === "down");
+  const arms: [Dir, React.CSSProperties, string][] = [
+    ["up", { left: "35%", top: 0, width: "30%", height: "38%" }, "M3 0 6 4H0z"],
+    ["down", { left: "35%", bottom: 0, width: "30%", height: "38%" }, "M3 4 6 0H0z"],
+    ["left", { left: 0, top: "35%", width: "38%", height: "30%" }, "M0 3 4 0v6z"],
+    ["right", { right: 0, top: "35%", width: "38%", height: "30%" }, "M4 3 0 0v6z"],
+  ];
+  return (
+    <div className="absolute" style={style}>
+      {/* The cross itself */}
+      <div aria-hidden className="absolute bg-[#2b3446]" style={{ left: "35%", top: 0, width: "30%", height: "100%", borderRadius: u(0.8), boxShadow: bevel("#4b566b", "#141a26", false) }} />
+      <div aria-hidden className="absolute bg-[#2b3446]" style={{ top: "35%", left: 0, height: "30%", width: "100%", borderRadius: u(0.8), boxShadow: bevel("#4b566b", "#141a26", false) }} />
+      <div aria-hidden className="absolute rounded-full bg-[#222a38]" style={{ left: "40%", top: "40%", width: "20%", height: "20%" }} />
+      {arms.map(([d, pos, path]) => (
+        <button
+          key={d}
+          type="button"
+          aria-label={d === "up" || d === "left" ? "Previous" : "Next"}
+          {...press(() => onPress(d))}
+          className="absolute grid place-items-center outline-none focus-visible:outline-2 focus-visible:outline-white"
+          style={{ ...pos, background: down(d) ? "#00000040" : undefined, borderRadius: u(0.8) }}
+        >
+          <svg viewBox={d === "up" || d === "down" ? "0 0 6 4" : "0 0 4 6"} style={{ width: d === "up" || d === "down" ? u(2.4) : u(1.6), height: d === "up" || d === "down" ? u(1.6) : u(2.4) }} aria-hidden>
+            <path d={path} fill="#8a94a8" />
+          </svg>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+const ICONS: Record<MenuId, string[]> = {
+  feed: ["..XXX..", ".XX.XX.", "XXXXX.X", "X.XXXXX", "XXX.XXX", ".XXXXX.", "..XXX.."],
+  play: ["..XXX..", ".X...X.", "X.X...X", "X..X..X", "X...X.X", ".X...X.", "..XXX.."],
+  sleep: ["..XXX..", ".XX....", "XX.....", "XX.....", "XX.....", ".XX..X.", "..XXX.."],
+  stats: [".....XX", ".....XX", "...XXXX", "...XXXX", ".XXXXXX", ".XXXXXX", "XXXXXXX"],
+  edit: [".....XX", "....XXX", "...XXX.", "..XXX..", ".XXX...", "XXX....", "XX....."],
+};
+
+function PixelIcon({ name, color }: { name: MenuId; color: string }) {
+  return (
+    <svg viewBox="0 0 7 7" shapeRendering="crispEdges" style={{ width: u(2.8), height: u(2.8) }} aria-hidden>
+      {ICONS[name].flatMap((row, y) => [...row].map((ch, x) => (ch === "X" ? <rect key={`${x}-${y}`} x={x} y={y} width={1} height={1} fill={color} /> : null)))}
+    </svg>
   );
 }
 
@@ -371,8 +467,7 @@ function Room({ hour, dark }: { hour: number; dark: boolean }) {
   const books = ["#df2224", "#0152cb", "#22c55e", "#f5a524", "#8b5cf6", "#0152cb", "#f472b6", "#22c55e"];
   return (
     <g>
-      {/* Wall and floor */}
-      <rect width={RW} height={26} fill="#e7effc" />
+      <rect width={RW} height={26} fill={LCD} />
       <rect y={24} width={RW} height={1} fill="#c9d6ef" />
       <rect y={25} width={RW} height={11} fill="#d9b98a" />
       {[0, 8, 16, 24, 32, 40].map((px) => (
@@ -380,26 +475,26 @@ function Room({ hour, dark }: { hour: number; dark: boolean }) {
       ))}
       <rect y={30} width={RW} height={1} fill="#c49e6b" />
       {/* Window, showing the time of day */}
-      <rect x={30} y={4} width={13} height={11} fill="#ffffff" />
-      <rect x={31} y={5} width={11} height={9} fill={sky} />
+      <rect x={30} y={6} width={13} height={11} fill="#ffffff" />
+      <rect x={31} y={7} width={11} height={9} fill={sky} />
       {night ? (
         <>
-          <rect x={38} y={6} width={2} height={2} fill="#fdf6c3" />
-          <rect x={33} y={7} width={1} height={1} fill="#ffffff" />
-          <rect x={35} y={11} width={1} height={1} fill="#ffffff" />
+          <rect x={38} y={8} width={2} height={2} fill="#fdf6c3" />
+          <rect x={33} y={9} width={1} height={1} fill="#ffffff" />
+          <rect x={35} y={13} width={1} height={1} fill="#ffffff" />
         </>
       ) : (
-        <rect x={37} y={6} width={3} height={3} fill={dusk ? "#ffdf8a" : "#ffd23f"} />
+        <rect x={37} y={8} width={3} height={3} fill={dusk ? "#ffdf8a" : "#ffd23f"} />
       )}
-      <rect x={36} y={5} width={1} height={9} fill="#ffffff" />
-      <rect x={31} y={9} width={11} height={1} fill="#ffffff" />
+      <rect x={36} y={7} width={1} height={9} fill="#ffffff" />
+      <rect x={31} y={11} width={11} height={1} fill="#ffffff" />
       {/* Bookshelf */}
       <rect x={3} y={8} width={13} height={17} fill="#8a5a3b" />
       {[9, 14, 19].map((y, row) => (
         <g key={y}>
           <rect x={4} y={y} width={11} height={4} fill="#6d4429" />
           {books.slice(row * 2, row * 2 + 4).map((c, i) => (
-            <rect key={i} x={5 + i * 2.5} y={y + (i % 2)} width={2} height={4 - (i % 2)} fill={c} />
+            <rect key={i} x={5 + i * 2} y={y + (i % 2)} width={2} height={4 - (i % 2)} fill={c} />
           ))}
         </g>
       ))}
@@ -411,21 +506,21 @@ function Room({ hour, dark }: { hour: number; dark: boolean }) {
       {/* Rug */}
       <rect x={10} y={32} width={28} height={3} fill="#4d9cff" />
       <rect x={11} y={33} width={26} height={1} fill="#9cc7ff" />
-      {/* Lights out */}
       {dark && <rect width={RW} height={RH} fill="#0b1220" opacity={0.55} />}
     </g>
   );
 }
 
 function Zzz({ x }: { x: number }) {
+  const z = ["XXX", "..X", ".X.", "X..", "XXX"];
   return (
-    <g fill="#e7effc" fontSize={4} fontFamily="monospace" fontWeight={700}>
+    <>
       {[0, 1, 2].map((i) => (
-        <motion.text key={i} x={x} y={FLOOR - 14} initial={{ opacity: 0 }} animate={{ opacity: [0, 1, 0], x: [x, x + 3 + i], y: [FLOOR - 14, FLOOR - 22 - i * 2] }} transition={{ duration: 2.4, delay: i * 0.8, repeat: Infinity }}>
-          z
-        </motion.text>
+        <motion.g key={i} initial={{ opacity: 0 }} animate={{ opacity: [0, 1, 0], x: [x, x + 3 + i], y: [FLOOR - 16, FLOOR - 24 - i * 2] }} transition={{ duration: 2.4, delay: i * 0.8, repeat: Infinity }}>
+          {z.flatMap((row, y) => [...row].map((ch, cx) => (ch === "X" ? <rect key={`${cx}-${y}`} x={cx} y={y} width={1} height={1} fill={LCD} /> : null)))}
+        </motion.g>
       ))}
-    </g>
+    </>
   );
 }
 
@@ -437,34 +532,41 @@ function Stats({ pet, stats, mood }: { pet: Pet; stats: ReturnType<typeof petSta
     ["Happy", stats.happy],
     ["Energy", stats.energy],
   ];
+  const line = { fontSize: u(2.3) };
   return (
-    <div className="absolute inset-0 flex flex-col justify-center gap-2 bg-[#e7effc] px-4 text-[#1d2433]">
-      <div className="flex items-baseline justify-between">
-        <p className="text-sm font-bold">{pet.name}</p>
-        <p className="text-[11px] font-medium">{mood}</p>
+    <div className="absolute inset-0 font-pixel leading-none text-[#1d2433]" style={{ background: LCD, padding: u(3) }}>
+      <div className="flex items-baseline justify-between" style={{ fontSize: u(2.8) }}>
+        <span className="font-semibold">{pet.name}</span>
+        <span style={line}>{mood}</span>
       </div>
-      {rows.map(([label, value]) => (
-        <div key={label} className="flex items-center gap-2 text-[11px] font-medium">
-          <span className="w-12">{label}</span>
-          <span className="flex gap-0.5" aria-label={`${label} ${value} out of 100`}>
-            {[0, 1, 2, 3, 4].map((i) => (
-              <svg key={i} viewBox="0 0 7 6" shapeRendering="crispEdges" className="h-3 w-3.5" aria-hidden>
-                <path d="M1 0h2v1h1V0h2v1h1v2H6v1H5v1H4v1H3V5H2V4H1V3H0V1h1z" fill={value > i * 20 + 10 ? "#df2224" : "#1d243333"} />
-              </svg>
+      <div className="flex flex-col" style={{ marginTop: u(3), gap: u(2) }}>
+        {rows.map(([label, value]) => (
+          <div key={label} className="flex items-center" style={{ ...line, gap: u(2) }}>
+            <span style={{ width: u(11) }}>{label}</span>
+            <span className="flex" style={{ gap: u(1) }} aria-label={`${label} ${value} out of 100`}>
+              {[0, 1, 2, 3, 4].map((i) => (
+                <svg key={i} viewBox="0 0 7 6" shapeRendering="crispEdges" style={{ width: u(3.5), height: u(3) }} aria-hidden>
+                  <path d="M1 0h2v1h1V0h2v1h1v2H6v1H5v1H4v1H3V5H2V4H1V3H0V1h1z" fill={value > i * 20 + 10 ? "#df2224" : "#1d243333"} />
+                </svg>
+              ))}
+            </span>
+          </div>
+        ))}
+        <div style={line}>
+          <div className="flex justify-between">
+            <span>Level {stats.level}</span>
+            <span>{pet.xp} XP</span>
+          </div>
+          <div className="flex" style={{ marginTop: u(1), gap: u(0.5) }}>
+            {Array.from({ length: 12 }, (_, i) => (
+              <span key={i} style={{ width: u(2.9), height: u(1.5), background: i < Math.round(stats.progress * 12) ? "#0152cb" : "#1d243322" }} />
             ))}
-          </span>
-        </div>
-      ))}
-      <div className="text-[11px] font-medium">
-        <div className="flex justify-between">
-          <span>Level {stats.level}</span>
-          <span className="tabular-nums">{pet.xp} XP</span>
-        </div>
-        <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-[#1d243322]">
-          <div className="h-full bg-primary" style={{ width: `${Math.round(stats.progress * 100)}%` }} />
+          </div>
         </div>
       </div>
-      <p className="text-center text-[10px] opacity-70">Ask questions and upload files to earn XP · B to go back</p>
+      <p className="absolute inset-x-0 text-center opacity-70" style={{ bottom: u(2), fontSize: u(1.8) }}>
+        Earn XP by asking and uploading. B to go back
+      </p>
     </div>
   );
 }
@@ -496,10 +598,10 @@ function useCatchGame(active: boolean, onEnd: (won: boolean, score: number) => v
     const tick = setInterval(() => {
       spawnIn -= 1;
       setBooks((list) => {
-        let next = list.map((b) => ({ ...b, y: b.y + 1.2 }));
+        let next = list.map((b) => ({ ...b, y: b.y + 1 }));
         if (spawnIn <= 0) {
           next = [...next, { id: id++, lane: Math.floor(Math.random() * 3), y: 2 }];
-          spawnIn = Math.max(9, 16 - caught);
+          spawnIn = Math.max(10, 18 - caught);
         }
         const kept: typeof next = [];
         for (const b of next) {
@@ -522,7 +624,7 @@ function useCatchGame(active: boolean, onEnd: (won: boolean, score: number) => v
         }
         return kept;
       });
-    }, 70);
+    }, 80);
     return () => clearInterval(tick);
   }, [active, running, pet.species]);
 
@@ -547,17 +649,17 @@ function useCatchGame(active: boolean, onEnd: (won: boolean, score: number) => v
   };
 
   const scene = () => (
-      <>
-        {books.map((b) => (
-          <g key={b.id}>
-            <rect x={LANES[b.lane] + 2} y={b.y} width={4} height={5} fill="#0152cb" />
-            <rect x={LANES[b.lane] + 3} y={b.y + 1} width={3} height={3} fill="#ffffff" />
-          </g>
-        ))}
-        <g transform={`translate(${LANES[lane] - 4} ${FLOOR - 14})`}>
-          <PetSprite look={pet} face={running ? "happy" : "open"} bare />
+    <>
+      {books.map((b) => (
+        <g key={b.id}>
+          <rect x={LANES[b.lane] + 2} y={b.y} width={4} height={5} fill="#0152cb" />
+          <rect x={LANES[b.lane] + 3} y={b.y + 1} width={3} height={3} fill="#ffffff" />
         </g>
-      </>
+      ))}
+      <g transform={`translate(${LANES[lane] - 4} ${FLOOR - 14})`}>
+        <PetSprite look={pet} face={running ? "happy" : "open"} bare />
+      </g>
+    </>
   );
 
   return { running, score, misses, press, scene };

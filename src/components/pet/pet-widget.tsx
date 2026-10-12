@@ -83,7 +83,7 @@ export function PetWidget({ onOpen }: { onOpen?: () => void }) {
       {data &&
         (desktop ? (
           <Dialog open={device} onOpenChange={setDevice}>
-            <DialogContent className="border-0 bg-transparent p-0 shadow-none ring-0 sm:max-w-[380px]" showCloseButton={false}>
+            <DialogContent className="border-0 bg-transparent p-0 shadow-none ring-0 sm:max-w-[520px]" showCloseButton={false}>
               <DialogTitle className="sr-only">{data.name}</DialogTitle>
               <DialogDescription className="sr-only">Feed, play with and look after your pet.</DialogDescription>
               {device && handheld}

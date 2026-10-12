@@ -147,6 +147,7 @@
   --font-heading: var(--font-sans);
   --font-serif: var(--font-bodoni), Georgia, serif;
   --font-hand: var(--font-caveat), cursive;
+  --font-pixel: var(--font-pixelify), monospace;
   --font-mono: var(--font-code), ui-monospace, monospace;
 
   --radius-sm: calc(var(--radius) * 0.6);
