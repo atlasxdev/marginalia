@@ -31,7 +31,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -138,11 +137,6 @@ function AppSidebar() {
         <Link href="/chat" aria-label="Marginalia home" onClick={close}>
           <Wordmark className="text-[22px]" />
         </Link>
-        <Button asChild variant="ghost" size="icon-sm" aria-label="New question">
-          <Link href="/chat" onClick={close}>
-            <SquarePenIcon />
-          </Link>
-        </Button>
       </SidebarHeader>
 
       <SidebarContent className="gap-2 px-1.5 [&_[data-sidebar=menu-button]]:h-9 [&_[data-sidebar=menu-action]]:top-2 [&_[data-sidebar=menu-badge]]:top-2 [&_[data-sidebar=menu]]:gap-0.5">
@@ -156,6 +150,14 @@ function AppSidebar() {
                 </Link>
               </SidebarMenuButton>
               {readyCount !== undefined && <SidebarMenuBadge className="tabular-nums">{readyCount}</SidebarMenuBadge>}
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild isActive={pathname === "/chat"}>
+                <Link href="/chat" onClick={close}>
+                  <SquarePenIcon className="text-primary" />
+                  <span>New chat</span>
+                </Link>
+              </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarGroup>
