@@ -55,8 +55,8 @@ import { Wordmark } from "./logo";
 import { DeleteConversation, RenameConversation } from "./conversation-actions";
 import { ConversationGroups } from "./conversation-list";
 import { SearchChats } from "./search-chats";
-import { MarginPet } from "./pet/margin-pet";
-import { openPetBuilder } from "@/lib/pet-events";
+import { PetWidget } from "./pet/pet-widget";
+import { openPet } from "@/lib/pet-events";
 import { setSoundsOn, soundsOn, subscribeSounds } from "@/lib/pet-sounds";
 import { SpaceDialog } from "./space-dialog";
 
@@ -76,7 +76,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <Suspense>{children}</Suspense>
         </div>
       </SidebarInset>
-      <MarginPet />
     </SidebarProvider>
   );
 }
@@ -217,6 +216,7 @@ function AppSidebar() {
       </SidebarContent>
 
       <SidebarFooter className="border-t border-glass-divider p-2">
+        <PetWidget onOpen={close} />
         <SidebarMenu>
           <SidebarMenuItem>
             <DropdownMenu>
@@ -239,7 +239,7 @@ function AppSidebar() {
                     Settings
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => { close(); openPetBuilder(); }}>
+                <DropdownMenuItem onSelect={() => { close(); openPet(); }}>
                   <PawPrintIcon />
                   Your pet
                 </DropdownMenuItem>

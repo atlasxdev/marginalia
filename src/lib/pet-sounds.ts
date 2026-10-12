@@ -34,6 +34,8 @@ const PITCH: Record<Species, number> = { bird: 1.5, cat: 1.15, bookworm: 0.95, b
 let ctx: AudioContext | null = null;
 function audio() {
   if (typeof window === "undefined") return null;
+  // Stay quiet until the page has been clicked or tapped (browsers block sound before that)
+  if (navigator.userActivation && !navigator.userActivation.hasBeenActive) return null;
   ctx ??= new AudioContext();
   // Browsers start audio suspended until the page has been clicked
   if (ctx.state === "suspended") void ctx.resume();

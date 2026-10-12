@@ -70,5 +70,11 @@ export type ActionState = {
   fieldErrors?: Record<string, string[] | undefined>;
 };
 
-/** Your margin pet. `x` and `y` are where it sits on screen, 0 to 1 (1,1 is bottom right). */
-export type Pet = import("./pet-art").PetLook & { name: string; x: number; y: number };
+/** Your pet, and when it was last fed, played with and put to bed (its needs wear down from those). */
+export type Pet = import("./pet-art").PetLook & {
+  name: string;
+  fedAt: string;
+  playedAt: string;
+  sleptAt: string;
+  xp: number;
+};

@@ -15,12 +15,15 @@ export function PetSprite({
   look,
   face = "open",
   book = false,
+  bare = false,
   className,
 }: {
   look: PetLook;
   face?: Face;
   /** Holding an open book (it's reading an answer). */
   book?: boolean;
+  /** Just the shapes, in art pixels, to place inside another SVG (top left at 0,-3). */
+  bare?: boolean;
   className?: string;
 }) {
   const art = ART[look.species];
@@ -66,8 +69,8 @@ export function PetSprite({
     }
   };
 
-  return (
-    <svg viewBox="0 -3 16 17" shapeRendering="crispEdges" className={cn("block", className)} aria-hidden focusable="false">
+  const shapes = (
+    <>
       {art.rows.flatMap((row, y) =>
         [...row].map((ch, x) => (colors[ch] ? <rect key={`${x}-${y}`} x={x} y={y} width={1} height={1} fill={colors[ch]} /> : null)),
       )}
@@ -84,6 +87,12 @@ export function PetSprite({
           {px(4, 13, 8, 1, "#0152cb", "base")}
         </g>
       )}
+    </>
+  );
+  if (bare) return <g shapeRendering="crispEdges">{shapes}</g>;
+  return (
+    <svg viewBox="0 -3 16 17" shapeRendering="crispEdges" className={cn("block", className)} aria-hidden focusable="false">
+      {shapes}
     </svg>
   );
 }

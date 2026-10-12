@@ -56,7 +56,8 @@ function Builder({ pet, onDone }: { pet: Pet | null; onDone: () => void }) {
     mutationFn: () => savePet({ ...look, name }),
     onSuccess: (result) => {
       if (!result.ok) return toast.error(result.message ?? "Couldn't save your pet. Try again.");
-      queryClient.setQueryData<Pet | null>(["pet"], (p) => ({ ...look, name: name.trim(), x: p?.x ?? 0.9, y: p?.y ?? 1 }));
+      const now = new Date().toISOString();
+      queryClient.setQueryData<Pet | null>(["pet"], (p) => ({ ...look, name: name.trim(), fedAt: p?.fedAt ?? now, playedAt: p?.playedAt ?? now, sleptAt: p?.sleptAt ?? now, xp: p?.xp ?? 0 }));
       toast.success(pet ? `${name.trim()} is all set` : `Say hi to ${name.trim()}!`);
       if (!pet) playPetSound("hatch", look.species);
       onDone();

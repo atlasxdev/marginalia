@@ -10,7 +10,7 @@ export type PetSignal =
   | { kind: "eat"; label: string };
 
 const SIGNAL = "marginalia:pet";
-const BUILDER = "marginalia:pet-builder";
+const OPEN = "marginalia:open-pet";
 
 export function petSignal(signal: PetSignal) {
   if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent(SIGNAL, { detail: signal }));
@@ -22,39 +22,18 @@ export function onPetSignal(handler: (signal: PetSignal) => void) {
   return () => window.removeEventListener(SIGNAL, listener);
 }
 
-/** Opens the "Create your pet" builder from anywhere (the account menu, the egg). */
-export function openPetBuilder() {
-  window.dispatchEvent(new Event(BUILDER));
+/** Opens your pet's handheld (or the builder, before you have one) from anywhere. */
+export function openPet() {
+  window.dispatchEvent(new Event(OPEN));
 }
 
-export function onOpenPetBuilder(handler: () => void) {
-  window.addEventListener(BUILDER, handler);
-  return () => window.removeEventListener(BUILDER, handler);
+export function onOpenPet(handler: () => void) {
+  window.addEventListener(OPEN, handler);
+  return () => window.removeEventListener(OPEN, handler);
 }
 
 /** What kind of file an upload is, for the pet to name it. */
 export function fileLabel(name: string) {
   const ext = name.split(".").pop()?.toLowerCase();
   return ext === "pdf" ? "PDF" : ext === "docx" ? "Word doc" : ext === "md" || ext === "markdown" ? "note" : "file";
-}
-
-/* Hiding the pet for a while: remembered on this device, undone from the account menu. */
-const HIDDEN = "marginalia:pet-hidden";
-const hiddenListeners = new Set<() => void>();
-export function petHidden() {
-  try {
-    return localStorage.getItem(HIDDEN) === "1";
-  } catch {
-    return false;
-  }
-}
-export function setPetHidden(hidden: boolean) {
-  try {
-    localStorage.setItem(HIDDEN, hidden ? "1" : "0");
-  } catch {}
-  hiddenListeners.forEach((l) => l());
-}
-export function subscribePetHidden(on: () => void) {
-  hiddenListeners.add(on);
-  return () => hiddenListeners.delete(on);
 }

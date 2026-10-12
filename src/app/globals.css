@@ -388,3 +388,11 @@
 /* Find in chat: every match, and the one you're on */
 ::highlight(find) { background-color: var(--highlight-soft); color: inherit; }
 ::highlight(find-current) { background-color: var(--highlight); color: var(--on-highlight); }
+
+/* The unhatched egg in the sidebar, wobbling now and then */
+@keyframes egg-wobble {
+  0%, 80%, 100% { transform: rotate(0); }
+  84% { transform: rotate(-8deg); }
+  88% { transform: rotate(8deg); }
+  92% { transform: rotate(-5deg); }
+}
