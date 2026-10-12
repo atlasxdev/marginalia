@@ -1,33 +1,11 @@
 /*
  * The pet's voice: tiny chiptune chirps made with the Web Audio API, so
  * there are no sound files. Each species has its own pitch (a bird chirps
- * high, a blob boops low). Quiet by design, and off with one toggle that's
- * remembered on this device.
+ * high, a blob boops low). Quiet by design.
  */
 import type { Species } from "./pet-art";
 
 export type PetSound = "hi" | "pet" | "found" | "shrug" | "eat" | "land" | "wake" | "hatch" | "play" | "nap";
-
-const KEY = "marginalia:pet-sounds";
-const listeners = new Set<() => void>();
-
-export function soundsOn() {
-  try {
-    return localStorage.getItem(KEY) !== "off";
-  } catch {
-    return true;
-  }
-}
-export function setSoundsOn(on: boolean) {
-  try {
-    localStorage.setItem(KEY, on ? "on" : "off");
-  } catch {}
-  listeners.forEach((l) => l());
-}
-export function subscribeSounds(on: () => void) {
-  listeners.add(on);
-  return () => listeners.delete(on);
-}
 
 const PITCH: Record<Species, number> = { bird: 1.5, cat: 1.15, bookworm: 0.95, blob: 0.8 };
 
@@ -58,7 +36,7 @@ function note(a: AudioContext, at: number, freq: number, length: number, { to, t
 }
 
 export function playPetSound(sound: PetSound, species: Species) {
-  if (!soundsOn() || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
   const a = audio();
   if (!a) return;
   const p = PITCH[species];

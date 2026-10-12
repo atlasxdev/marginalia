@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Suspense, useEffect, useState, useSyncExternalStore } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   ChevronsUpDownIcon,
@@ -16,8 +16,6 @@ import {
   SettingsIcon,
   SquarePenIcon,
   SunIcon,
-  Volume2Icon,
-  VolumeXIcon,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { signOut } from "@/app/actions/auth";
@@ -57,7 +55,6 @@ import { ConversationGroups } from "./conversation-list";
 import { SearchChats } from "./search-chats";
 import { PetWidget } from "./pet/pet-widget";
 import { openPet } from "@/lib/pet-events";
-import { setSoundsOn, soundsOn, subscribeSounds } from "@/lib/pet-sounds";
 import { SpaceDialog } from "./space-dialog";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -118,7 +115,6 @@ function AppSidebar() {
   const [deleting, setDeleting] = useState<ConversationSummary | null>(null);
   const [renaming, setRenaming] = useState<ConversationSummary | null>(null);
   const [searching, setSearching] = useState(false);
-  const sounds = useSyncExternalStore(subscribeSounds, soundsOn, () => true);
   // ⌘K / Ctrl+K opens search from anywhere in the app
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -242,11 +238,6 @@ function AppSidebar() {
                 <DropdownMenuItem onSelect={() => { close(); openPet(); }}>
                   <PawPrintIcon />
                   Your pet
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setSoundsOn(!sounds); }}>
-                  {sounds ? <Volume2Icon /> : <VolumeXIcon />}
-                  Pet sounds
-                  <span className="ml-auto text-xs text-muted-foreground">{sounds ? "On" : "Off"}</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}>
                   {resolvedTheme === "dark" ? <SunIcon /> : <MoonIcon />}
