@@ -49,7 +49,7 @@ import { UploadForm } from "./upload-form";
 export const KIND: Record<string, { label: string; color: string }> = {
   "text/markdown": { label: "Markdown", color: "bg-[#8e8e93]" },
   "application/pdf": { label: "PDF", color: "bg-[#ff3b30]" },
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": { label: "Word", color: "bg-[#007aff]" },
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": { label: "Word", color: "bg-[#0152cb]" },
 };
 const kindOf = (doc: DocumentItem) => KIND[doc.mimeType] ?? { label: "File", color: "bg-[#8e8e93]" };
 
