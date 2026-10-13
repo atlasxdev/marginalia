@@ -9,6 +9,7 @@ import { addPetXp } from "@/app/actions/pet";
 import { petQuery, spacesQuery, studyQuery } from "@/lib/queries";
 import { deckInSubject, topicsIn } from "@/lib/subjects";
 import type { AttemptResult, Deck, FocusMethod, MissKind, Pet, Space, StudyOverview } from "@/lib/types";
+import { useDailyGoal } from "@/lib/daily-goal";
 import { readTimer, saveTimer } from "@/lib/timer-pref";
 import { useHydrated } from "@/lib/use-hydrated";
 import { useStudy, type StudyItem } from "@/lib/use-study";
@@ -626,6 +627,7 @@ function Summary({
 }) {
   const queryClient = useQueryClient();
   const pet = useQuery(petQuery).data;
+  const daily = useDailyGoal();
   // Distinct cards studied; follow-ups and repeats of a card count once
   const cards = new Set(results.filter((r) => r.step.reason !== "followup").map((r) => itemKey(r.step.item))).size;
   const right = results.filter((r) => r.result === "right").length;
@@ -686,6 +688,11 @@ function Summary({
       <h1 className="mt-6 text-3xl font-bold tracking-tight">{headline}</h1>
       <p className="mt-1 text-sm text-muted-foreground">{title}</p>
       <p className="mt-4 text-lg text-balance">{line}</p>
+      {daily.goal > 0 && (
+        <p className={cn("mt-3 text-sm font-medium", daily.reached ? "text-success" : "text-muted-foreground")}>
+          {daily.reached ? `You hit today's goal of ${daily.goal} cards.` : `Today's goal: ${daily.done} of ${daily.goal} cards.`}
+        </p>
+      )}
 
       <dl className="glass mt-8 grid w-full grid-cols-4 rounded-2xl border border-glass-border bg-glass">
         {[

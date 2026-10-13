@@ -148,7 +148,7 @@ export async function getStudyOverview(supabase: Supabase): Promise<StudyOvervie
   ]);
   // Before the study migration has run there are no decks of this shape yet
   if (decksResult.error) {
-    return { decks: [], weakTopics: [], week: { reviewed: 0, accuracy: null, focusMinutes: 0, sessions: 0 }, activity: [] };
+    return { decks: [], weakTopics: [], week: { reviewed: 0, accuracy: null, focusMinutes: 0, sessions: 0 }, activity: [], recentAttempts: [] };
   }
   const decks = (decksResult.data as unknown as DeckRow[]).map(toDeck);
   const attempts = attemptsResult.data ?? [];
@@ -192,6 +192,7 @@ export async function getStudyOverview(supabase: Supabase): Promise<StudyOvervie
       sessions: weekSessions.length,
     },
     activity,
+    recentAttempts: attempts.filter((a) => new Date(a.created_at).getTime() >= Date.now() - 2 * 86_400_000).map((a) => a.created_at),
   };
 }
 

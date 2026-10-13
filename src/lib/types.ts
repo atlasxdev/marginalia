@@ -159,6 +159,8 @@ export type StudyOverview = {
   week: { reviewed: number; accuracy: number | null; focusMinutes: number; sessions: number };
   /** When you studied recently, by the hour, for working out your streak in your own time zone. */
   activity: string[];
+  /** When each answer in the last two days was given, for today's count toward your daily goal. */
+  recentAttempts: string[];
 };
 
 /** How a typed answer was marked. */

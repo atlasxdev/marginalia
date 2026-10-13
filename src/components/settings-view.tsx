@@ -5,6 +5,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTheme } from "next-themes";
 import { HourglassIcon, InfinityIcon, LogOutIcon, MonitorIcon, MoonIcon, SunIcon, TimerIcon } from "lucide-react";
 import { changePassword, signOut, updateProfile } from "@/app/actions/auth";
+import { setDailyGoal } from "@/app/actions/study";
+import { DAILY_GOALS, useDailyGoal } from "@/lib/daily-goal";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
@@ -136,9 +138,40 @@ const TIMERS: { value: FocusMethod; label: string; detail: string; icon: typeof 
 /** Defaults for studying: the session timer, and how new subjects answer. */
 function StudyingCard() {
   const [timer, setTimer] = useState<FocusMethod>(readTimer);
+  const queryClient = useQueryClient();
+  const { goal } = useDailyGoal();
+  const changeGoal = async (next: number) => {
+    // Show it at once; the save follows
+    queryClient.setQueryData(["me"], (me: unknown) =>
+      me && typeof me === "object" ? { ...me, user_metadata: { ...(me as { user_metadata?: object }).user_metadata, daily_goal: next } } : me
+    );
+    const result = await setDailyGoal(next);
+    if (!result.ok) void queryClient.invalidateQueries({ queryKey: ["me"] });
+  };
   return (
     <Card className={cardClass}>
       <CardContent className="grid gap-6 p-6">
+        <div className="grid gap-3">
+          <div>
+            <p className="font-medium">Daily goal</p>
+            <p className="text-sm text-muted-foreground">Cards to study each day. Today shows how close you are.</p>
+          </div>
+          <ToggleGroup
+            type="single"
+            value={String(goal)}
+            onValueChange={(v) => v && void changeGoal(Number(v))}
+            className="grid w-full grid-cols-5 gap-2"
+            spacing={2}
+          >
+            {DAILY_GOALS.map((n) => (
+              <ToggleGroupItem key={n} value={String(n)} className={choiceClass}>
+                <span className="text-sm font-semibold">{n === 0 ? "Off" : n}</span>
+                <span className="text-xs font-normal text-muted-foreground">{n === 0 ? "No goal" : "cards"}</span>
+              </ToggleGroupItem>
+            ))}
+          </ToggleGroup>
+        </div>
+        <div className="border-t border-glass-divider" />
         <div className="grid gap-3">
           <div>
             <p className="font-medium">Session timer</p>

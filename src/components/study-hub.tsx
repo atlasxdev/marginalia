@@ -7,6 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import { CheckIcon, PlayIcon, PlusIcon, SparklesIcon, TargetIcon } from "lucide-react";
 import { streakFrom } from "@/lib/pet-care";
 import { useCardQueue } from "@/lib/auto-cards";
+import { useDailyGoal } from "@/lib/daily-goal";
 import { documentsQuery, meQuery, petQuery, spacesQuery, studyQuery } from "@/lib/queries";
 import { cardCounts, dueCount, rankSubjects, sessionHref, subjectDecks, topicsIn, waitingLine } from "@/lib/subjects";
 import type { DocumentItem, Pet, Space, StudyOverview, WeakTopic } from "@/lib/types";
@@ -51,6 +52,7 @@ function Today({ overview, spaces, documents }: { overview: StudyOverview; space
   const name = useQuery(meQuery).data?.user_metadata?.name as string | undefined;
   const [creating, setCreating] = useState(false);
   const [hour] = useState(() => new Date().getHours());
+  const daily = useDailyGoal();
   const { decks, weakTopics, week, activity } = overview;
   const due = dueCount(decks);
   const streak = streakFrom(activity);
@@ -106,8 +108,9 @@ function Today({ overview, spaces, documents }: { overview: StudyOverview; space
         </div>
 
         {decks.length > 0 && (
-          <dl className="mt-6 grid grid-cols-2 gap-y-4 border-t border-glass-divider pt-5 sm:grid-cols-4">
+          <dl className={cn("mt-6 grid grid-cols-2 gap-y-4 border-t border-glass-divider pt-5", daily.goal ? "sm:grid-cols-5" : "sm:grid-cols-4")}>
             {[
+              ...(daily.goal ? [["Today's goal", daily.reached ? `Done, ${daily.done} cards` : `${daily.done} of ${daily.goal} cards`]] : []),
               ["Streak", streak ? `${streak} ${streak === 1 ? "day" : "days"}` : "Start today"],
               ["Cards this week", String(week.reviewed)],
               ["Right this week", week.accuracy === null ? "None yet" : `${Math.round(week.accuracy * 100)}%`],
@@ -115,7 +118,12 @@ function Today({ overview, spaces, documents }: { overview: StudyOverview; space
             ].map(([label, value]) => (
               <div key={label}>
                 <dt className="text-xs text-muted-foreground">{label}</dt>
-                <dd className="mt-0.5 text-lg font-semibold tracking-tight tabular-nums">{value}</dd>
+                <dd className={cn("mt-0.5 text-lg font-semibold tracking-tight tabular-nums", label === "Today's goal" && daily.reached && "text-success")}>{value}</dd>
+                {label === "Today's goal" && (
+                  <div className="mt-1.5 h-1 w-28 overflow-hidden rounded-full bg-foreground/10" aria-hidden>
+                    <div className={cn("h-full rounded-full transition-[width] duration-500", daily.reached ? "bg-success" : "bg-primary")} style={{ width: `${Math.max(4, daily.progress * 100)}%` }} />
+                  </div>
+                )}
               </div>
             ))}
           </dl>
