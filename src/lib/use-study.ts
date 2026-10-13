@@ -25,8 +25,8 @@ async function send(url: string, body: unknown, method = "POST") {
   if (!res.ok) throw new Error((await res.json().catch(() => null))?.error ?? "Couldn't save your progress.");
 }
 
-/* Keeps card progress for a set of decks while you study. Each rating is saved
-   right away; when a session ends, the attempts are saved and pages refresh. */
+/* Keeps card progress for a set of decks while you study. Each rating and each
+   answer is saved right away; when a session ends, pages refresh. */
 export function useStudy(decks: FlashcardsAction[], fallbackSources: Source[] = []) {
   const queryClient = useQueryClient();
   const [overrides, setOverrides] = useState<Record<string, Record<string, CardProgress>>>({});
@@ -58,13 +58,16 @@ export function useStudy(decks: FlashcardsAction[], fallbackSources: Source[] = 
     send(`/api/actions/${deck.id}`, { cards }, "PATCH").catch((error: Error) => toast.error(error.message));
   };
 
-  const finish = async (attempts: AttemptInput[]) => {
-    if (attempts.length) await send("/api/study/attempts", { attempts }).catch(() => undefined);
+  const saveAttempt = (attempt: AttemptInput) => {
+    send("/api/study/attempts", { attempts: [attempt] }).catch(() => undefined);
+  };
+
+  const finish = async () => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ["study"] }),
       queryClient.invalidateQueries({ queryKey: ["conversations"] }),
     ]);
   };
 
-  return { items, dueItems, rate, finish, progressOf };
+  return { items, dueItems, rate, saveAttempt, finish, progressOf };
 }

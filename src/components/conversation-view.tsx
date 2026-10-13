@@ -136,7 +136,7 @@ export function ConversationView({ id }: { id: string }) {
                   ) : (
                     <p className="flex items-center gap-2 text-muted-foreground animate-in fade-in duration-200 motion-reduce:animate-none" role="status">
                       <Spinner />
-                      Searching your documents…
+                      Searching your notes…
                     </p>
                   ))}
 

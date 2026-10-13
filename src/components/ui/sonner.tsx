@@ -26,7 +26,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
         classNames: {
           toast:
             "glass flex w-full items-center gap-3 rounded-2xl border border-glass-border bg-glass-strong py-3 pr-4 pl-3.5 font-sans text-sm text-foreground sm:w-(--width)",
-          icon: "m-0 grid size-5 shrink-0 place-items-center",
+          icon: "relative m-0 grid size-5 shrink-0 place-items-center",
           content: "flex min-w-0 flex-1 flex-col gap-0.5",
           title: "font-medium leading-snug wrap-anywhere",
           description: "text-muted-foreground leading-snug",

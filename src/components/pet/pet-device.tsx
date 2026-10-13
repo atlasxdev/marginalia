@@ -128,7 +128,7 @@ export function PetDevice({
       } else if (s.kind === "shrug") {
         setReading(false);
         react("shrug", "flat", 1400);
-        say("Not in your files.");
+        say("Not in your notes.");
       } else if (s.kind === "notes") {
         react("notes", "happy", 900);
         say(`New ${s.label} to study. +3 XP`);

@@ -62,7 +62,7 @@ export async function POST(_req: Request, ctx: RouteContext<"/api/conversations/
     contents = rows.length ? buildContents(last.content, history, rows, method) : null;
   } catch (error) {
     console.error("Retrieval failed:", error);
-    return Response.json({ error: "Couldn't search your documents. Try again." }, { status: 502 });
+    return Response.json({ error: "Couldn't search your notes. Try again." }, { status: 502 });
   }
 
   const save = (content: string) =>

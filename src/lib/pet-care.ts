@@ -30,6 +30,8 @@ export type StudyStatus = {
   streak: number;
   due: number;
   studiedToday: boolean;
+  /** Whether you've studied at all lately. */
+  studiedBefore: boolean;
   week: StudyOverview["week"];
 };
 
@@ -40,6 +42,7 @@ export function studyStatus(overview: StudyOverview | undefined, due: number, no
     streak: streakFrom(activity, now),
     due,
     studiedToday: activity.some((t) => new Date(t).toDateString() === today),
+    studiedBefore: activity.length > 0,
     week: overview?.week ?? { reviewed: 0, accuracy: null, focusMinutes: 0, sessions: 0 },
   };
 }
@@ -51,7 +54,7 @@ const BACKLOG = 20;
 export function petMood(s: StudyStatus) {
   if (s.studiedToday) return "Proud";
   if (s.due >= BACKLOG) return "Worried";
-  if (s.streak === 0 && s.week.sessions === 0 && s.week.reviewed === 0) return "Misses you";
+  if (s.studiedBefore && s.streak === 0) return "Misses you";
   return "Ready";
 }
 

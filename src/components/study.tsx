@@ -21,8 +21,10 @@ type StudyProps = {
   title: string;
   items: StudyItem[];
   onRate: (item: StudyItem, knew: boolean) => void;
-  /** Called once when the session closes, with what to save. */
-  onFinish: (attempts: AttemptInput[]) => void;
+  /** Saves one answer, as soon as it's given. */
+  onAttempt: (attempt: AttemptInput) => void;
+  /** Called once when the session closes. */
+  onFinish: () => void;
 };
 
 const SESSION_CARDS = 10;
@@ -33,7 +35,7 @@ const DESCRIPTIONS: Record<StudyMode, string> = {
 };
 
 /** Studying with your buddy: flip cards, a multiple-choice quiz, or typed answers it checks. */
-export function StudyDialog({ mode, onClose, title, items, onRate, onFinish }: StudyProps) {
+export function StudyDialog({ mode, onClose, title, items, onRate, onAttempt, onFinish }: StudyProps) {
   // "Review the ones you missed" switches to flipping just those
   const [review, setReview] = useState<StudyItem[] | null>(null);
   const attempts = useRef<AttemptInput[]>([]);
@@ -49,12 +51,15 @@ export function StudyDialog({ mode, onClose, title, items, onRate, onFinish }: S
     if (done.length) {
       petSignal({ kind: "studied", count: done.length, right: done.filter((a) => a.result === "right").length });
     }
-    onFinish(done);
+    onFinish();
     onClose();
   };
 
-  const record = (item: StudyItem, result: AttemptResult, kind: "cards" | "quiz") =>
-    attempts.current.push({ deckId: item.deckId, index: item.index, result, mode: kind });
+  const record = (item: StudyItem, result: AttemptResult, kind: "cards" | "quiz") => {
+    const attempt = { deckId: item.deckId, index: item.index, result, mode: kind };
+    attempts.current.push(attempt);
+    onAttempt(attempt);
+  };
 
   const active: StudyMode | null = review ? "cards" : mode;
   const shared = { onRate, record, react, onClose: close };
@@ -117,10 +122,17 @@ type SessionProps = {
   onClose: () => void;
 };
 
-// Due cards first, or everything if nothing's due, up to a session's worth
-function sessionCards(items: StudyItem[]) {
+// Flipping is quick, so a review takes every due card, up to this many
+const REVIEW_CARDS = 30;
+
+/* Which cards a session asks. A flip review is the due cards (or everything,
+   when nothing's due). Testing yourself asks the due cards first, then tops up
+   with the ones you know least, so a test is never just one or two questions. */
+function sessionCards(items: StudyItem[], topUp: boolean) {
   const due = items.filter((i) => isDue(i.progress));
-  return (due.length ? due : items).slice(0, SESSION_CARDS);
+  if (!topUp) return (due.length ? due : items).slice(0, REVIEW_CARDS);
+  const rest = items.filter((i) => !isDue(i.progress)).sort((a, b) => (a.progress?.box ?? 0) - (b.progress?.box ?? 0));
+  return [...due, ...rest].slice(0, SESSION_CARDS);
 }
 
 const RIGHT_LINES = ["Nice!", "You got it.", "That's the one.", "Easy for you."];
@@ -128,7 +140,7 @@ const MISS_LINES = ["We'll see it again soon.", "Almost. We'll come back to it."
 const pick = (lines: string[]) => lines[Math.floor(Math.random() * lines.length)];
 
 function CardSession({ items, onRate, record, react, onClose }: SessionProps) {
-  const [queue, setQueue] = useState(() => sessionCards(items));
+  const [queue, setQueue] = useState(() => sessionCards(items, false));
   const [total] = useState(queue.length);
   const [flipped, setFlipped] = useState(false);
   const [gotIt, setGotIt] = useState(0);
@@ -237,9 +249,10 @@ function QuizSession({ items, onRate, record, react, onClose }: SessionProps) {
   // Cards without wrong answers can't be asked as multiple choice
   const questions = useMemo(
     () =>
-      shuffle(items.filter((i) => i.card.wrong.length > 0))
-        .slice(0, SESSION_CARDS)
-        .map((item) => ({ item, choices: shuffle([item.card.back, ...item.card.wrong]) })),
+      shuffle(sessionCards(items.filter((i) => i.card.wrong.length > 0), true)).map((item) => ({
+        item,
+        choices: shuffle([item.card.back, ...item.card.wrong]),
+      })),
     [items]
   );
   const [step, setStep] = useState(0);
@@ -303,6 +316,11 @@ function QuizSession({ items, onRate, record, react, onClose }: SessionProps) {
           <p className="min-w-0 truncate text-xs text-muted-foreground">{q.item.source && `From ${q.item.source}`}</p>
           <Button
             onClick={() => {
+              // At the end, your buddy reacts to the whole quiz, not the last answer
+              if (step + 1 === questions.length) {
+                const ratio = score / questions.length;
+                react(ratio >= 0.7 ? "happy" : "flat", ratio === 1 ? "Perfect!" : ratio >= 0.7 ? "Nice work." : "Let's go over the ones you missed.");
+              }
               setPicked(null);
               setStep((s) => s + 1);
             }}
@@ -328,7 +346,7 @@ async function requestCheck(items: { deckId: string; index: number; answer: stri
 /* Typed answers: you answer each card in your own words, then your buddy checks
    them all at once against your notes, with feedback on each. */
 function RecallSession({ items, onRate, react, onClose, onReviewMissed }: SessionProps & { onReviewMissed: (missed: StudyItem[]) => void }) {
-  const [cards] = useState(() => sessionCards(items));
+  const [cards] = useState(() => sessionCards(items, true));
   const [answers, setAnswers] = useState<string[]>([]);
   const [draft, setDraft] = useState("");
   const [results, setResults] = useState<CheckResult[] | null>(null);
@@ -519,7 +537,8 @@ export function useStudySession(decks: FlashcardsAction[], fallbackSources?: Sou
       title={session?.title ?? ""}
       items={session?.items ?? []}
       onRate={study.rate}
-      onFinish={(attempts) => void study.finish(attempts)}
+      onAttempt={study.saveAttempt}
+      onFinish={() => void study.finish()}
       onClose={() => setSession(null)}
     />
   );

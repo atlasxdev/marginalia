@@ -47,7 +47,7 @@ export function Composer({ conversationId, spaceId, placeholder = "Ask about you
       {conversationId && <input type="hidden" name="conversationId" value={conversationId} />}
       {!conversationId && spaceId && <input type="hidden" name="spaceId" value={spaceId} />}
       <Label htmlFor={inputId} className="sr-only">
-        Ask a question about your documents
+        Ask a question about your notes
       </Label>
       <InputGroup className="glass border border-glass-border bg-glass-strong rounded-3xl dark:bg-glass-strong">
         <InputGroupTextarea
