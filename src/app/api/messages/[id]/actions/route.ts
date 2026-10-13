@@ -3,9 +3,9 @@ import { admin } from "@/lib/supabase/admin";
 import { createClient, getUserId } from "@/lib/supabase/server";
 import type { Flashcard, Source } from "@/lib/types";
 import { BUILT_KINDS, NothingToMakeError, buildAction, type Excerpt } from "@/server/actions";
-import { toAction } from "@/server/data";
+import { toAction } from "@/lib/data";
 import { ModelsUnavailableError } from "@/server/gemini";
-import { getSpace } from "@/server/data";
+import { getSpace } from "@/lib/data";
 import { DAILY_QUESTION_LIMIT } from "@/server/rag";
 import { isRepeat, knownCardFronts } from "@/server/study";
 

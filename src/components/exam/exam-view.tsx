@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckIcon, ChevronLeftIcon, ChevronRightIcon, CircleDashedIcon, FlagIcon, PlayIcon, XIcon } from "lucide-react";
-import { addPetXp } from "@/app/actions/pet";
+import { addPetXp, saveActionState, saveAttempts } from "@/lib/writes";
 import { rate as schedule } from "@/lib/leitner";
 import { makeClaim, makeSelectAll, pickedAllRight, shuffle, type Claim, type SelectAll } from "@/lib/questions";
 import { petQuery, spacesQuery, studyQuery } from "@/lib/queries";
@@ -160,17 +160,17 @@ function Exam({ overview, space }: { overview: StudyOverview; space: Space }) {
       // Save it: the attempts that were picked, not typed (typed ones are saved when they're checked), and each card's schedule
       const choiceAttempts = marked
         .filter((g) => g.question.kind !== "typed")
-        .map((g) => ({ deckId: g.question.item.deckId, index: g.question.item.index, result: g.result, mode: "quiz" as const }));
+        .map((g) => ({ deckId: g.question.item.deckId, index: g.question.item.index, topic: g.question.item.card.topic, result: g.result, mode: "quiz" as const }));
       const saves: Promise<unknown>[] = [];
       if (choiceAttempts.length) {
-        saves.push(fetch("/api/study/attempts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ attempts: choiceAttempts }) }));
+        saves.push(saveAttempts(choiceAttempts));
       }
       for (const deck of decks) {
         const mine = marked.filter((g) => g.question.item.deckId === deck.id);
         if (!mine.length) continue;
         const cards: Record<string, CardProgress> = { ...(deck.state.cards ?? {}) };
         for (const g of mine) cards[g.question.item.index] = schedule(cards[g.question.item.index], g.result === "right");
-        saves.push(fetch(`/api/actions/${deck.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cards }) }));
+        saves.push(saveActionState(deck.id, { cards }));
       }
       const right = marked.filter((g) => g.result === "right").length;
       const xp = Math.min(20, right * 2);

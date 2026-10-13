@@ -5,7 +5,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, useReducedMotion } from "motion/react";
 import { DicesIcon } from "lucide-react";
 import { toast } from "sonner";
-import { releasePet, savePet } from "@/app/actions/pet";
+import { releasePet, savePet } from "@/lib/writes";
 import { playPetSound } from "@/lib/pet-sounds";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";

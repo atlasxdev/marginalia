@@ -1,6 +1,11 @@
-import "server-only";
-import type { createClient } from "@/lib/supabase/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
+  AttemptResult,
+  Deck,
+  FlashcardsAction,
+  Pet,
+  StudyOverview,
+  WeakTopic,
   Action,
   Conversation,
   ConversationHit,
@@ -12,11 +17,14 @@ import type {
   Space,
 } from "@/lib/types";
 import { noteJsonPath } from "@/lib/note";
-import { documentTitle } from "@/server/ingest";
 
-type Supabase = Awaited<ReturnType<typeof createClient>>;
+type Supabase = SupabaseClient;
 
-// Reads run as the signed-in user, so row level security scopes every query.
+/* Reads, shared by the browser and the server. They run as the signed-in user,
+   so row level security scopes every query. */
+
+/** A file's name without its extension. */
+export const documentTitle = (filename: string) => filename.replace(/\.[^.]+$/, "");
 
 export async function listDocuments(supabase: Supabase): Promise<DocumentItem[]> {
   const { data, error } = await supabase
@@ -47,13 +55,20 @@ export async function getEditableDocument(supabase: Supabase, id: string): Promi
     .maybeSingle();
   if (!doc || doc.mime_type !== "text/markdown") return null;
   const storage = supabase.storage.from("documents");
-  const [{ data: file }, { data: json }] = await Promise.all([storage.download(doc.storage_path), storage.download(noteJsonPath(doc.storage_path))]);
+  const jsonPath = noteJsonPath(doc.storage_path);
+  // Uploaded Markdown, and notes written before the editor kept styles, have no JSON; looking first avoids a failed download
+  const readNote = async () => {
+    const { data: listed } = await storage.list(jsonPath.slice(0, jsonPath.lastIndexOf("/")), { search: "note.json" });
+    if (!listed?.some((f) => f.name === "note.json")) return null;
+    const { data: json } = await storage.download(jsonPath);
+    try {
+      return json ? (JSON.parse(await json.text()) as EditableDocument["note"]) : null;
+    } catch {
+      return null;
+    }
+  };
+  const [{ data: file }, note] = await Promise.all([storage.download(doc.storage_path), readNote()]);
   if (!file) return null;
-  // Uploaded Markdown, and notes written before the editor kept styles, have no JSON
-  let note: EditableDocument["note"] = null;
-  try {
-    note = json ? JSON.parse(await json.text()) : null;
-  } catch {}
   return { id: doc.id, title: documentTitle(doc.filename), content: await file.text(), note };
 }
 
@@ -226,4 +241,114 @@ export async function getSpace(supabase: Supabase, id: string): Promise<Space | 
     .maybeSingle();
   if (error || !data) return null;
   return toSpace(data);
+}
+
+type PetRow = { name: string; species: Pet["species"]; color: string; eyes: Pet["eyes"]; accessory: Pet["accessory"]; xp?: number };
+
+/** The signed-in user's pet, or null before they've made one. */
+export async function getPet(supabase: Supabase): Promise<Pet | null> {
+  let { data, error } = await supabase.from("pets").select("name, species, color, eyes, accessory, xp").maybeSingle();
+  // Before migration 0006 there's no xp column yet
+  if (error?.code === "42703") ({ data, error } = await supabase.from("pets").select("name, species, color, eyes, accessory").maybeSingle());
+  if (error || !data) return null;
+  const row = data as PetRow;
+  return { name: row.name, species: row.species, color: row.color, eyes: row.eyes, accessory: row.accessory, xp: row.xp ?? 0 };
+}
+
+// ---------------------------------------------------------------------------
+// The study overview: decks, weak topics and this week's numbers
+// ---------------------------------------------------------------------------
+
+type DeckRow = ActionRow & {
+  document: { filename: string } | null;
+  space: { name: string } | null;
+  message: { conversation_id: string; conversation: { title: string; space_id: string | null } | null } | null;
+};
+
+const SCORE: Record<AttemptResult, number> = { right: 1, almost: 0.5, wrong: 0 };
+const WEAK_BELOW = 0.7;
+const RECENT_PER_TOPIC = 10;
+
+function toDeck(row: DeckRow): Deck {
+  const action = toAction(row) as FlashcardsAction;
+  const origin: Deck["origin"] = row.document
+    ? { kind: "document", label: documentTitle(row.document.filename), href: `/library` }
+    : row.space
+      ? { kind: "subject", label: row.space.name, href: `/spaces/${row.space_id}` }
+      : {
+          kind: "chat",
+          label: row.message?.conversation?.title ?? "A chat",
+          href: row.message ? `/chat/${row.message.conversation_id}` : null,
+        };
+  return { ...action, origin, subjectId: row.space_id ?? row.message?.conversation?.space_id ?? null };
+}
+
+export async function getStudyOverview(supabase: Supabase): Promise<StudyOverview> {
+  const since = new Date(Date.now() - 60 * 86_400_000).toISOString();
+  const weekAgo = Date.now() - 7 * 86_400_000;
+
+  const [decksResult, attemptsResult, sessionsResult] = await Promise.all([
+    supabase
+      .from("actions")
+      .select(
+        "id, message_id, document_id, space_id, kind, payload, state, created_at, document:documents(filename), space:spaces(name), message:messages(conversation_id, conversation:conversations(title, space_id))"
+      )
+      .eq("kind", "flashcards")
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("attempts")
+      .select("action_id, card_index, topic, result, created_at")
+      .gte("created_at", since)
+      .order("created_at", { ascending: false })
+      .limit(3000),
+    supabase.from("study_sessions").select("focus_seconds, ended_at").gte("ended_at", since),
+  ]);
+  // Before the study migration has run there are no decks of this shape yet
+  if (decksResult.error) {
+    return { decks: [], weakTopics: [], week: { reviewed: 0, accuracy: null, focusMinutes: 0, sessions: 0 }, activity: [], recentAttempts: [] };
+  }
+  const decks = (decksResult.data as unknown as DeckRow[]).map(toDeck);
+  const attempts = attemptsResult.data ?? [];
+  const sessions = sessionsResult.data ?? [];
+  const deckIds = new Set(decks.map((d) => d.id));
+
+  // Weak topics: the latest attempts for each concept, scored
+  const byTopic = new Map<string, typeof attempts>();
+  for (const a of attempts) {
+    const key = a.topic.trim().toLowerCase();
+    if (!key || !deckIds.has(a.action_id)) continue;
+    const list = byTopic.get(key) ?? [];
+    if (list.length < RECENT_PER_TOPIC) byTopic.set(key, [...list, a]);
+  }
+  const weakTopics: WeakTopic[] = [...byTopic.values()]
+    .filter((list) => list.length >= 3)
+    .map((list) => {
+      const score = list.reduce((sum, a) => sum + SCORE[a.result as AttemptResult], 0) / list.length;
+      const cards = [...new Map(list.map((a) => [`${a.action_id}:${a.card_index}`, { deckId: a.action_id, index: a.card_index }])).values()];
+      return { topic: list[0].topic, score, attempts: list.length, cards };
+    })
+    .filter((t) => t.score < WEAK_BELOW)
+    .sort((a, b) => a.score - b.score)
+    .slice(0, 5);
+
+  const thisWeek = attempts.filter((a) => new Date(a.created_at).getTime() >= weekAgo);
+  const weekSessions = sessions.filter((s) => new Date(s.ended_at).getTime() >= weekAgo);
+  const activity = [
+    ...new Set([...attempts.map((a) => a.created_at), ...sessions.map((s) => s.ended_at)].map((t) => t.slice(0, 13) + ":00:00Z")),
+  ];
+
+  return {
+    decks,
+    weakTopics,
+    week: {
+      reviewed: thisWeek.length,
+      accuracy: thisWeek.length
+        ? thisWeek.reduce((sum, a) => sum + SCORE[a.result as AttemptResult], 0) / thisWeek.length
+        : null,
+      focusMinutes: Math.round(weekSessions.reduce((sum, s) => sum + s.focus_seconds, 0) / 60),
+      sessions: weekSessions.length,
+    },
+    activity,
+    recentAttempts: attempts.filter((a) => new Date(a.created_at).getTime() >= Date.now() - 2 * 86_400_000).map((a) => a.created_at),
+  };
 }

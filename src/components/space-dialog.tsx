@@ -5,7 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { fileLabel, petSignal } from "@/lib/pet-events";
 import { ChevronsUpDownIcon, FileTextIcon, PlusIcon, XIcon } from "lucide-react";
-import { saveSpace } from "@/app/actions/spaces";
+import { saveSpace } from "@/lib/writes";
 import { queueCards } from "@/lib/auto-cards";
 import { Button } from "@/components/ui/button";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";

@@ -1,16 +1,37 @@
 import { z } from "zod";
 import { admin } from "@/lib/supabase/admin";
 import { createClient, getUserId } from "@/lib/supabase/server";
-import { NothingToMakeError, buildAction } from "@/server/actions";
-import { getSpace, toAction } from "@/server/data";
+import type { Flashcard, Source } from "@/lib/types";
+import { NothingToMakeError, buildAction, type Excerpt } from "@/server/actions";
+import { getSpace, toAction } from "@/lib/data";
 import { ModelsUnavailableError } from "@/server/gemini";
-import { documentTitle } from "@/server/ingest";
+import { documentTitle } from "@/lib/data";
 import { DAILY_QUESTION_LIMIT } from "@/server/rag";
-import { DECK_FOCUS, deckExcerpts, isRepeat, knownCardFronts } from "@/server/study";
+import { deckExcerpts, deckPartFocus, isRepeat, knownCardFronts } from "@/server/study";
 
 const bodySchema = z.union([z.object({ documentId: z.uuid() }), z.object({ spaceId: z.uuid() })]);
 
-// Makes a reviewer (a flashcard deck) from a whole document or subject.
+type FlashcardsPayload = { title: string; cards: Flashcard[]; sources: Source[] };
+
+type Part = { excerpts: Excerpt[]; focus: string };
+
+// Up to three runs of neighbouring excerpts; a short note, too small to split, is read whole by two parts with different angles
+const MAX_PARTS = 3;
+function splitExcerpts(excerpts: Excerpt[]): Part[] {
+  if (excerpts.length < 4) {
+    return [
+      { excerpts, focus: deckPartFocus(2, "facts") },
+      { excerpts, focus: deckPartFocus(2, "processes") },
+    ];
+  }
+  const count = Math.min(MAX_PARTS, Math.floor(excerpts.length / 4));
+  const size = Math.ceil(excerpts.length / count);
+  return Array.from({ length: count }, (_, i) => excerpts.slice(i * size, (i + 1) * size))
+    .filter((p) => p.length)
+    .map((p, _, all) => ({ excerpts: p, focus: deckPartFocus(all.length) }));
+}
+
+// Makes a reviewer (a flashcard deck) from a whole document or subject, streaming its progress.
 export async function POST(req: Request) {
   const body = bodySchema.safeParse(await req.json().catch(() => null));
   if (!body.success) return Response.json({ error: "Pick a document or subject." }, { status: 400 });
@@ -67,47 +88,78 @@ export async function POST(req: Request) {
     known = [...new Set(lists.flat())];
   }
 
-  let payload;
-  try {
-    payload = await buildAction("flashcards", {
-      question: `Make a reviewer for ${name}`,
-      answer: "",
-      excerpts,
-      focus: DECK_FOCUS,
-      avoid: known,
-    });
-    if (known.length) {
-      payload = { ...payload, cards: (payload as { cards: { front: string }[] }).cards.filter((c) => !isRepeat(c.front, known)) } as typeof payload;
-      if ((payload as { cards: unknown[] }).cards.length === 0) throw new NothingToMakeError("Already covered.");
-    }
-  } catch (error) {
-    if (error instanceof NothingToMakeError) {
-      return Response.json(
-        { error: known.length ? "Your reviewers already cover these notes. Add more notes to make another." : "Couldn't find enough to make cards from." },
-        { status: 422 }
-      );
-    }
-    console.error("Deck failed:", error);
-    return Response.json(
-      {
-        error:
-          error instanceof ModelsUnavailableError
-            ? "The AI models are busy or out of free quota for today. Try again later."
-            : "Something went wrong. Try again.",
-      },
-      { status: 503 }
-    );
-  }
-
+  /* The excerpts are split into parts made at the same time, so a deck takes
+     about as long as one short reply. The deck is saved when the first part is
+     back and grows as the rest arrive; each step is streamed as a line of JSON. */
+  const parts = splitExcerpts(excerpts);
   const origin = "spaceId" in body.data ? { space_id: body.data.spaceId } : { document_id: body.data.documentId };
-  const { data: row, error } = await supabase
-    .from("actions")
-    .insert({ kind: "flashcards", payload, ...origin })
-    .select("id, message_id, document_id, space_id, kind, payload, state, created_at")
-    .single();
-  if (error) {
-    console.error("Saving deck failed:", error);
-    return Response.json({ error: "Couldn't save the reviewer. Try again." }, { status: 500 });
-  }
-  return Response.json(toAction(row));
+  const encoder = new TextEncoder();
+
+  const stream = new ReadableStream({
+    async start(controller) {
+      const send = (line: object) => controller.enqueue(encoder.encode(JSON.stringify(line) + "\n"));
+      let deck: { id: string; payload: FlashcardsPayload } | null = null;
+      let failure: unknown = null;
+      // Parts finish in any order; saving waits its turn so two parts never write at once
+      let saving = Promise.resolve();
+
+      await Promise.all(
+        parts.map((part) =>
+          buildAction("flashcards", { question: `Make a reviewer for ${name}`, answer: "", excerpts: part.excerpts, focus: part.focus, avoid: known })
+            .then((raw) => {
+              saving = saving.then(async () => {
+                const made = raw as FlashcardsPayload;
+                const seen = [...known, ...(deck?.payload.cards.map((c) => c.front) ?? [])];
+                const cards = made.cards.filter((c) => !isRepeat(c.front, seen));
+                if (!cards.length) return;
+                if (!deck) {
+                  const payload = { ...made, cards };
+                  const { data: row, error } = await supabase
+                    .from("actions")
+                    .insert({ kind: "flashcards", payload, ...origin })
+                    .select("id, message_id, document_id, space_id, kind, payload, state, created_at")
+                    .single();
+                  if (error) throw error;
+                  deck = { id: row.id, payload };
+                  send({ deck: toAction(row) });
+                } else {
+                  const sources = [...deck.payload.sources, ...made.sources.filter((s) => !deck!.payload.sources.some((d) => d.chunkId === s.chunkId))];
+                  const payload = { ...deck.payload, cards: [...deck.payload.cards, ...cards], sources };
+                  // Users can only change a deck's progress under RLS, so adding cards uses the secret key
+                  const { error } = await admin.from("actions").update({ payload }).eq("id", deck.id).eq("user_id", userId);
+                  if (error) throw error;
+                  deck.payload = payload;
+                  send({ added: cards.length, total: payload.cards.length });
+                }
+              });
+              return saving;
+            })
+            .catch((error) => {
+              if (!(error instanceof NothingToMakeError)) {
+                console.error("Deck part failed:", error);
+                failure ??= error;
+              }
+            })
+        )
+      );
+
+      if (!deck) {
+        send({
+          // Nothing new to make isn't a failure; a deck made on its own after an upload stays quiet about it
+          nothingNew: !failure,
+          error:
+            failure instanceof ModelsUnavailableError
+              ? "The AI models are busy or out of free quota for today. Try again later."
+              : failure
+                ? "Something went wrong. Try again."
+                : known.length
+                  ? "Your reviewers already cover these notes. Add more notes to make another."
+                  : "Couldn't find enough to make cards from.",
+        });
+      } else send({ done: true, total: (deck as { payload: FlashcardsPayload }).payload.cards.length });
+      controller.close();
+    },
+  });
+
+  return new Response(stream, { headers: { "Content-Type": "application/x-ndjson", "Cache-Control": "no-store" } });
 }

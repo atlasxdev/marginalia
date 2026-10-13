@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ChevronRightIcon, FileTextIcon, GraduationCapIcon, LayersIcon, MessageSquareIcon, MoreHorizontalIcon, PencilIcon, PlayIcon, SparklesIcon, Trash2Icon, UploadIcon } from "lucide-react";
-import { deleteSpace, saveSpace } from "@/app/actions/spaces";
+import { deleteSpace, saveSpace } from "@/lib/writes";
 import {
   AlertDialog,
   AlertDialogAction,

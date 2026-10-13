@@ -1,11 +1,10 @@
 import "server-only";
 import { z } from "zod";
 import type { createClient } from "@/lib/supabase/server";
-import type { AttemptResult, CheckResult, Deck, FlashcardsAction, MissKind, PracticeQuestion, Source, StudyOverview, WeakTopic } from "@/lib/types";
+import type { AttemptResult, CheckResult, FlashcardsAction, MissKind, PracticeQuestion, Source } from "@/lib/types";
 import type { Excerpt } from "@/server/actions";
-import { toAction, type ActionRow } from "@/server/data";
 import { generateJson } from "@/server/gemini";
-import { documentTitle } from "@/server/ingest";
+import { documentTitle, toAction, type ActionRow } from "@/lib/data";
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
 
@@ -95,106 +94,22 @@ export function isRepeat(front: string, known: string[]) {
   });
 }
 
-export const DECK_FOCUS =
-  "Make a reviewer: flashcards on the most important ideas across all the excerpts, the ones a student would be tested on. Cover definitions, key facts, causes and effects, steps and comparisons. One idea per card. Make between 8 and 15 cards. Where an idea has several correct parts (a list, steps, causes, features), also give the card a select-all version; most decks have a few.";
-
+/* A deck is made in parts at once. Long notes are split by excerpt; a short
+   note is read whole by two parts, one on facts and one on how things work. */
+const SELECT_ALL = "Where an idea has several correct parts (a list, steps, causes, features), also give the card a select-all version.";
+export function deckPartFocus(parts: number, angle?: "facts" | "processes") {
+  const cards = parts === 1 ? "between 8 and 15" : parts === 2 ? "between 5 and 8" : "between 4 and 6";
+  const cover =
+    angle === "facts"
+      ? "Cover definitions, key terms, names and figures."
+      : angle === "processes"
+        ? "Cover steps and processes, causes and effects, and comparisons."
+        : "Cover definitions, key facts, causes and effects, steps and comparisons.";
+  return `Make part of a reviewer: flashcards on the most important ideas in these excerpts, the ones a student would be tested on. ${cover} One idea per card. Make ${cards} cards. ${SELECT_ALL}`;
+}
 // ---------------------------------------------------------------------------
 // The study overview: decks, weak topics and this week's numbers
 // ---------------------------------------------------------------------------
-
-type DeckRow = ActionRow & {
-  document: { filename: string } | null;
-  space: { name: string } | null;
-  message: { conversation_id: string; conversation: { title: string; space_id: string | null } | null } | null;
-};
-
-const SCORE: Record<AttemptResult, number> = { right: 1, almost: 0.5, wrong: 0 };
-const WEAK_BELOW = 0.7;
-const RECENT_PER_TOPIC = 10;
-
-function toDeck(row: DeckRow): Deck {
-  const action = toAction(row) as FlashcardsAction;
-  const origin: Deck["origin"] = row.document
-    ? { kind: "document", label: documentTitle(row.document.filename), href: `/library` }
-    : row.space
-      ? { kind: "subject", label: row.space.name, href: `/spaces/${row.space_id}` }
-      : {
-          kind: "chat",
-          label: row.message?.conversation?.title ?? "A chat",
-          href: row.message ? `/chat/${row.message.conversation_id}` : null,
-        };
-  return { ...action, origin, subjectId: row.space_id ?? row.message?.conversation?.space_id ?? null };
-}
-
-export async function getStudyOverview(supabase: Supabase): Promise<StudyOverview> {
-  const since = new Date(Date.now() - 60 * 86_400_000).toISOString();
-  const weekAgo = Date.now() - 7 * 86_400_000;
-
-  const [decksResult, attemptsResult, sessionsResult] = await Promise.all([
-    supabase
-      .from("actions")
-      .select(
-        "id, message_id, document_id, space_id, kind, payload, state, created_at, document:documents(filename), space:spaces(name), message:messages(conversation_id, conversation:conversations(title, space_id))"
-      )
-      .eq("kind", "flashcards")
-      .order("created_at", { ascending: false }),
-    supabase
-      .from("attempts")
-      .select("action_id, card_index, topic, result, created_at")
-      .gte("created_at", since)
-      .order("created_at", { ascending: false })
-      .limit(3000),
-    supabase.from("study_sessions").select("focus_seconds, ended_at").gte("ended_at", since),
-  ]);
-  // Before the study migration has run there are no decks of this shape yet
-  if (decksResult.error) {
-    return { decks: [], weakTopics: [], week: { reviewed: 0, accuracy: null, focusMinutes: 0, sessions: 0 }, activity: [], recentAttempts: [] };
-  }
-  const decks = (decksResult.data as unknown as DeckRow[]).map(toDeck);
-  const attempts = attemptsResult.data ?? [];
-  const sessions = sessionsResult.data ?? [];
-  const deckIds = new Set(decks.map((d) => d.id));
-
-  // Weak topics: the latest attempts for each concept, scored
-  const byTopic = new Map<string, typeof attempts>();
-  for (const a of attempts) {
-    const key = a.topic.trim().toLowerCase();
-    if (!key || !deckIds.has(a.action_id)) continue;
-    const list = byTopic.get(key) ?? [];
-    if (list.length < RECENT_PER_TOPIC) byTopic.set(key, [...list, a]);
-  }
-  const weakTopics: WeakTopic[] = [...byTopic.values()]
-    .filter((list) => list.length >= 3)
-    .map((list) => {
-      const score = list.reduce((sum, a) => sum + SCORE[a.result as AttemptResult], 0) / list.length;
-      const cards = [...new Map(list.map((a) => [`${a.action_id}:${a.card_index}`, { deckId: a.action_id, index: a.card_index }])).values()];
-      return { topic: list[0].topic, score, attempts: list.length, cards };
-    })
-    .filter((t) => t.score < WEAK_BELOW)
-    .sort((a, b) => a.score - b.score)
-    .slice(0, 5);
-
-  const thisWeek = attempts.filter((a) => new Date(a.created_at).getTime() >= weekAgo);
-  const weekSessions = sessions.filter((s) => new Date(s.ended_at).getTime() >= weekAgo);
-  const activity = [
-    ...new Set([...attempts.map((a) => a.created_at), ...sessions.map((s) => s.ended_at)].map((t) => t.slice(0, 13) + ":00:00Z")),
-  ];
-
-  return {
-    decks,
-    weakTopics,
-    week: {
-      reviewed: thisWeek.length,
-      accuracy: thisWeek.length
-        ? thisWeek.reduce((sum, a) => sum + SCORE[a.result as AttemptResult], 0) / thisWeek.length
-        : null,
-      focusMinutes: Math.round(weekSessions.reduce((sum, s) => sum + s.focus_seconds, 0) / 60),
-      sessions: weekSessions.length,
-    },
-    activity,
-    recentAttempts: attempts.filter((a) => new Date(a.created_at).getTime() >= Date.now() - 2 * 86_400_000).map((a) => a.created_at),
-  };
-}
 
 // ---------------------------------------------------------------------------
 // Checking typed answers against the notes

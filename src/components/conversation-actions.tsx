@@ -3,7 +3,7 @@
 import { useState, useSyncExternalStore } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { deleteConversation, pinConversation, renameConversation, reorderConversations } from "@/app/actions/chat";
+import { deleteConversation, pinConversation, renameConversation, reorderConversations } from "@/lib/writes";
 import {
   AlertDialog,
   AlertDialogAction,

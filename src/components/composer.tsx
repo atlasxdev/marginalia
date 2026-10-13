@@ -4,7 +4,7 @@ import { useActionState, useEffect, useId, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowUpIcon } from "lucide-react";
-import { askQuestion, type AskState } from "@/app/actions/chat";
+import { askQuestion, type AskState } from "@/lib/writes";
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupTextarea } from "@/components/ui/input-group";
 import { Label } from "@/components/ui/label";
 import { MAX_QUESTION_CHARS } from "@/lib/schemas";

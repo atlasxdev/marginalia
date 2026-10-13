@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { isDue, rate as schedule } from "./leitner";
-import type { AttemptResult, CardProgress, Flashcard, FlashcardsAction, Source } from "./types";
+import type { CardProgress, Flashcard, FlashcardsAction, Source } from "./types";
+import { saveActionState, saveAttempts, type AttemptInput } from "./writes";
 
 /** One card in a study session, which can mix cards from several decks. */
 export type StudyItem = {
@@ -15,14 +16,8 @@ export type StudyItem = {
   source: string | null;
 };
 
-export type AttemptInput = { deckId: string; index: number; result: AttemptResult; mode: "cards" | "quiz" };
 
 export const sourceName = (source: Source) => [source.documentTitle, source.headingPath].filter(Boolean).join(" › ");
-
-async function send(url: string, body: unknown, method = "POST") {
-  const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-  if (!res.ok) throw new Error((await res.json().catch(() => null))?.error ?? "Couldn't save your progress.");
-}
 
 /* Keeps card progress for a set of decks while you study. Each rating and each
    answer is saved right away. */
@@ -53,11 +48,13 @@ export function useStudy(decks: FlashcardsAction[], fallbackSources: Source[] = 
     const progress = progressOf(deck);
     const cards = { ...progress, [item.index]: schedule(progress[item.index], knew) };
     setOverrides((o) => ({ ...o, [deck.id]: cards }));
-    send(`/api/actions/${deck.id}`, { cards }, "PATCH").catch((error: Error) => toast.error(error.message));
+    saveActionState(deck.id, { cards }).catch((error: Error) => toast.error(error.message));
   };
 
-  const saveAttempt = (attempt: AttemptInput) => {
-    send("/api/study/attempts", { attempts: [attempt] }).catch(() => undefined);
+  // The topic comes from the card, for finding weak topics
+  const saveAttempt = (attempt: Omit<AttemptInput, "topic">) => {
+    const card = decks.find((d) => d.id === attempt.deckId)?.payload.cards[attempt.index];
+    if (card) saveAttempts([{ ...attempt, topic: card.topic }]).catch(() => undefined);
   };
 
   return { items, dueItems, rate, saveAttempt, progressOf };

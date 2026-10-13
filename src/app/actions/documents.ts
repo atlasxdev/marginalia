@@ -144,20 +144,6 @@ export async function retryDocument(id: string): Promise<ActionState> {
   return { ok: true };
 }
 
-export async function deleteDocument(id: string): Promise<ActionState> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("documents")
-    .delete()
-    .eq("id", z.uuid().parse(id))
-    .select("storage_path")
-    .maybeSingle();
-  if (error || !data) return { ok: false, message: "Couldn't delete this document. Try again." };
-  // Chunks go with the row (on delete cascade); the file, and a note's JSON, are removed from Storage
-  await supabase.storage.from("documents").remove([data.storage_path, noteJsonPath(data.storage_path)]);
-  return { ok: true };
-}
-
 // A PNG of one handwriting block, base64, at most about 1.5 MB
 const inkSchema = z.string().min(1).max(2_000_000).regex(/^[A-Za-z0-9+/=]+$/);
 

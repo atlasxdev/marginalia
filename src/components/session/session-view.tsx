@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CoffeeIcon, HourglassIcon, InfinityIcon, MessageCircleQuestionIcon, PauseIcon, PlayIcon, TimerIcon, XIcon } from "lucide-react";
-import { addPetXp } from "@/app/actions/pet";
+import { addPetXp, saveStudySession } from "@/lib/writes";
 import { petQuery, spacesQuery, studyQuery } from "@/lib/queries";
 import { deckInSubject, topicsIn } from "@/lib/subjects";
 import type { AttemptResult, Deck, FocusMethod, MissKind, Pet, Space, StudyOverview } from "@/lib/types";
@@ -672,11 +672,7 @@ function Summary({
     const work: Promise<unknown>[] = [];
     if (focusedSeconds >= 60 && startedAt) {
       work.push(
-        fetch("/api/study/sessions", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ method, focusSeconds: Math.min(focusedSeconds, 14_400), startedAt, spaceId: space?.id }),
-        })
+        saveStudySession({ method, focusSeconds: focusedSeconds, startedAt, spaceId: space?.id })
       );
     }
     if (xp > 0 && queryClient.getQueryData(["pet"])) {

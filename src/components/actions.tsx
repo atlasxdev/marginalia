@@ -27,6 +27,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Spinner } from "@/components/ui/spinner";
+import { deleteAction, saveActionState } from "@/lib/writes";
 import { useSources } from "./sources";
 import { StudyLink, deckStatus } from "./deck";
 
@@ -137,7 +138,7 @@ function ChecklistCard({ conversationId, action, sources }: CardProps<"checklist
 
   const save = useMutation({
     mutationFn: (next: number[]) =>
-      send(`/api/actions/${action.id}`, { method: "PATCH", body: JSON.stringify({ done: next }) }),
+      saveActionState(action.id, { done: next }),
     onSuccess: (_, next) =>
       updateActions((actions) => actions.map((a) => (a.id === action.id ? ({ ...a, state: { done: next } } as Action) : a))),
     onError: (error) => toast.error(error.message),
@@ -230,7 +231,7 @@ function ActionShell({
 }) {
   const updateActions = useUpdateActions(conversationId, action.messageId);
   const remove = useMutation({
-    mutationFn: () => send(`/api/actions/${action.id}`, { method: "DELETE" }),
+    mutationFn: () => deleteAction(action.id),
     onSuccess: () => updateActions((actions) => actions.filter((a) => a.id !== action.id)),
     onError: (error) => toast.error(error.message),
   });

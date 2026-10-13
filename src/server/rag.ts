@@ -2,7 +2,7 @@ import "server-only";
 import type { Content } from "@google/genai";
 import type { createClient } from "@/lib/supabase/server";
 import type { Message, Source, StudyMethod } from "@/lib/types";
-import { documentTitle } from "@/server/ingest";
+import { documentTitle } from "@/lib/data";
 import { embed, generateText } from "@/server/gemini";
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;

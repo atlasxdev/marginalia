@@ -2,7 +2,7 @@ import { z } from "zod";
 import { admin } from "@/lib/supabase/admin";
 import { createClient, getUserId } from "@/lib/supabase/server";
 import type { FlashcardsAction } from "@/lib/types";
-import { toAction, type ActionRow } from "@/server/data";
+import { toAction, type ActionRow } from "@/lib/data";
 import { ModelsUnavailableError } from "@/server/gemini";
 import { DAILY_QUESTION_LIMIT } from "@/server/rag";
 import { checkAnswers, type CheckItem } from "@/server/study";

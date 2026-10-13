@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ChevronDownIcon, GraduationCapIcon } from "lucide-react";
-import { setStudyMethod } from "@/app/actions/study";
+import { setStudyMethod } from "@/lib/writes";
 import { meQuery, spaceQuery } from "@/lib/queries";
 import { DEFAULT_STUDY_METHOD, STUDY_METHODS, isStudyMethod } from "@/lib/study-methods";
 import type { Space, StudyMethod } from "@/lib/types";

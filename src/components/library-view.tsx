@@ -16,8 +16,9 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { ArrowDownIcon, ArrowUpIcon, FilePlusIcon, FileTextIcon, LayersIcon, MoreHorizontalIcon, PencilIcon, RotateCcwIcon, SearchIcon, SparklesIcon, Trash2Icon } from "lucide-react";
-import { deleteDocument, retryDocument } from "@/app/actions/documents";
-import { saveSpace } from "@/app/actions/spaces";
+import { retryDocument } from "@/app/actions/documents";
+import { deleteDocument } from "@/lib/writes";
+import { saveSpace } from "@/lib/writes";
 import {
   AlertDialog,
   AlertDialogAction,

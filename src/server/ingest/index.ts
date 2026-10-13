@@ -1,5 +1,6 @@
 import "server-only";
 import { MAX_FILE_BYTES } from "@/lib/schemas";
+import { documentTitle } from "@/lib/data";
 import { admin } from "@/lib/supabase/admin";
 import { embed, generateText } from "@/server/gemini";
 import { chunkMarkdown } from "./chunk";
@@ -86,7 +87,6 @@ export async function ingestDocument(documentId: string) {
   }
 }
 
-export const documentTitle = (filename: string) => filename.replace(/\.[^.]+$/, "");
 
 const SUGGESTION_SOURCE_CHARS = 8000;
 

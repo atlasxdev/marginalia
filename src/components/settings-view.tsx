@@ -5,7 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTheme } from "next-themes";
 import { HourglassIcon, InfinityIcon, LogOutIcon, MonitorIcon, MoonIcon, SunIcon, TimerIcon } from "lucide-react";
 import { changePassword, signOut, updateProfile } from "@/app/actions/auth";
-import { setDailyGoal } from "@/app/actions/study";
+import { setDailyGoal } from "@/lib/writes";
 import { DAILY_GOALS, useDailyGoal } from "@/lib/daily-goal";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";

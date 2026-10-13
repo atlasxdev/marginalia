@@ -3,6 +3,7 @@
 import { useEffect, useSyncExternalStore } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { makeDeck, NothingNewError } from "./make-deck";
 import { documentsQuery } from "./queries";
 
 /*
@@ -86,16 +87,13 @@ export function AutoCards() {
       }
       if (doc.status !== "ready" || inFlight.has(id)) continue;
       inFlight.add(id);
-      fetch("/api/decks", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ documentId: id }) })
-        .then(async (res) => {
-          const body = await res.json().catch(() => null);
-          if (res.ok) toast.success(`Flashcards ready from ${doc.filename}`);
-          // 422: the subject's cards already cover this file
-          else if (res.status !== 422) {
-            toast.error(body?.error ?? `Couldn't make flashcards from ${doc.filename}.`);
-          }
+      // The deck shows up with its first cards and grows as the rest are made
+      makeDeck({ documentId: id }, () => void queryClient.invalidateQueries({ queryKey: ["study"] }))
+        .then(() => toast.success(`Flashcards ready from ${doc.filename}`))
+        .catch((error) => {
+          // The subject's cards already cover this file
+          if (!(error instanceof NothingNewError)) toast.error((error as Error).message || `Couldn't make flashcards from ${doc.filename}.`);
         })
-        .catch(() => toast.error(`Couldn't make flashcards from ${doc.filename}.`))
         .finally(() => {
           inFlight.delete(id);
           remove(id);

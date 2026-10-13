@@ -9,6 +9,8 @@ import { isDue } from "@/lib/leitner";
 import { documentsQuery, spacesQuery } from "@/lib/queries";
 import { sessionHref, type SessionScope } from "@/lib/subjects";
 import type { CardProgress, Deck } from "@/lib/types";
+import { makeDeck } from "@/lib/make-deck";
+import { deleteAction } from "@/lib/writes";
 import { useHydrated } from "@/lib/use-hydrated";
 import { Button } from "@/components/ui/button";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
@@ -47,8 +49,7 @@ export function DeckList({ decks }: { decks: Deck[] }) {
   const queryClient = useQueryClient();
   const remove = useMutation({
     mutationFn: async (id: string) => {
-      const res = await fetch(`/api/actions/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Couldn't remove it. Try again.");
+      await deleteAction(id);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["study"] });
@@ -108,10 +109,7 @@ export function DeckList({ decks }: { decks: Deck[] }) {
   );
 }
 
-async function makeDeck(body: { documentId: string } | { spaceId: string }) {
-  const res = await fetch("/api/decks", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-  if (!res.ok) throw new Error((await res.json().catch(() => null))?.error ?? "Couldn't make the reviewer. Try again.");
-}
+const cardCount = (n: number) => `${n} card${n === 1 ? "" : "s"}`;
 
 /** Makes a reviewer from a document or subject, with a toast while it works. */
 export function useMakeDeck() {
@@ -119,15 +117,22 @@ export function useMakeDeck() {
   return useMutation({
     mutationFn: async (input: { body: { documentId: string } | { spaceId: string }; name: string }) => {
       const id = toast.loading(`Making a reviewer from ${input.name}…`);
+      let total = 0;
       try {
-        await makeDeck(input.body);
-        toast.success("Your reviewer is ready.", { id });
+        await makeDeck(input.body, (e) => {
+          if (e.deck) total = (e.deck as { payload: { cards: unknown[] } }).payload.cards.length;
+          if (e.total) total = e.total;
+          if (e.done) return;
+          toast.loading(`${cardCount(total)} so far. Adding more…`, { id });
+          void queryClient.invalidateQueries({ queryKey: ["study"] });
+        });
+        toast.success(`Your reviewer is ready, with ${cardCount(total)}.`, { id });
       } catch (error) {
         toast.error((error as Error).message, { id });
         throw error;
       }
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["study"] }),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ["study"] }),
   });
 }
 

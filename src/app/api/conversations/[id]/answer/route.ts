@@ -2,7 +2,7 @@ import { admin } from "@/lib/supabase/admin";
 import { createClient, getUserId } from "@/lib/supabase/server";
 import type { Source } from "@/lib/types";
 import { DEFAULT_STUDY_METHOD, isStudyMethod } from "@/lib/study-methods";
-import { getConversation, getSpace } from "@/server/data";
+import { getConversation, getSpace } from "@/lib/data";
 import { ModelsUnavailableError, streamChat } from "@/server/gemini";
 import {
   DAILY_QUESTION_LIMIT,
