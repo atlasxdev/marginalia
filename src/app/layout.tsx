@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Bodoni_Moda, Caveat, Inter, JetBrains_Mono, Pixelify_Sans } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
+import { MusicProvider } from "@/lib/music";
 import { SITE_URL } from "@/lib/site";
 import { cn } from "@/lib/utils";
 import "./globals.css";
@@ -31,7 +32,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       {/* Extensions like ColorZilla add attributes to <body> before React hydrates */}
       <body className="min-h-full" suppressHydrationWarning>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-          {children}
+          <MusicProvider>{children}</MusicProvider>
           <Toaster position="top-center" />
         </ThemeProvider>
       </body>

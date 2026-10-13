@@ -45,6 +45,7 @@ import { SearchChats } from "./search-chats";
 import { PetWidget } from "./pet/pet-widget";
 import { SpaceDialog } from "./space-dialog";
 import { AccountMenu } from "./account-menu";
+import { NowPlaying } from "./music/music-button";
 import { AutoCards } from "@/lib/auto-cards";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -233,6 +234,7 @@ function AppSidebar() {
       </SidebarContent>
 
       <SidebarFooter className="border-t border-glass-divider p-2">
+        <NowPlaying />
         <PetWidget onOpen={close} />
         <SidebarMenu>
           <SidebarMenuItem>

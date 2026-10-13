@@ -5,7 +5,26 @@
  */
 import type { Species } from "./pet-art";
 
-export type PetSound = "hi" | "pet" | "found" | "shrug" | "notes" | "hatch";
+export type PetSound = "hi" | "pet" | "found" | "shrug" | "notes" | "hatch" | "flip" | "done";
+
+const SOUND_KEY = "marginalia:sounds";
+
+/** Whether sound effects are on (they are unless turned off). */
+export function soundsOn() {
+  try {
+    return localStorage.getItem(SOUND_KEY) !== "off";
+  } catch {
+    return true;
+  }
+}
+
+export function setSoundsOn(on: boolean) {
+  try {
+    localStorage.setItem(SOUND_KEY, on ? "on" : "off");
+  } catch {
+    // Storage can be blocked; the choice lasts for this page
+  }
+}
 
 const PITCH: Record<Species, number> = { bird: 1.5, cat: 1.15, bookworm: 0.95, blob: 0.8 };
 
@@ -36,7 +55,7 @@ function note(a: AudioContext, at: number, freq: number, length: number, { to, t
 }
 
 export function playPetSound(sound: PetSound, species: Species) {
-  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  if (!soundsOn()) return;
   const a = audio();
   if (!a) return;
   const p = PITCH[species];
@@ -58,6 +77,12 @@ export function playPetSound(sound: PetSound, species: Species) {
     case "notes": // "ooh!", new notes to study
       note(a, t, 440 * p, 0.08, { type: "triangle", gain: 0.06 });
       note(a, t + 0.09, 660 * p, 0.16, { to: 720 * p, type: "triangle", gain: 0.06 });
+      break;
+    case "flip": // a soft paper tick, for turning a card
+      note(a, t, 900 * p, 0.035, { to: 600 * p, type: "triangle", gain: 0.035 });
+      break;
+    case "done": // a little victory jingle, for finishing a session
+      [523, 659, 784, 1047, 784, 1047].forEach((f, i) => note(a, t + i * 0.09, f * p, i >= 4 ? 0.2 : 0.08, { type: i % 2 ? "triangle" : "square", gain: 0.05 }));
       break;
     case "hatch": // crack, then a fanfare
       note(a, t, 1400, 0.03, { type: "sawtooth", gain: 0.04 });

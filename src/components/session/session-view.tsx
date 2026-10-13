@@ -10,6 +10,7 @@ import { petQuery, spacesQuery, studyQuery } from "@/lib/queries";
 import { deckInSubject, topicsIn } from "@/lib/subjects";
 import type { AttemptResult, Deck, FocusMethod, MissKind, Pet, Space, StudyOverview } from "@/lib/types";
 import { useDailyGoal } from "@/lib/daily-goal";
+import { playPetSound } from "@/lib/pet-sounds";
 import { readTimer, saveTimer } from "@/lib/timer-pref";
 import { useHydrated } from "@/lib/use-hydrated";
 import { useStudy, type StudyItem } from "@/lib/use-study";
@@ -21,6 +22,8 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { PetSprite } from "../pet/pet-sprite";
 import type { Face } from "../pet/pet-sprite";
 import { AskSheet } from "./ask-sheet";
+import { useMusic } from "@/lib/music";
+import { MusicButton } from "../music/music-button";
 import { buildPlan, itemKey, topicPlan, type Step } from "./plan";
 import { StepView } from "./step-view";
 
@@ -109,11 +112,16 @@ function Session({ overview, space, scope }: { overview: StudyOverview; space?: 
   const [block, setBlock] = useState(1);
   const [reaction, setReaction] = useState<Reaction | null>(null);
   // "Ask" opens on the card you're on, or on one you just missed, with a first question already asked
+  // The app's music plays on through the session; it can pause for breaks and at the end
+  const music = useMusic();
   const [asking, setAsking] = useState<{ step: Step; question?: string } | null>(null);
   const pet = useQuery(petQuery).data;
   // Flip cards answer and move on in one tap, before the results state updates
   const lastAnswer = useRef<{ key: string; result: AttemptResult; miss?: MissKind; typed?: string } | null>(null);
-  const react = (face: Reaction["face"], line: string, explain?: Step) => setReaction((r) => ({ face, line, explain, seq: (r?.seq ?? 0) + 1 }));
+  const react = (face: Reaction["face"], line: string, explain?: Step) => {
+    setReaction((r) => ({ face, line, explain, seq: (r?.seq ?? 0) + 1 }));
+    if (pet) playPetSound(face === "happy" ? "pet" : face === "flat" ? "shrug" : "hi", pet.species);
+  };
 
   // Timer: focus time is counted from timestamps, so a backgrounded tab stays accurate
   const [now, setNow] = useState(0);
@@ -153,7 +161,8 @@ function Session({ overview, space, scope }: { overview: StudyOverview; space?: 
   const finish = useCallback(() => {
     closeSegment();
     setPhase("summary");
-  }, [closeSegment]);
+    if (music.stopOnBreak) music.pause();
+  }, [closeSegment, music]);
 
   const takeBreak = useCallback(() => {
     closeSegment();
@@ -161,7 +170,9 @@ function Session({ overview, space, scope }: { overview: StudyOverview; space?: 
     setQueue((q) => [...q.filter((s) => s.reason === "again"), ...q.filter((s) => s.reason !== "again")]);
     setBreakEndsAt(Date.now() + restSeconds * 1000);
     setPhase("break");
-  }, [closeSegment, restSeconds]);
+    if (music.stopOnBreak) music.pause();
+    if (pet) playPetSound("notes", pet.species);
+  }, [closeSegment, restSeconds, pet, music]);
 
   // The block ends when its time is up
   useEffect(() => {
@@ -287,6 +298,7 @@ function Session({ overview, space, scope }: { overview: StudyOverview; space?: 
           </div>
           <div className="flex items-center justify-end gap-2">
             <TimerRing fraction={timeFraction} label={timeLeft !== null ? clock(timeLeft) : clock(elapsed)} muted={paused} />
+            <MusicButton />
             {phase === "focus" && (
               <Button variant="ghost" size="icon" onClick={paused ? resume : pause} aria-label={paused ? "Resume" : "Pause"} className="text-muted-foreground">
                 {paused ? <PlayIcon /> : <PauseIcon />}
@@ -334,7 +346,14 @@ function Session({ overview, space, scope }: { overview: StudyOverview; space?: 
               {/* Your buddy perches on top of the card and reacts to each answer */}
               <div className="relative pt-[54px]">
                 <Perch pet={pet} reaction={reaction} onExplain={(step) => setAsking({ step, question: "Explain why this is the answer, simply." })} />
-                <StepView key={`${current.key}-${stepSeq}`} step={current} spaceId={space?.id} onAnswer={(r, d) => answer(current, r, d)} onNext={next} />
+                <StepView
+                  key={`${current.key}-${stepSeq}`}
+                  step={current}
+                  spaceId={space?.id}
+                  onAnswer={(r, d) => answer(current, r, d)}
+                  onNext={next}
+                  onFlip={() => pet && playPetSound("flip", pet.species)}
+                />
               </div>
               <div className="mt-8 flex flex-wrap justify-center gap-3">
                 <Button variant="glass" onClick={() => current && setAsking({ step: current })}>
@@ -648,6 +667,7 @@ function Summary({
   useEffect(() => {
     if (saved.current) return;
     saved.current = true;
+    if (pet && results.length) playPetSound("done", pet.species);
     const work: Promise<unknown>[] = [];
     if (focusedSeconds >= 60 && startedAt) {
       work.push(
@@ -663,6 +683,8 @@ function Summary({
       for (let left = xp; left > 0; left -= 20) work.push(addPetXp(Math.min(left, 20)));
     }
     void Promise.all(work).finally(onSaved);
+    // Once, when the summary opens
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusedSeconds, method, startedAt, space?.id, xp, queryClient, onSaved]);
 
   const good = accuracy !== null && accuracy >= 0.7;

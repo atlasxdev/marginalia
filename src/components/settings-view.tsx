@@ -19,6 +19,7 @@ import { readTimer, saveTimer } from "@/lib/timer-pref";
 import type { ActionState, FocusMethod } from "@/lib/types";
 import { useHydrated } from "@/lib/use-hydrated";
 import { MethodPicker } from "./method-picker";
+import { MusicLibrary } from "./music/music-library";
 import { PetBuilder } from "./pet/pet-builder";
 import { PetSprite } from "./pet/pet-sprite";
 
@@ -48,6 +49,13 @@ export function SettingsView() {
               </Section>
               <Section title="Studying" description="Defaults for sessions and new subjects.">
                 <StudyingCard />
+              </Section>
+              <Section id="music" title="Music" description="Your own sounds to study to. They keep playing as you move around.">
+                <Card className={cardClass}>
+                  <CardContent className="p-6">
+                    <MusicLibrary />
+                  </CardContent>
+                </Card>
               </Section>
               <Section title="Appearance" description="Light, dark, or match your device.">
                 <AppearanceCard />
@@ -82,9 +90,9 @@ export function SettingsView() {
 }
 
 /** A settings section: its title on the left on wide screens, above on narrow ones. */
-function Section({ title, description, children }: { title: string; description: string; children: React.ReactNode }) {
+function Section({ id, title, description, children }: { id?: string; title: string; description: string; children: React.ReactNode }) {
   return (
-    <section aria-label={title} className="grid gap-4 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-10">
+    <section id={id} aria-label={title} className="grid scroll-mt-10 gap-4 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-10">
       <div className="px-1 lg:pt-5">
         <h2 className="font-semibold">{title}</h2>
         <p className="mt-1 text-sm text-muted-foreground">{description}</p>

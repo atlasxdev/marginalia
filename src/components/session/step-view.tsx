@@ -34,13 +34,15 @@ type Props = {
   onNext: () => void;
   /** The subject, for explanations from its notes. */
   spaceId?: string;
+  /** A card was turned over. */
+  onFlip?: () => void;
 };
 
 /** One step of a session: a flip card, a multiple-choice question, or a typed answer. */
-export function StepView({ step, onAnswer, onNext, spaceId }: Props) {
+export function StepView({ step, onAnswer, onNext, spaceId, onFlip }: Props) {
   return (
     <div className="grid gap-5 animate-in fade-in slide-in-from-bottom-2 duration-200 motion-reduce:animate-none">
-      {step.mode === "cards" && <FlipStep step={step} onAnswer={onAnswer} onNext={onNext} />}
+      {step.mode === "cards" && <FlipStep step={step} onAnswer={onAnswer} onNext={onNext} onFlip={onFlip} />}
       {step.mode === "quiz" && <QuizStep step={step} onAnswer={onAnswer} onNext={onNext} />}
       {step.mode === "recall" && <RecallStep step={step} onAnswer={onAnswer} onNext={onNext} />}
       {step.mode === "teach" && <TeachStep step={step} spaceId={spaceId} onAnswer={onAnswer} onNext={onNext} />}
@@ -65,8 +67,12 @@ const typing = (e: KeyboardEvent) => e.target instanceof HTMLTextAreaElement || 
 
 /* ---------- flip ---------- */
 
-function FlipStep({ step, onAnswer, onNext }: Props) {
-  const [flipped, setFlipped] = useState(false);
+function FlipStep({ step, onAnswer, onNext, onFlip }: Props) {
+  const [flipped, setFlippedState] = useState(false);
+  const setFlipped = (next: boolean | ((f: boolean) => boolean)) => {
+    onFlip?.();
+    setFlippedState(next);
+  };
   const { card, source } = step.item;
   const rate = (knew: boolean) => {
     onAnswer(knew ? "right" : "wrong");
