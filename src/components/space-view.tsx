@@ -28,6 +28,7 @@ import type { DocumentItem, Space } from "@/lib/types";
 import { useHydrated } from "@/lib/use-hydrated";
 import { Composer } from "./composer";
 import { DeckList, useMakeDeck } from "./deck";
+import { MethodPicker } from "./method-picker";
 import { KindIcon, SpaceDialog } from "./space-dialog";
 
 const groupClass = "glass rounded-xl border border-glass-border bg-glass";
@@ -145,7 +146,10 @@ function SpaceDetail({ space }: { space: Space }) {
           : `Answers and reviewers come only from ${inSpace.length === 1 ? "this file" : `these ${inSpace.length} files`}.`}
       </p>
 
-      <div className="mt-8">
+      <div className="mt-4 flex justify-end">
+        <MethodPicker spaceId={space.id} />
+      </div>
+      <div className="mt-3">
         <Composer spaceId={space.id} placeholder={`Ask ${space.name}`} busy={space.documentIds.length === 0} className="max-w-none" />
       </div>
 

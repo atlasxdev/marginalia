@@ -9,6 +9,7 @@ import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { meQuery } from "@/lib/queries";
+import { MethodPicker } from "./method-picker";
 import type { ActionState } from "@/lib/types";
 import { useHydrated } from "@/lib/use-hydrated";
 
@@ -24,12 +25,23 @@ export function SettingsView() {
     <div className="h-full overflow-y-auto">
       <div className="mx-auto max-w-3xl px-5 pt-14 pb-24 sm:px-8 lg:px-12">
         <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
-        <p className="mt-2 text-muted-foreground">Your name and password.</p>
+        <p className="mt-2 text-muted-foreground">Your name, how your buddy teaches, and your password.</p>
 
         <div className="mt-10 grid gap-8">
           {user ? (
             <>
               <ProfileCard key={user.id} name={(user.user_metadata?.name as string | undefined) ?? ""} email={user.email ?? ""} />
+              <Card className={cardClass}>
+                <CardHeader className="p-6 pb-0">
+                  <CardTitle className="text-lg">Studying</CardTitle>
+                  <CardDescription>
+                    How your buddy teaches in chats outside a subject. Each subject can have its own, set on its page.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="p-6">
+                  <MethodPicker />
+                </CardContent>
+              </Card>
               <PasswordCard />
             </>
           ) : (

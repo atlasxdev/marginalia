@@ -1,6 +1,7 @@
 import { admin } from "@/lib/supabase/admin";
 import { createClient, getUserId } from "@/lib/supabase/server";
 import type { Source } from "@/lib/types";
+import { DEFAULT_STUDY_METHOD, isStudyMethod } from "@/lib/study-methods";
 import { getConversation, getSpace } from "@/server/data";
 import { ModelsUnavailableError, streamChat } from "@/server/gemini";
 import {
@@ -46,6 +47,11 @@ export async function POST(_req: Request, ctx: RouteContext<"/api/conversations/
     return Response.json({ error: "This subject has no files yet. Add some on its page." }, { status: 409 });
   }
 
+  // How to teach: the subject's method, or your default for chats outside a subject
+  const { data: auth } = await supabase.auth.getClaims();
+  const preferred = auth?.claims.user_metadata?.study_method;
+  const method = space?.studyMethod ?? (isStudyMethod(preferred) ? preferred : DEFAULT_STUDY_METHOD);
+
   const history = conversation.messages.slice(0, -1);
   let sources: Source[];
   let contents;
@@ -53,7 +59,7 @@ export async function POST(_req: Request, ctx: RouteContext<"/api/conversations/
     const query = await standaloneQuestion(last.content, history);
     const rows = await retrieve(supabase, query, space?.documentIds);
     sources = toSources(rows);
-    contents = rows.length ? buildContents(last.content, history, rows) : null;
+    contents = rows.length ? buildContents(last.content, history, rows, method) : null;
   } catch (error) {
     console.error("Retrieval failed:", error);
     return Response.json({ error: "Couldn't search your documents. Try again." }, { status: 502 });
@@ -80,7 +86,7 @@ export async function POST(_req: Request, ctx: RouteContext<"/api/conversations/
 
   let modelStream;
   try {
-    modelStream = await streamChat(systemPrompt(space?.instructions), contents);
+    modelStream = await streamChat(systemPrompt(space?.instructions, method), contents);
   } catch (error) {
     console.error("Generation failed:", error);
     const message =

@@ -9,6 +9,7 @@ import { useHydrated } from "@/lib/use-hydrated";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Composer } from "./composer";
+import { MethodPicker } from "./method-picker";
 import { SpaceDialog } from "./space-dialog";
 
 const ALL = "all";
@@ -53,24 +54,24 @@ export function NewQuestion() {
   return (
     <div className="flex h-full flex-col justify-center px-5 sm:px-8 lg:px-12 py-14">
       <div className="mx-auto w-full max-w-4xl text-center">
-        <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">Ask your documents</h1>
+        <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">What are you studying?</h1>
         <p className="mt-4 text-muted-foreground">
           {isPending
             ? "Checking your library…"
             : space
               ? spaceReady.length > 0
-                ? `Searching ${spaceReady.length} ${spaceReady.length === 1 ? "document" : "documents"} in ${space.name}.`
-                : `${space.name} has no documents ready yet.`
+                ? `Answering from ${spaceReady.length} ${spaceReady.length === 1 ? "file" : "files"} in ${space.name}.`
+                : `${space.name} has no files ready yet.`
               : ready.length > 0
-                ? `${ready.length} ${ready.length === 1 ? "document" : "documents"} ready. Every answer shows its source.`
+                ? `Ask about your ${ready.length} ${ready.length === 1 ? "file" : "files"}. Every answer shows where it came from.`
                 : null}
         </p>
 
         {!isPending && ready.length === 0 ? (
           <div className="mt-10">
-            <p className="text-muted-foreground">Upload a Markdown, PDF, or Word file to get started.</p>
+            <p className="text-muted-foreground">Upload your lecture notes, readings or reviewers (PDF, Word or Markdown) to get started.</p>
             <Button asChild size="lg" className="mt-4">
-              <Link href="/library">Upload documents</Link>
+              <Link href="/library">Upload notes</Link>
             </Button>
           </div>
         ) : (
@@ -86,7 +87,7 @@ export function NewQuestion() {
             </div>
             {/* What to search: everything, or one space */}
             <div className="mt-4 flex items-center justify-center gap-2 text-sm text-muted-foreground">
-              <span id="scope-label">Search</span>
+              <span id="scope-label">From</span>
               <Select value={scope} onValueChange={setScope}>
                 <SelectTrigger
                   aria-labelledby="scope-label"
@@ -97,7 +98,7 @@ export function NewQuestion() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="glass border border-glass-border bg-glass-strong">
-                  <SelectItem value={ALL}>All documents</SelectItem>
+                  <SelectItem value={ALL}>All your notes</SelectItem>
                   {spaces.length > 0 && <SelectSeparator />}
                   {spaces.map((s) => (
                     <SelectItem key={s.id} value={s.id}>
@@ -106,15 +107,16 @@ export function NewQuestion() {
                   ))}
                 </SelectContent>
               </Select>
-              {/* Want this chat to search only certain documents? Make a space for it */}
+              {/* Want this chat to use only one class's notes? Make a subject for it */}
               <Button variant="ghost" size="sm" onClick={() => setCreating(true)} className="text-primary">
                 <PlusIcon />
-                New space
+                New subject
               </Button>
+              <MethodPicker key={space?.id ?? "all"} spaceId={space?.id} />
               <SpaceDialog open={creating} onOpenChange={setCreating} onSaved={setScope} />
             </div>
             {suggestions.length > 0 && (
-              <ul className="mt-8 flex flex-wrap justify-center gap-2.5" aria-label="Questions your documents can answer">
+              <ul className="mt-8 flex flex-wrap justify-center gap-2.5" aria-label="Questions your notes can answer">
                 {suggestions.map((s) => (
                   <li key={s}>
                     <Button

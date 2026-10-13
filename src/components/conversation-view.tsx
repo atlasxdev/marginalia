@@ -15,6 +15,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { Answer } from "./answer";
 import { ChatMenu, FindInChat } from "./chat-tools";
 import { Composer } from "./composer";
+import { MethodPicker } from "./method-picker";
 import { SourcesProvider, SourcesView } from "./sources";
 
 export function ConversationView({ id }: { id: string }) {
@@ -105,6 +106,7 @@ export function ConversationView({ id }: { id: string }) {
                         <span className="truncate">{conversation.space.name}</span>
                       </Link>
                     )}
+                    {conversation && <MethodPicker spaceId={conversation.space?.id} className="hidden sm:inline-flex" />}
                     {conversation && <ChatMenu conversation={conversation} onFind={() => setFinding(true)} />}
                   </>
                 )}
