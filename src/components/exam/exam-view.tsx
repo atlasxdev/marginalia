@@ -19,6 +19,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { MusicButton } from "../music/music-button";
 import { PetSprite } from "../pet/pet-sprite";
 
 /* A practice exam: mixed questions from a whole subject, timed, with no hints
@@ -209,6 +210,7 @@ function Exam({ overview, space }: { overview: StudyOverview; space: Space }) {
             {answered} of {questions.length} answered
           </p>
           <div className="flex items-center justify-end gap-3">
+            <MusicButton focused />
             <span className={cn("text-xl font-semibold tabular-nums", left < 60 && "text-destructive")}>{clock(left)}</span>
             <Button onClick={() => void handIn()} disabled={phase === "grading"}>
               {phase === "grading" ? <Spinner /> : null}

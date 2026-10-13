@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { ListMusicIcon, MusicIcon, PauseIcon, PlayIcon, PlusIcon, Repeat1Icon, RepeatIcon, SkipBackIcon, SkipForwardIcon, Volume2Icon } from "lucide-react";
 import { useMusic } from "@/lib/music";
 import { toast } from "sonner";
@@ -78,7 +79,7 @@ export function SourcePicker() {
 }
 
 /** The music button: now playing, controls, what plays, your songs, and a way to add more. */
-export function MusicButton({ className, align = "end" }: { className?: string; align?: "start" | "end" }) {
+export function MusicButton({ className, align = "end", focused = false }: { className?: string; align?: "start" | "end"; /** In a study session: nothing here leaves the page. */ focused?: boolean }) {
   const music = useMusic();
   const fileRef = useRef<HTMLInputElement>(null);
   const [effects, setEffects] = useState(soundsOn);
@@ -97,12 +98,14 @@ export function MusicButton({ className, align = "end" }: { className?: string; 
       </PopoverTrigger>
       <PopoverContent align={align} className="w-80 p-4">
         <div className="flex items-center justify-between gap-2">
-          <p className="font-semibold">Music</p>
-          <Button variant="link" size="sm" asChild className="h-auto p-0">
-            <Link href="/playlists">Playlists</Link>
-          </Button>
+          <p className="font-semibold">{focused ? "Music while you study" : "Music"}</p>
+          {!focused && (
+            <Button variant="link" size="sm" asChild className="h-auto p-0">
+              <Link href="/playlists">Playlists</Link>
+            </Button>
+          )}
         </div>
-        <p className="mt-0.5 text-sm text-muted-foreground">Keeps playing as you move around the app.</p>
+        <p className="mt-0.5 text-sm text-muted-foreground">{focused ? "Pick what plays without leaving your session." : "Keeps playing as you move around the app."}</p>
 
         <div className="mt-4 grid gap-2">
           <MusicControls />
@@ -172,7 +175,9 @@ export function MusicButton({ className, align = "end" }: { className?: string; 
 /** A floating pill while a song is loaded: what's playing, play/pause, next, and the full menu. */
 export function FloatingPlayer() {
   const music = useMusic();
-  if (!music.song) return null;
+  const pathname = usePathname();
+  // Sessions and exams have the music button in their own bar, and nothing that leaves the page
+  if (!music.song || pathname.startsWith("/session") || pathname.startsWith("/exam")) return null;
   return (
     <div
       role="region"

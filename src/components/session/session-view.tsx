@@ -298,7 +298,7 @@ function Session({ overview, space, scope }: { overview: StudyOverview; space?: 
           </div>
           <div className="flex items-center justify-end gap-2">
             <TimerRing fraction={timeFraction} label={timeLeft !== null ? clock(timeLeft) : clock(elapsed)} muted={paused} />
-            <MusicButton />
+            <MusicButton focused />
             {phase === "focus" && (
               <Button variant="ghost" size="icon" onClick={paused ? resume : pause} aria-label={paused ? "Resume" : "Pause"} className="text-muted-foreground">
                 {paused ? <PlayIcon /> : <PauseIcon />}
