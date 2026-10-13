@@ -1054,70 +1054,148 @@ const TOUR = [
   },
 ] as const;
 
-/* The story: the text scrolls on the left, and the demo pinned on the right
-   swaps to whichever feature is in the middle of the screen. On phones each
-   feature shows its own demo under its text. */
+/* The feature story. Desktop: one pinned panel (the list on the left, the
+   demo on a stage on the right) while the page scrolls through a tall track;
+   scrolling moves from feature to feature. Phones: each feature with its demo. */
+
+// Scroll distance per feature on desktop
+const STEP_VH = 60;
+
 export function FeatureTour() {
-  const [active, setActive] = useState(0);
-  const steps = useRef<(HTMLDivElement | null)[]>([]);
+  const track = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState(0); // 0 to TOUR.length, through the track
 
   useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const e of entries) if (e.isIntersecting) setActive(Number((e.target as HTMLElement).dataset.step));
-      },
-      // A feature counts as current when it crosses the middle of the screen
-      { rootMargin: "-50% 0px -50% 0px" }
-    );
-    steps.current.forEach((el) => el && observer.observe(el));
-    return () => observer.disconnect();
+    let frame = 0;
+    const measure = () => {
+      frame = 0;
+      const el = track.current;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      const range = r.height - window.innerHeight;
+      const p = range > 0 ? Math.min(1, Math.max(0, -r.top / range)) : 0;
+      setPos(p * TOUR.length);
+    };
+    const onScroll = () => {
+      if (!frame) frame = requestAnimationFrame(measure);
+    };
+    measure();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+      cancelAnimationFrame(frame);
+    };
   }, []);
+
+  const active = Math.min(TOUR.length - 1, Math.floor(pos));
+  const within = Math.min(1, pos - active);
+
+  // Clicking a feature scrolls the page to it
+  const jump = (i: number) => {
+    const el = track.current;
+    if (!el) return;
+    const range = el.offsetHeight - window.innerHeight;
+    const top = el.getBoundingClientRect().top + window.scrollY;
+    window.scrollTo({ top: top + (range * (i + 0.05)) / TOUR.length, behavior: "smooth" });
+  };
 
   const { Demo } = TOUR[active];
 
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)] gap-10 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:gap-16">
-      <div>
+    <>
+      {/* Desktop */}
+      <div ref={track} className="relative hidden lg:block" style={{ height: `calc(100vh + ${TOUR.length * STEP_VH}vh)` }}>
+        <div className="sticky top-0 flex h-screen items-center">
+          <div className="grid max-h-[820px] w-full grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] items-center gap-12 xl:gap-16">
+            <div>
+              <h2 className="text-4xl font-semibold tracking-tight text-balance 2xl:text-5xl">Everything you need to study, in one place.</h2>
+              <ol className="mt-8 grid gap-1 2xl:mt-10 2xl:[zoom:1.15]">
+                {TOUR.map((f, i) => {
+                  const on = i === active;
+                  return (
+                    <li key={f.label}>
+                      <button type="button" onClick={() => jump(i)} aria-current={on ? "step" : undefined} className="group relative grid w-full grid-cols-[2.25rem_minmax(0,1fr)] gap-x-3 py-3 pl-4 text-left">
+                        {/* The rail: filled for done steps, filling for the current one */}
+                        <span className="absolute top-0 bottom-0 left-0 w-0.5 rounded-full bg-foreground/10" aria-hidden>
+                          <span className="block w-full rounded-full bg-primary transition-[height] duration-150" style={{ height: `${i < active ? 100 : on ? Math.max(6, within * 100) : 0}%` }} />
+                        </span>
+                        <span
+                          className={cn(
+                            "grid size-9 place-items-center rounded-full text-sm font-semibold tabular-nums transition-colors duration-300",
+                            on ? "bg-primary text-primary-foreground" : i < active ? "bg-primary/15 text-primary" : "bg-foreground/[0.06] text-muted-foreground group-hover:text-foreground"
+                          )}
+                        >
+                          {i + 1}
+                        </span>
+                        <span className="self-center">
+                          <span className={cn("block text-lg font-semibold transition-colors duration-300", on ? "text-foreground" : "text-muted-foreground group-hover:text-foreground")}>{f.label}</span>
+                        </span>
+                        <span className={cn("col-start-2 grid transition-[grid-template-rows,opacity] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]", on ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0")}>
+                          <span className="overflow-hidden">
+                            <span className="block pt-2 text-[1.35rem] leading-snug font-medium tracking-tight text-balance">{f.title}</span>
+                            <span className="mt-2 block pb-1 text-muted-foreground">{f.body}</span>
+                          </span>
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ol>
+            </div>
+
+            {/* The stage */}
+            <div className="relative">
+              <div
+                aria-hidden
+                className="absolute -inset-8 -z-10 rounded-[3rem] opacity-80 blur-2xl"
+                style={{ background: "radial-gradient(60% 55% at 70% 30%, color-mix(in oklab, var(--primary) 28%, transparent), transparent 70%)" }}
+              />
+              <div className="relative overflow-hidden rounded-[2rem] border border-glass-border bg-glass p-8 shadow-2xl shadow-black/10 backdrop-blur-xl xl:p-12 dark:shadow-black/40">
+                {/* A faint dot grid, like ruled paper */}
+                <div
+                  aria-hidden
+                  className="absolute inset-0 opacity-60 [mask-image:radial-gradient(70%_70%_at_50%_45%,black,transparent)]"
+                  style={{ backgroundImage: "radial-gradient(color-mix(in oklab, var(--foreground) 14%, transparent) 1px, transparent 1px)", backgroundSize: "22px 22px" }}
+                />
+                <div className="relative mb-6 flex items-center justify-between text-sm">
+                  <span className="rounded-full bg-primary/10 px-3 py-1 font-medium text-primary">{TOUR[active].label}</span>
+                  <span className="text-muted-foreground tabular-nums">
+                    {active + 1} / {TOUR.length}
+                  </span>
+                </div>
+                <div className="relative grid min-h-[30rem] place-items-center">
+                  <div key={active} className="w-full max-w-xl 2xl:[zoom:1.25] animate-in fade-in slide-in-from-bottom-4 duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:animate-none">
+                    <Demo />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Phones and tablets */}
+      <div className="grid gap-16 lg:hidden">
+        <h2 className="text-3xl font-semibold tracking-tight text-balance">Everything you need to study, in one place.</h2>
         {TOUR.map((f, i) => {
           const Inline = f.Demo;
           return (
-            <div
-              key={f.label}
-              ref={(el) => {
-                steps.current[i] = el;
-              }}
-              data-step={i}
-              className="flex flex-col justify-center py-10 lg:min-h-screen lg:py-0"
-            >
-              <p className={cn("text-sm font-semibold transition-colors duration-300", i === active ? "text-primary" : "text-muted-foreground")}>
-                {String(i + 1).padStart(2, "0")} {f.label}
+            <div key={f.label}>
+              <p className="flex items-center gap-2.5 text-sm font-semibold text-primary">
+                <span className="grid size-7 place-items-center rounded-full bg-primary text-xs text-primary-foreground">{i + 1}</span>
+                {f.label}
               </p>
-              <h3 className={cn("mt-2 text-2xl font-semibold tracking-tight text-balance transition-opacity duration-300 sm:text-3xl", i === active ? "opacity-100" : "lg:opacity-35")}>{f.title}</h3>
-              <p className={cn("mt-3 text-lg text-muted-foreground transition-opacity duration-300", i === active ? "opacity-100" : "lg:opacity-35")}>{f.body}</p>
-              {/* Phones: the demo sits with its feature */}
-              <div className="mt-6 lg:hidden">
+              <h3 className="mt-3 text-2xl font-semibold tracking-tight text-balance">{f.title}</h3>
+              <p className="mt-2 text-muted-foreground">{f.body}</p>
+              <div className="mt-6">
                 <Inline />
               </div>
             </div>
           );
         })}
       </div>
-
-      {/* Desktop: one demo, pinned while the text scrolls past */}
-      <div className="hidden lg:block">
-        <div className="sticky top-0 flex h-screen items-center">
-          <div className="w-full">
-            <div className="mb-5 flex gap-1.5" aria-hidden>
-              {TOUR.map((f, i) => (
-                <span key={f.label} className={cn("h-1 flex-1 rounded-full transition-colors duration-300", i <= active ? "bg-primary" : "bg-foreground/10")} />
-              ))}
-            </div>
-            <div key={active} className="animate-in fade-in zoom-in-[0.98] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:animate-none">
-              <Demo />
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+    </>
   );
 }

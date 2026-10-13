@@ -178,7 +178,7 @@ export default function Landing() {
         </section>
 
         {/* Everything it does, one at a time */}
-        <section id="tour" className="mx-auto max-w-6xl scroll-mt-24 px-5 py-20">
+        <section id="tour" className="mx-auto max-w-6xl scroll-mt-24 px-5 py-20 lg:py-0 2xl:max-w-[1500px]">
           <FeatureTour />
         </section>
 
@@ -190,16 +190,16 @@ export default function Landing() {
               All in one session, from your own notes. Your buddy picks what you need next.
             </p>
           </Reveal>
-          <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-10 grid gap-5 md:grid-cols-2">
             {MODES.map(({ icon: Icon, title, tagline, points }, i) => (
               <Reveal key={title} delay={i * 60} className="h-full">
-                <SpotlightCard className="flex h-full flex-col p-6">
-                  <span className="grid size-10 place-items-center rounded-lg bg-primary/10 text-primary transition-transform duration-300 group-hover/spot:scale-110 group-hover/spot:-rotate-6">
-                    <Icon className="size-5" />
+                <SpotlightCard className="flex h-full flex-col p-8 lg:p-10">
+                  <span className="grid size-12 place-items-center rounded-xl bg-primary/10 text-primary transition-transform duration-300 group-hover/spot:scale-110 group-hover/spot:-rotate-6">
+                    <Icon className="size-6" />
                   </span>
-                  <h3 className="mt-5 text-xl font-semibold">{title}</h3>
-                  <p className="mt-1 text-muted-foreground">{tagline}</p>
-                  <ul className="mt-5 grid gap-2.5 text-sm">
+                  <h3 className="mt-6 text-2xl font-semibold tracking-tight">{title}</h3>
+                  <p className="mt-1.5 text-lg text-muted-foreground">{tagline}</p>
+                  <ul className="mt-6 grid gap-3 border-t border-glass-divider pt-6 text-[15px]">
                     {points.map((pt) => (
                       <li key={pt} className="flex gap-2">
                         <Check className="mt-0.5 size-4 shrink-0 text-primary" />
