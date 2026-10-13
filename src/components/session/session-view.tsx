@@ -51,7 +51,12 @@ export function SessionView() {
   const params = useSearchParams();
   const study = useQuery(studyQuery);
   const spaces = useQuery(spacesQuery);
-  const scope = { subject: params.get("subject") ?? undefined, deck: params.get("deck") ?? undefined, topic: params.get("topic") ?? undefined };
+  const scope = {
+    subject: params.get("subject") ?? undefined,
+    deck: params.get("deck") ?? undefined,
+    topic: params.get("topic") ?? undefined,
+    cards: params.get("cards") ?? undefined,
+  };
 
   if (!hydrated || !study.data || !spaces.data) {
     return (
@@ -65,7 +70,7 @@ export function SessionView() {
   return <Session key={params.toString()} overview={study.data} space={space} scope={scope} />;
 }
 
-function Session({ overview, space, scope }: { overview: StudyOverview; space?: Space; scope: { subject?: string; deck?: string; topic?: string } }) {
+function Session({ overview, space, scope }: { overview: StudyOverview; space?: Space; scope: { subject?: string; deck?: string; topic?: string; cards?: string } }) {
   const queryClient = useQueryClient();
   const decks = useMemo<Deck[]>(() => {
     if (scope.deck) return overview.decks.filter((d) => d.id === scope.deck);
@@ -73,12 +78,16 @@ function Session({ overview, space, scope }: { overview: StudyOverview; space?: 
     return overview.decks;
   }, [overview.decks, scope.deck, space]);
   const study = useStudy(decks);
-  const title = scope.topic ?? (scope.deck ? decks[0]?.payload.title : space?.name) ?? "All subjects";
+  const title = scope.cards ? `${space?.name ?? "Exam"}: the ones you missed` : (scope.topic ?? (scope.deck ? decks[0]?.payload.title : space?.name) ?? "All subjects");
   const backHref = space ? `/spaces/${space.id}` : "/study";
 
   // The plan is fixed when the session opens
   const [plan] = useState<Step[]>(() => {
     const items = study.items();
+    if (scope.cards) {
+      const keys = new Set(scope.cards.split(","));
+      return topicPlan(items.filter((i) => keys.has(itemKey(i))));
+    }
     if (scope.topic) {
       const topic = overview.weakTopics.find((t) => t.topic === scope.topic);
       const keys = new Set(topic?.cards.map((c) => `${c.deckId}:${c.index}`));
@@ -438,12 +447,15 @@ function Setup({
   onStart: () => void;
 }) {
   const pet = useQuery(petQuery).data;
-  const count = (reason: Step["reason"]) => plan.filter((s) => s.reason === reason).length;
-  const weakTopics = [...new Set(plan.filter((s) => s.reason === "weak").map((s) => s.item.card.topic).filter(Boolean))];
+  // Counted by how each card is asked: flipped, typed out, or new (as multiple choice)
+  const typed = plan.filter((s) => s.mode === "recall");
+  const fresh = plan.filter((s) => s.reason === "new").length;
+  const flips = plan.length - typed.length - fresh;
+  const weakTopics = [...new Set(typed.map((s) => s.item.card.topic).filter(Boolean))];
   const parts = [
-    count("due") && `${count("due")} to review`,
-    count("weak") && `${count("weak")} to type out${weakTopics.length ? ` on ${weakTopics.slice(0, 2).join(" and ")}` : ""}`,
-    count("new") && `${count("new")} new`,
+    flips && `${flips} to review`,
+    typed.length && `${typed.length} to type out${weakTopics.length ? ` on ${weakTopics.slice(0, 2).join(" and ")}` : ""}`,
+    fresh && `${fresh} new`,
   ].filter(Boolean) as string[];
   const sentence = parts.length > 1 ? `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}` : parts[0];
 

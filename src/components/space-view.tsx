@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ChevronRightIcon, FileTextIcon, LayersIcon, MessageSquareIcon, MoreHorizontalIcon, PencilIcon, PlayIcon, SparklesIcon, Trash2Icon, UploadIcon } from "lucide-react";
+import { ChevronRightIcon, FileTextIcon, GraduationCapIcon, LayersIcon, MessageSquareIcon, MoreHorizontalIcon, PencilIcon, PlayIcon, SparklesIcon, Trash2Icon, UploadIcon } from "lucide-react";
 import { deleteSpace, saveSpace } from "@/app/actions/spaces";
 import {
   AlertDialog,
@@ -35,6 +35,7 @@ import { cn } from "@/lib/utils";
 import { Composer } from "./composer";
 import { DeckList, useMakeDeck } from "./deck";
 import { MethodPicker } from "./method-picker";
+import { lastExamKey } from "./exam/exam-view";
 import { KindIcon, SpaceDialog } from "./space-dialog";
 import { WeakTopicList } from "./study-hub";
 import { uploadFile } from "./upload-form";
@@ -106,6 +107,7 @@ function SpaceDetail({ space }: { space: Space }) {
   const fileRef = useRef<HTMLInputElement>(null);
   // Files still being read, or waiting for their flashcards
   const queue = useCardQueue();
+  const lastExam = useLastExam(space.id);
   const preparing = inSpace.some((d) => queue.includes(d.id) || d.status === "pending" || d.status === "processing");
 
   // Uploading here adds the file to this subject
@@ -184,12 +186,22 @@ function SpaceDetail({ space }: { space: Space }) {
                 .filter(Boolean)
                 .join(" "),
               action: (
-                <Button size="lg" asChild className="h-12 px-6 text-base">
-                  <Link href={sessionHref({ subject: space.id })}>
-                    <PlayIcon />
-                    Start studying
-                  </Link>
-                </Button>
+                <div className="flex flex-col items-stretch gap-2 sm:items-end">
+                  <Button size="lg" asChild className="h-12 px-6 text-base">
+                    <Link href={sessionHref({ subject: space.id })}>
+                      <PlayIcon />
+                      Start studying
+                    </Link>
+                  </Button>
+                  {cards >= 3 && (
+                    <Button variant="glass" asChild>
+                      <Link href={`/exam?subject=${space.id}`}>
+                        <GraduationCapIcon />
+                        Practice exam{lastExam ? ` (last ${Math.round((lastExam.right / lastExam.total) * 100)}%)` : ""}
+                      </Link>
+                    </Button>
+                  )}
+                </div>
               ),
             };
 
@@ -423,6 +435,19 @@ function SpaceDetail({ space }: { space: Space }) {
       </AlertDialog>
     </>
   );
+}
+
+/** Your last practice exam score in this subject, remembered in this browser. */
+function useLastExam(subjectId: string) {
+  const [last] = useState<{ right: number; total: number } | null>(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(lastExamKey(subjectId)) ?? "null");
+      return saved && saved.total ? saved : null;
+    } catch {
+      return null;
+    }
+  });
+  return last;
 }
 
 function Legend({ className, label }: { className: string; label: string }) {
