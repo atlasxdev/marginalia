@@ -58,6 +58,43 @@ export async function deckExcerpts(supabase: Supabase, documentIds: string[]): P
   return excerpts;
 }
 
+/* Card questions already in a subject: decks made from it, from one of its
+   files, or from answers in its chats. Outside a subject, the files' own decks. */
+export async function knownCardFronts(supabase: Supabase, spaceId: string | null, documentIds: string[]) {
+  const { data } = await supabase
+    .from("actions")
+    .select("payload, space_id, document_id, message:messages(conversation:conversations(space_id))")
+    .eq("kind", "flashcards");
+  type Row = {
+    payload: { cards: { front: string }[] };
+    space_id: string | null;
+    document_id: string | null;
+    message: { conversation: { space_id: string | null } | null } | null;
+  };
+  const files = new Set(documentIds);
+  return ((data ?? []) as unknown as Row[])
+    .filter(
+      (d) =>
+        (spaceId && (d.space_id === spaceId || d.message?.conversation?.space_id === spaceId)) ||
+        (d.document_id && files.has(d.document_id))
+    )
+    .flatMap((d) => d.payload.cards.map((c) => c.front));
+}
+
+const STOP = new Set("a an and are as at be by do does for from how in is it of on or the to what when where which who why with".split(" "));
+const words = (text: string) => new Set(text.toLowerCase().split(/[^a-z0-9]+/).filter((w) => w && !STOP.has(w)));
+
+/* Whether a new card asks what an existing one already asks, even reworded:
+   most of the shorter question's key words appear in the other. */
+export function isRepeat(front: string, known: string[]) {
+  const a = words(front);
+  return known.some((k) => {
+    const b = words(k);
+    const shared = [...a].filter((w) => b.has(w)).length;
+    return shared / Math.max(1, Math.min(a.size, b.size)) >= 0.8;
+  });
+}
+
 export const DECK_FOCUS =
   "Make a reviewer: flashcards on the most important ideas across all the excerpts, the ones a student would be tested on. Cover definitions, key facts, causes and effects, steps and comparisons. One idea per card. Make between 8 and 15 cards.";
 
@@ -68,7 +105,7 @@ export const DECK_FOCUS =
 type DeckRow = ActionRow & {
   document: { filename: string } | null;
   space: { name: string } | null;
-  message: { conversation_id: string; conversation: { title: string } | null } | null;
+  message: { conversation_id: string; conversation: { title: string; space_id: string | null } | null } | null;
 };
 
 const SCORE: Record<AttemptResult, number> = { right: 1, almost: 0.5, wrong: 0 };
@@ -86,7 +123,7 @@ function toDeck(row: DeckRow): Deck {
           label: row.message?.conversation?.title ?? "A chat",
           href: row.message ? `/chat/${row.message.conversation_id}` : null,
         };
-  return { ...action, origin };
+  return { ...action, origin, subjectId: row.space_id ?? row.message?.conversation?.space_id ?? null };
 }
 
 export async function getStudyOverview(supabase: Supabase): Promise<StudyOverview> {
@@ -97,7 +134,7 @@ export async function getStudyOverview(supabase: Supabase): Promise<StudyOvervie
     supabase
       .from("actions")
       .select(
-        "id, message_id, document_id, space_id, kind, payload, state, created_at, document:documents(filename), space:spaces(name), message:messages(conversation_id, conversation:conversations(title))"
+        "id, message_id, document_id, space_id, kind, payload, state, created_at, document:documents(filename), space:spaces(name), message:messages(conversation_id, conversation:conversations(title, space_id))"
       )
       .eq("kind", "flashcards")
       .order("created_at", { ascending: false }),

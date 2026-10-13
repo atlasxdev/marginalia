@@ -38,6 +38,17 @@ export function streamChat(systemInstruction: string, contents: Content[]) {
   );
 }
 
+export async function generateChat(systemInstruction: string, contents: Content[]) {
+  const response = await withFallback((model) =>
+    ai.models.generateContent({
+      model,
+      contents,
+      config: { systemInstruction, temperature: 0.2, thinkingConfig: thinkingFor(model) },
+    })
+  );
+  return response.text?.trim() ?? "";
+}
+
 export async function generateText(prompt: string) {
   const response = await withFallback((model) =>
     ai.models.generateContent({

@@ -6,7 +6,7 @@ import { getSpace, toAction } from "@/server/data";
 import { ModelsUnavailableError } from "@/server/gemini";
 import { documentTitle } from "@/server/ingest";
 import { DAILY_QUESTION_LIMIT } from "@/server/rag";
-import { DECK_FOCUS, deckExcerpts } from "@/server/study";
+import { DECK_FOCUS, deckExcerpts, isRepeat, knownCardFronts } from "@/server/study";
 
 const bodySchema = z.union([z.object({ documentId: z.uuid() }), z.object({ spaceId: z.uuid() })]);
 
@@ -53,6 +53,8 @@ export async function POST(req: Request) {
     );
   }
 
+  const known = await knownCardFronts(supabase, "spaceId" in body.data ? body.data.spaceId : null, documentIds);
+
   let payload;
   try {
     payload = await buildAction("flashcards", {
@@ -60,10 +62,18 @@ export async function POST(req: Request) {
       answer: "",
       excerpts,
       focus: DECK_FOCUS,
+      avoid: known,
     });
+    if (known.length) {
+      payload = { ...payload, cards: (payload as { cards: { front: string }[] }).cards.filter((c) => !isRepeat(c.front, known)) } as typeof payload;
+      if ((payload as { cards: unknown[] }).cards.length === 0) throw new NothingToMakeError("Already covered.");
+    }
   } catch (error) {
     if (error instanceof NothingToMakeError) {
-      return Response.json({ error: "Couldn't find enough to make cards from." }, { status: 422 });
+      return Response.json(
+        { error: known.length ? "Your reviewers already cover these notes. Add more notes to make another." : "Couldn't find enough to make cards from." },
+        { status: 422 }
+      );
     }
     console.error("Deck failed:", error);
     return Response.json(

@@ -14,6 +14,8 @@ export type ActionInput = {
   excerpts: Excerpt[];
   /** Replaces the action's own instructions, for decks made without a question. */
   focus?: string;
+  /** Card questions the student already has, so new cards cover other ideas. */
+  avoid?: string[];
 };
 
 /* Each action is one model call with a fixed reply shape. `toPayload` drops
@@ -56,7 +58,13 @@ export async function buildAction(kind: BuiltKind, input: ActionInput): Promise<
     .join("\n\n");
   // Decks made from a whole document or subject have no question or answer, only the excerpts
   const asked = input.answer ? `<question>${input.question}</question>\n\n<answer>\n${input.answer}\n</answer>\n\n` : "";
-  const prompt = `<excerpts>\n${excerpts}\n</excerpts>\n\n${asked}${input.focus ?? builder.instructions}`;
+  const avoid = input.avoid?.length
+    ? `\n\nThe student already has cards for these questions. Don't repeat them or ask the same idea in other words:\n${input.avoid
+        .slice(0, 60)
+        .map((q) => `- ${q}`)
+        .join("\n")}`
+    : "";
+  const prompt = `<excerpts>\n${excerpts}\n</excerpts>\n\n${asked}${input.focus ?? builder.instructions}${avoid}`;
 
   // Gemini takes plain JSON Schema; the draft marker isn't part of it
   const schema: Record<string, unknown> = z.toJSONSchema(builder.schema);

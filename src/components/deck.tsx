@@ -4,27 +4,17 @@ import { useState } from "react";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import {
-  BookOpenCheckIcon,
-  FileTextIcon,
-  GalleryVerticalEndIcon,
-  LayersIcon,
-  MessageSquareIcon,
-  MoreHorizontalIcon,
-  PenLineIcon,
-  SparklesIcon,
-  Trash2Icon,
-} from "lucide-react";
+import { FileTextIcon, LayersIcon, MessageSquareIcon, MoreHorizontalIcon, PlayIcon, SparklesIcon, Trash2Icon } from "lucide-react";
 import { isDue } from "@/lib/leitner";
 import { documentsQuery, spacesQuery } from "@/lib/queries";
-import type { CardProgress, Deck, StudyMode } from "@/lib/types";
+import { sessionHref, type SessionScope } from "@/lib/subjects";
+import type { CardProgress, Deck } from "@/lib/types";
 import { useHydrated } from "@/lib/use-hydrated";
 import { Button } from "@/components/ui/button";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Item, ItemActions, ItemContent, ItemDescription, ItemGroup, ItemSeparator, ItemTitle } from "@/components/ui/item";
-import { useStudySession } from "./study";
 
 /** A deck's state in a few words: what's due, or when it's next due. */
 export function deckStatus(total: number, due: number, progress: Record<string, CardProgress>) {
@@ -38,31 +28,22 @@ export function deckStatus(total: number, due: number, progress: Record<string, 
     : `${total} cards`;
 }
 
-/** The three ways to study a deck. */
-export function StudyButtons({ due, total, onStart }: { due: number; total: number; onStart: (mode: StudyMode) => void }) {
+/** Opens a study session on a deck. Flip, quiz and typed answers all happen inside it. */
+export function StudyLink({ due, total, scope }: { due: number; total: number; scope: SessionScope }) {
   return (
-    <>
-      <Button onClick={() => onStart("cards")}>
-        <GalleryVerticalEndIcon />
-        {due === total ? "Study" : due ? `Review ${due}` : "Study again"}
-      </Button>
-      <Button variant="outline" onClick={() => onStart("recall")}>
-        <PenLineIcon />
-        Test me
-      </Button>
-      <Button variant="outline" onClick={() => onStart("quiz")}>
-        <BookOpenCheckIcon />
-        Quiz me
-      </Button>
-    </>
+    <Button variant={due ? "default" : "outline"} asChild>
+      <Link href={sessionHref(scope)}>
+        <PlayIcon />
+        {due === total ? "Study" : due ? `Study ${due} due` : "Practice"}
+      </Link>
+    </Button>
   );
 }
 
 const ORIGIN_ICON = { chat: MessageSquareIcon, document: FileTextIcon, subject: LayersIcon };
 
-/** Decks as a list, each with its study buttons. */
+/** Decks as a list, each opening a study session. */
 export function DeckList({ decks }: { decks: Deck[] }) {
-  const session = useStudySession(decks);
   const queryClient = useQueryClient();
   const remove = useMutation({
     mutationFn: async (id: string) => {
@@ -80,7 +61,7 @@ export function DeckList({ decks }: { decks: Deck[] }) {
     <>
       <ItemGroup className="glass gap-0 rounded-xl border border-glass-border bg-glass">
         {decks.map((deck, i) => {
-          const progress = session.progressOf(deck);
+          const progress = deck.state.cards ?? {};
           const total = deck.payload.cards.length;
           const due = deck.payload.cards.filter((_, index) => isDue(progress[index])).length;
           const Icon = ORIGIN_ICON[deck.origin.kind];
@@ -103,7 +84,7 @@ export function DeckList({ decks }: { decks: Deck[] }) {
                   <p className="text-xs text-muted-foreground">{deckStatus(total, due, progress)}</p>
                 </ItemContent>
                 <ItemActions className="flex-wrap">
-                  <StudyButtons due={due} total={total} onStart={(mode) => session.start(mode, deck.payload.title, (item) => item.deckId === deck.id)} />
+                  <StudyLink due={due} total={total} scope={{ deck: deck.id, subject: deck.subjectId ?? undefined }} />
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="icon" aria-label={`More for ${deck.payload.title}`} className="text-muted-foreground">
@@ -123,7 +104,6 @@ export function DeckList({ decks }: { decks: Deck[] }) {
           );
         })}
       </ItemGroup>
-      {session.dialog}
     </>
   );
 }
@@ -141,7 +121,7 @@ export function useMakeDeck() {
       const id = toast.loading(`Making a reviewer from ${input.name}…`);
       try {
         await makeDeck(input.body);
-        toast.success("Your reviewer is ready in Study.", { id });
+        toast.success("Your reviewer is ready.", { id });
       } catch (error) {
         toast.error((error as Error).message, { id });
         throw error;

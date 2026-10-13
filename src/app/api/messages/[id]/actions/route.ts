@@ -1,11 +1,13 @@
 import { z } from "zod";
 import { admin } from "@/lib/supabase/admin";
 import { createClient, getUserId } from "@/lib/supabase/server";
-import type { Source } from "@/lib/types";
+import type { Flashcard, Source } from "@/lib/types";
 import { BUILT_KINDS, NothingToMakeError, buildAction, type Excerpt } from "@/server/actions";
 import { toAction } from "@/server/data";
 import { ModelsUnavailableError } from "@/server/gemini";
+import { getSpace } from "@/server/data";
 import { DAILY_QUESTION_LIMIT } from "@/server/rag";
+import { isRepeat, knownCardFronts } from "@/server/study";
 
 const bodySchema = z.object({ kind: z.enum(BUILT_KINDS) });
 
@@ -60,9 +62,12 @@ export async function POST(req: Request, ctx: RouteContext<"/api/messages/[id]/a
     content: contentById.get(source.chunkId) ?? source.excerpt,
   }));
 
+  // In a subject's chat, new cards skip what its reviewers already ask, so nothing is studied twice
+  const known = body.data.kind === "flashcards" ? await chatSubjectFronts(supabase, message.conversation_id as string) : [];
+
   let payload;
   try {
-    payload = await buildAction(body.data.kind, { question: question?.content ?? "", answer: message.content, excerpts });
+    payload = await buildAction(body.data.kind, { question: question?.content ?? "", answer: message.content, excerpts, avoid: known });
   } catch (error) {
     if (error instanceof NothingToMakeError) {
       return Response.json({ error: "Couldn't find anything in the sources to make that from." }, { status: 422 });
@@ -79,6 +84,16 @@ export async function POST(req: Request, ctx: RouteContext<"/api/messages/[id]/a
     );
   }
 
+  // The model is told what's there already; reworded repeats are dropped anyway
+  if (known.length) {
+    const flashcards = payload as { cards: Flashcard[] };
+    const fresh = flashcards.cards.filter((c) => !isRepeat(c.front, known));
+    if (fresh.length === 0) {
+      return Response.json({ error: "Your reviewers for this subject already have these cards." }, { status: 409 });
+    }
+    flashcards.cards = fresh;
+  }
+
   const { data: row, error } = await supabase
     .from("actions")
     .insert({ message_id: id, kind: body.data.kind, payload })
@@ -89,4 +104,12 @@ export async function POST(req: Request, ctx: RouteContext<"/api/messages/[id]/a
     return Response.json({ error: "Couldn't save it. Try again." }, { status: 500 });
   }
   return Response.json(toAction(row));
+}
+
+
+// The cards already in the subject this chat belongs to, if any
+async function chatSubjectFronts(supabase: Awaited<ReturnType<typeof createClient>>, conversationId: string) {
+  const { data: conversation } = await supabase.from("conversations").select("space_id").eq("id", conversationId).maybeSingle();
+  const space = conversation?.space_id ? await getSpace(supabase, conversation.space_id as string) : null;
+  return space ? knownCardFronts(supabase, space.id, space.documentIds) : [];
 }

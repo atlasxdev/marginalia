@@ -8,9 +8,8 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/compone
 import { Drawer, DrawerContent, DrawerDescription, DrawerTitle } from "@/components/ui/drawer";
 import { petLevel, petMood, studyStatus, type StudyStatus } from "@/lib/pet-care";
 import { onOpenPet, onPetSignal } from "@/lib/pet-events";
-import { clock, useFocus } from "@/lib/focus";
-import { isDue } from "@/lib/leitner";
 import { petQuery, studyQuery } from "@/lib/queries";
+import { dueCount, sessionHref } from "@/lib/subjects";
 import type { Pet } from "@/lib/types";
 import { useMediaQuery } from "@/lib/use-media-query";
 import { cn } from "@/lib/utils";
@@ -34,12 +33,10 @@ export function PetWidget({ onOpen }: { onOpen?: () => void }) {
   const [building, setBuilding] = useState(false);
   const [face, setFace] = useState<Face | null>(null);
   const desktop = useMediaQuery("(min-width: 768px)");
-  const focus = useFocus();
   const router = useRouter();
   const overview = useQuery(studyQuery).data;
-  const due = overview?.decks.reduce((n, d) => n + d.payload.cards.filter((_, i) => isDue(d.state.cards?.[i])).length, 0) ?? 0;
+  const due = overview ? dueCount(overview.decks) : 0;
   const status = studyStatus(overview, due);
-  const focusing = focus.state.phase !== "idle";
 
   // "Your pet" in the account menu
   useEffect(() => onOpenPet(() => (queryClient.getQueryData(["pet"]) ? setDevice(true) : setBuilding(true))), [queryClient]);
@@ -72,11 +69,9 @@ export function PetWidget({ onOpen }: { onOpen?: () => void }) {
   if (!pet.isSuccess) return null;
   const data = pet.data;
 
-  // While you focus, your buddy's spot shows the timer and opens it
   const open = () => {
     onOpen?.();
-    if (focusing) focus.setOpen(true);
-    else if (data) setDevice(true);
+    if (data) setDevice(true);
     else setBuilding(true);
   };
 
@@ -91,7 +86,7 @@ export function PetWidget({ onOpen }: { onOpen?: () => void }) {
       }}
       onFocus={() => {
         setDevice(false);
-        focus.setOpen(true);
+        router.push(sessionHref({}));
       }}
     />
   );
@@ -103,15 +98,15 @@ export function PetWidget({ onOpen }: { onOpen?: () => void }) {
         onClick={open}
         className="group/pet flex w-full items-center gap-3 rounded-xl p-2 text-left transition-colors duration-150 hover:bg-sidebar-accent"
         aria-label={
-          focusing ? "Open the focus timer" : data ? `${data.name}: ${petMood(status)}. Open its handheld.` : "Hatch your study buddy"
+          data ? `${data.name}: ${petMood(status)}. Open its handheld.` : "Hatch your study buddy"
         }
       >
         <span className="grid size-11 shrink-0 place-items-center overflow-hidden rounded-lg bg-[#e7effc] ring-1 ring-foreground/10 dark:bg-[#2b354a]">
           {data ? (
             <PetSprite
               look={data}
-              face={face ?? (focus.state.phase === "focus" ? "side" : focus.state.phase === "break" ? "closed" : "open")}
-              book={face === "side" || (!face && focus.state.phase === "focus")}
+              face={face ?? "open"}
+              book={face === "side"}
               className="h-[34px] w-8 transition-transform duration-150 group-hover/pet:-translate-y-0.5"
             />
           ) : (
@@ -120,11 +115,7 @@ export function PetWidget({ onOpen }: { onOpen?: () => void }) {
         </span>
         <span className="grid min-w-0 flex-1 gap-1">
           <span className="truncate text-sm font-medium">{data ? data.name : "Hatch a study buddy"}</span>
-          {focusing ? (
-            <span className="text-xs font-medium text-primary tabular-nums">
-              {focus.state.phase === "break" ? "On a break" : "Focusing"} {clock(focus.seconds)}
-            </span>
-          ) : data ? (
+          {data ? (
             <Progress pet={data} status={status} />
           ) : (
             <span className="truncate text-xs text-muted-foreground">Your study buddy</span>

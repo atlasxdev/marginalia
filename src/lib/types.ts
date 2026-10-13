@@ -139,6 +139,9 @@ export type FlashcardsAction = Extract<Action, { kind: "flashcards" }>;
 /** A flashcard deck, with where it came from. */
 export type Deck = FlashcardsAction & {
   origin: { kind: "chat" | "document" | "subject"; label: string; href: string | null };
+  /** The subject it was made from, or whose chat it came from. Decks made from a file
+      belong to every subject that file is in (see `deckInSubject`). */
+  subjectId: string | null;
 };
 
 /** A concept the student keeps missing, and the cards that test it. */

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { isDue, rate as schedule } from "./leitner";
 import type { AttemptResult, CardProgress, Flashcard, FlashcardsAction, Source } from "./types";
@@ -26,9 +25,8 @@ async function send(url: string, body: unknown, method = "POST") {
 }
 
 /* Keeps card progress for a set of decks while you study. Each rating and each
-   answer is saved right away; when a session ends, pages refresh. */
+   answer is saved right away. */
 export function useStudy(decks: FlashcardsAction[], fallbackSources: Source[] = []) {
-  const queryClient = useQueryClient();
   const [overrides, setOverrides] = useState<Record<string, Record<string, CardProgress>>>({});
 
   const progressOf = (deck: FlashcardsAction) => ({ ...(deck.state.cards ?? {}), ...overrides[deck.id] });
@@ -62,12 +60,5 @@ export function useStudy(decks: FlashcardsAction[], fallbackSources: Source[] = 
     send("/api/study/attempts", { attempts: [attempt] }).catch(() => undefined);
   };
 
-  const finish = async () => {
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: ["study"] }),
-      queryClient.invalidateQueries({ queryKey: ["conversations"] }),
-    ]);
-  };
-
-  return { items, dueItems, rate, saveAttempt, finish, progressOf };
+  return { items, dueItems, rate, saveAttempt, progressOf };
 }

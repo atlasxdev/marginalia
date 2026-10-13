@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   CopyIcon,
@@ -28,8 +28,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Spinner } from "@/components/ui/spinner";
 import { useSources } from "./sources";
-import { StudyButtons, deckStatus } from "./deck";
-import { useStudySession } from "./study";
+import { StudyLink, deckStatus } from "./deck";
 
 // The actions that can be made from an answer so far
 const ACTIONS: { kind: ActionKind; label: string; pending: string; icon: LucideIcon }[] = [
@@ -100,10 +99,11 @@ export function ActionCard({ action, ...props }: CardProps) {
   }
 }
 
-function FlashcardsCard({ conversationId, action, sources }: CardProps<"flashcards">) {
+function FlashcardsCard({ conversationId, action }: CardProps<"flashcards">) {
   const { cards, title } = action.payload;
-  const session = useStudySession([action], sources);
-  const progress = session.progressOf(action);
+  // Studying it keeps to this chat's subject, for "Ask about this card"
+  const subject = useQuery(conversationQuery(conversationId)).data?.space?.id;
+  const progress = action.state.cards ?? {};
   const due = cards.filter((_, i) => isDue(progress[i])).length;
 
   return (
@@ -124,9 +124,8 @@ function FlashcardsCard({ conversationId, action, sources }: CardProps<"flashcar
         {cards.length > 3 && <li className="text-xs">and {cards.length - 3} more</li>}
       </ul>
       <div className="mt-3 flex flex-wrap gap-2 px-2">
-        <StudyButtons due={due} total={cards.length} onStart={(mode) => session.start(mode, title)} />
+        <StudyLink due={due} total={cards.length} scope={{ deck: action.id, subject }} />
       </div>
-      {session.dialog}
     </ActionShell>
   );
 }

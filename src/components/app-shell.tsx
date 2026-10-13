@@ -3,10 +3,10 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import {
   ChevronsUpDownIcon,
-  GraduationCapIcon,
+  HouseIcon,
   LayersIcon,
   LibraryIcon,
   LogOutIcon,
@@ -15,7 +15,6 @@ import {
   PlusIcon,
   SearchIcon,
   SettingsIcon,
-  SquarePenIcon,
   SunIcon,
 } from "lucide-react";
 import { useTheme } from "next-themes";
@@ -64,15 +63,10 @@ import { SearchChats } from "./search-chats";
 import { PetWidget } from "./pet/pet-widget";
 import { openPet } from "@/lib/pet-events";
 import { SpaceDialog } from "./space-dialog";
-import { FocusProvider } from "@/lib/focus";
-import { FocusChip, FocusPanel } from "./focus-panel";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const queryClient = useQueryClient();
   return (
-    <FocusProvider
-      onSaved={() => queryClient.invalidateQueries({ queryKey: ["study"] })}
-    >
+    <>
       <SidebarProvider className="h-dvh min-h-0">
         <Suspense>
           <AppSidebar />
@@ -81,7 +75,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <header className="glass flex items-center gap-2 border-b border-glass-border bg-glass px-3 py-2 md:hidden">
             <SidebarTrigger aria-label="Open menu" />
             <Wordmark className="text-[22px]" />
-            <FocusChip className="ml-auto" />
           </header>
           {/* Pages render from client data, so they stream in after the shell */}
           <div className="min-h-0 flex-1">
@@ -89,8 +82,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </SidebarInset>
       </SidebarProvider>
-      <FocusPanel />
-    </FocusProvider>
+    </>
   );
 }
 
@@ -176,8 +168,8 @@ function AppSidebar() {
             <SidebarMenuItem>
               <SidebarMenuButton asChild isActive={pathname === "/study"}>
                 <Link href="/study" onClick={close}>
-                  <GraduationCapIcon className="text-primary" />
-                  <span>Study</span>
+                  <HouseIcon className="text-primary" />
+                  <span>Today</span>
                 </Link>
               </SidebarMenuButton>
               {!!dueCount && (
@@ -188,14 +180,6 @@ function AppSidebar() {
                   {dueCount}
                 </SidebarMenuBadge>
               )}
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={pathname === "/chat"}>
-                <Link href="/chat" onClick={close}>
-                  <SquarePenIcon className="text-primary" />
-                  <span>Ask your notes</span>
-                </Link>
-              </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton onClick={() => setSearching(true)}>
@@ -239,9 +223,13 @@ function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {spaces?.length === 0 && (
-                <p className="px-2 py-1.5 text-sm text-muted-foreground">
-                  Group your notes by class
-                </p>
+                <button
+                  type="button"
+                  onClick={() => setCreating(true)}
+                  className="px-2 py-1.5 text-left text-sm text-muted-foreground hover:text-foreground"
+                >
+                  Add your first class
+                </button>
               )}
               {spaces?.map((s) => {
                 const href = `/spaces/${s.id}`;
@@ -250,7 +238,7 @@ function AppSidebar() {
                     key={s.id}
                     className={cn(freshSpace(s.id) && SLIDE_IN)}
                   >
-                    <SidebarMenuButton asChild isActive={pathname === href}>
+                    <SidebarMenuButton asChild isActive={pathname === href || pathname.startsWith(`${href}/`)}>
                       <Link href={href} onClick={close}>
                         <LayersIcon className="text-primary" />
                         <span>{s.name}</span>
