@@ -10,10 +10,12 @@ import { Textarea } from "@/components/ui/textarea";
 import type { Step } from "./plan";
 
 const MODE_HINT: Record<Step["mode"], string> = {
-  cards: "Answer in your head, then flip.",
+  cards: "Answer in your head, then flip. Space flips, 1 is Again, 2 is Got it.",
   quiz: "Pick the right answer.",
-  recall: "Type it in your own words. Your buddy checks it against your notes.",
+  recall: "Answer in your own words. It's checked against your notes.",
 };
+
+const CARD = "rounded-[28px] border border-border/60 bg-card shadow-xl shadow-black/10 dark:shadow-black/30";
 
 const REASON_LABEL: Record<Step["reason"], string> = {
   due: "Review",
@@ -31,17 +33,22 @@ type Props = {
 
 /** One step of a session: a flip card, a multiple-choice question, or a typed answer. */
 export function StepView({ step, onAnswer, onNext }: Props) {
-  const { card } = step.item;
   return (
-    <div className="grid gap-5">
-      <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
-        <span className="truncate font-medium">{card.topic || "Question"}</span>
-        <span className="shrink-0">{REASON_LABEL[step.reason]}</span>
-      </div>
+    <div className="grid gap-5 animate-in fade-in slide-in-from-bottom-2 duration-200 motion-reduce:animate-none">
       {step.mode === "cards" && <FlipStep step={step} onAnswer={onAnswer} onNext={onNext} />}
       {step.mode === "quiz" && <QuizStep step={step} onAnswer={onAnswer} onNext={onNext} />}
       {step.mode === "recall" && <RecallStep step={step} onAnswer={onAnswer} onNext={onNext} />}
       <p className="text-center text-xs text-muted-foreground">{MODE_HINT[step.mode]}</p>
+    </div>
+  );
+}
+
+/** The top of a card: its topic, and why it's in this session. */
+function CardHead({ step, label }: { step: Step; label?: string }) {
+  return (
+    <div className="flex items-center justify-between gap-3 text-xs font-medium text-muted-foreground">
+      <span className="truncate">{label ?? (step.item.card.topic || "Question")}</span>
+      {!label && <span className="shrink-0 rounded-full bg-foreground/5 px-2.5 py-1">{REASON_LABEL[step.reason]}</span>}
     </div>
   );
 }
@@ -79,16 +86,16 @@ function FlipStep({ step, onAnswer, onNext }: Props) {
         type="button"
         onClick={() => setFlipped((f) => !f)}
         aria-label={flipped ? "Show the question" : "Show the answer"}
-        className="w-full perspective-[1400px] rounded-3xl text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+        className="w-full perspective-[1400px] rounded-[28px] text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
       >
         <div
           className={cn(
-            "relative grid min-h-72 grid-cols-[minmax(0,1fr)] transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] transform-3d motion-reduce:transition-none",
+            "relative grid min-h-80 grid-cols-[minmax(0,1fr)] transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] transform-3d motion-reduce:transition-none",
             flipped && "rotate-y-180"
           )}
         >
-          <Face>{card.front}</Face>
-          <Face back source={source}>
+          <Face head={<CardHead step={step} />}>{card.front}</Face>
+          <Face back head={<CardHead step={step} label="Answer" />} source={source}>
             {card.back}
           </Face>
         </div>
@@ -113,16 +120,11 @@ function FlipStep({ step, onAnswer, onNext }: Props) {
   );
 }
 
-function Face({ back = false, source, children }: { back?: boolean; source?: string | null; children: React.ReactNode }) {
+function Face({ back = false, head, source, children }: { back?: boolean; head: React.ReactNode; source?: string | null; children: React.ReactNode }) {
   return (
-    <div
-      className={cn(
-        "col-start-1 row-start-1 flex flex-col rounded-3xl border border-border p-6 backface-hidden sm:p-8",
-        back ? "rotate-y-180 bg-primary/5" : "bg-card"
-      )}
-    >
-      <span className="text-xs font-medium text-muted-foreground">{back ? "Answer" : "Question"}</span>
-      <p className="my-auto py-6 text-center text-xl leading-snug font-medium sm:text-2xl text-balance">{children}</p>
+    <div className={cn("col-start-1 row-start-1 flex flex-col p-6 backface-hidden sm:p-8", CARD, back && "rotate-y-180 bg-primary/[0.06]")}>
+      {head}
+      <p className="my-auto py-8 text-center text-2xl leading-snug font-semibold tracking-tight text-balance sm:text-3xl">{children}</p>
       {back && source && <span className="truncate text-xs text-muted-foreground">From {source}</span>}
     </div>
   );
@@ -159,8 +161,9 @@ function QuizStep({ step, onAnswer, onNext }: Props) {
 
   return (
     <>
-      <div className="rounded-3xl border border-border bg-card p-6 sm:p-8">
-        <p className="text-xl leading-snug font-medium sm:text-2xl text-balance">{card.front}</p>
+      <div className={cn("grid gap-6 p-6 sm:p-8", CARD)}>
+        <CardHead step={step} />
+        <p className="pb-2 text-2xl leading-snug font-semibold tracking-tight text-balance sm:text-3xl">{card.front}</p>
       </div>
       <div className="grid gap-2" role="group" aria-label="Choices">
         {choices.map((choice) => {
@@ -173,7 +176,7 @@ function QuizStep({ step, onAnswer, onNext }: Props) {
               onClick={() => choose(choice)}
               aria-disabled={!!picked}
               className={cn(
-                "h-auto min-h-12 justify-start gap-3 py-3 text-left text-base font-normal whitespace-normal transition-colors duration-150",
+                "h-auto min-h-14 justify-start gap-3 rounded-2xl px-5 py-3.5 text-left text-base font-normal whitespace-normal transition-colors duration-150",
                 state === "right" && "border-success bg-success/10 text-foreground",
                 state === "wrong" && "border-destructive bg-destructive/10 text-foreground",
                 picked && state === "idle" && "opacity-60"
@@ -234,8 +237,9 @@ function RecallStep({ step, onAnswer, onNext }: Props) {
 
   return (
     <>
-      <div className="rounded-3xl border border-border bg-card p-6 sm:p-8">
-        <p className="text-xl leading-snug font-medium sm:text-2xl text-balance">{card.front}</p>
+      <div className={cn("grid gap-6 p-6 sm:p-8", CARD)}>
+        <CardHead step={step} />
+        <p className="pb-2 text-2xl leading-snug font-semibold tracking-tight text-balance sm:text-3xl">{card.front}</p>
       </div>
       {result ? (
         <div className="grid gap-3 animate-in fade-in slide-in-from-bottom-1 duration-200 motion-reduce:animate-none">
@@ -282,7 +286,7 @@ function RecallStep({ step, onAnswer, onNext }: Props) {
             placeholder="Your answer"
             autoFocus
             disabled={checking}
-            className="min-h-24 rounded-2xl text-base"
+            className="min-h-28 rounded-2xl p-4 text-base"
           />
           {error && <p className="text-sm text-destructive">{error}</p>}
           <div className="flex justify-between gap-2">

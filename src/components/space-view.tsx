@@ -22,6 +22,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Item, ItemActions, ItemContent, ItemGroup, ItemMedia, ItemSeparator, ItemTitle } from "@/components/ui/item";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Spinner } from "@/components/ui/spinner";
 import { queueCards, useCardQueue } from "@/lib/auto-cards";
 import { fileLabel, petSignal } from "@/lib/pet-events";
@@ -30,6 +31,7 @@ import { ACCEPTED_TYPES } from "@/lib/schemas";
 import { cardCounts, dueCount, sessionHref, subjectDecks, topicsIn, waitingLine } from "@/lib/subjects";
 import type { DocumentItem, Space } from "@/lib/types";
 import { useHydrated } from "@/lib/use-hydrated";
+import { cn } from "@/lib/utils";
 import { Composer } from "./composer";
 import { DeckList, useMakeDeck } from "./deck";
 import { MethodPicker } from "./method-picker";
@@ -149,7 +151,7 @@ function SpaceDetail({ space }: { space: Space }) {
   // The one next step for this subject: add notes, wait for the cards, study
   const next =
     inSpace.length === 0
-      ? { line: "Add the notes for this class: lecture slides, readings, handouts. Your buddy turns them into flashcards.", action: uploadButton("default") }
+      ? { line: "Add the notes for this class. Your buddy turns them into flashcards.", action: uploadButton("default") }
       : decks.length === 0 && (preparing || makeDeck.isPending)
         ? {
             line: "Reading your notes and writing flashcards. This takes a few seconds.",
@@ -182,22 +184,32 @@ function SpaceDetail({ space }: { space: Space }) {
                 .filter(Boolean)
                 .join(" "),
               action: (
-                <Button size="lg" asChild>
+                <Button size="lg" asChild className="h-12 px-6 text-base">
                   <Link href={sessionHref({ subject: space.id })}>
                     <PlayIcon />
-                    Study
+                    Start studying
                   </Link>
                 </Button>
               ),
             };
 
+  const counts = cardCounts(decks);
+  const learned = Math.max(0, cards - counts.review - counts.fresh);
+
   return (
     <>
-      <div className="flex items-start gap-2">
-        <h1 className="min-w-0 flex-1 text-3xl font-bold tracking-tight wrap-anywhere">{space.name}</h1>
-        <Button variant="glass" onClick={() => setEditing(true)}>
+      {/* Header: the subject, and its one next step */}
+      <div className="flex items-start gap-3">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-4xl font-bold tracking-tight wrap-anywhere">{space.name}</h1>
+          <p className="mt-1.5 text-muted-foreground">
+            {inSpace.length === 0
+              ? "No notes yet"
+              : `${inSpace.length} ${inSpace.length === 1 ? "file" : "files"}${cards ? `, ${cards} flashcards` : ""}`}
+          </p>
+        </div>
+        <Button variant="ghost" size="icon" aria-label="Edit subject" onClick={() => setEditing(true)} className="text-muted-foreground">
           <PencilIcon />
-          Edit
         </Button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -213,14 +225,6 @@ function SpaceDetail({ space }: { space: Space }) {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-      <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
-        <p className="text-muted-foreground">
-          {inSpace.length === 0
-            ? "No notes yet."
-            : `${inSpace.length} ${inSpace.length === 1 ? "file" : "files"}${cards ? `, ${cards} cards` : ""}. Answers and cards come only from these notes.`}
-        </p>
-        <MethodPicker spaceId={space.id} />
-      </div>
       <input
         ref={fileRef}
         type="file"
@@ -235,97 +239,117 @@ function SpaceDetail({ space }: { space: Space }) {
         }}
       />
 
-      {/* Study: what this subject needs next */}
-      <section aria-labelledby="space-study" className={`${groupClass} mt-8 flex flex-wrap items-center gap-x-6 gap-y-4 p-6`}>
-        <div className="min-w-56 flex-1">
-          <h2 id="space-study" className="text-xl font-semibold">
+      <section aria-label="Next step" className={`${groupClass} mt-8 rounded-2xl p-6`}>
+        <div className="flex flex-wrap items-center gap-x-8 gap-y-5">
+          <div className="min-w-60 flex-1">
+            {cards > 0 && (
+              <div className="mb-4 grid gap-2">
+                <div className="flex h-2 overflow-hidden rounded-full bg-foreground/10" aria-hidden>
+                  <div className="bg-success transition-[width] duration-500" style={{ width: `${(learned / cards) * 100}%` }} />
+                  <div className="bg-primary transition-[width] duration-500" style={{ width: `${(counts.review / cards) * 100}%` }} />
+                </div>
+                <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                  <Legend className="bg-success" label={`${learned} learned`} />
+                  <Legend className="bg-primary" label={`${counts.review} to review`} />
+                  <Legend className="bg-foreground/20" label={`${counts.fresh} new`} />
+                </div>
+              </div>
+            )}
+            <p className="text-lg font-medium text-balance">{next.line}</p>
+          </div>
+          {next.action}
+        </div>
+      </section>
+
+      <Tabs defaultValue={inSpace.length === 0 ? "notes" : "study"} className="mt-10 gap-6">
+        <TabsList variant="line" className="h-10 w-full justify-start gap-6 border-b border-glass-divider p-0">
+          <TabsTrigger value="study" className="flex-none px-0 text-base">
             Study
-          </h2>
-          <p className="mt-1 text-muted-foreground">{next.line}</p>
-        </div>
-        {next.action}
-      </section>
-
-      {weak.length > 0 && (
-        <section aria-labelledby="space-weak" className="mt-10">
-          <h2 id="space-weak" className="text-lg font-semibold">
-            Needs work
-          </h2>
-          <WeakTopicList topics={weak} subjectId={space.id} />
-        </section>
-      )}
-
-      {/* Ask */}
-      <section aria-labelledby="space-ask" className="mt-14">
-        <h2 id="space-ask" className="text-xl font-semibold">
-          Ask
-        </h2>
-        <p className="mt-1 text-sm text-muted-foreground">Questions about {space.name}, answered from its notes and cited.</p>
-        <div className="mt-4">
-          <Composer spaceId={space.id} placeholder={`Ask about ${space.name}`} busy={space.documentIds.length === 0} className="max-w-none" />
-        </div>
-        {chats.length > 0 && (
-          <ItemGroup className={`${groupClass} mt-4 gap-0`}>
-            {chats.map((c, i) => (
-              <Fragment key={c.id}>
-                {i > 0 && <ItemSeparator className="my-0 bg-glass-divider" />}
-                <Item asChild className="rounded-none px-5 py-3.5 first:rounded-t-xl last:rounded-b-xl hover:bg-glass-strong">
-                  <Link href={`/chat/${c.id}`}>
-                    <ItemMedia>
-                      <MessageSquareIcon className="size-4 text-muted-foreground" />
-                    </ItemMedia>
-                    <ItemContent>
-                      <ItemTitle className="text-[15px]">{c.title}</ItemTitle>
-                    </ItemContent>
-                    <ItemActions>
-                      <ChevronRightIcon className="size-4 text-muted-foreground" />
-                    </ItemActions>
-                  </Link>
-                </Item>
-              </Fragment>
-            ))}
-          </ItemGroup>
-        )}
-      </section>
-
-      {decks.length > 0 && (
-        <section aria-labelledby="space-decks" className="mt-14">
-          <div className="flex items-center justify-between gap-3">
-            <h2 id="space-decks" className="text-xl font-semibold">
-              Flashcards
-            </h2>
-            <Button
-              variant="ghost"
-              size="sm"
-              disabled={!readyFiles || makeDeck.isPending}
-              onClick={() => makeDeck.mutate({ body: { spaceId: space.id }, name: space.name })}
-            >
-              <SparklesIcon />
-              Make more cards
-            </Button>
-          </div>
-          <div className="mt-4">
-            <DeckList decks={decks} />
-          </div>
-        </section>
-      )}
-
-      {/* Notes */}
-      <section aria-labelledby="space-documents" className="mt-14">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 id="space-documents" className="text-xl font-semibold">
+          </TabsTrigger>
+          <TabsTrigger value="ask" className="flex-none px-0 text-base">
+            Ask
+          </TabsTrigger>
+          <TabsTrigger value="notes" className="flex-none px-0 text-base">
             Notes
-          </h2>
-          {inSpace.length > 0 && (
-            <div className="flex gap-2">
-              <Button variant="ghost" size="sm" onClick={() => setEditing(true)}>
-                Add from library
-              </Button>
-              {uploadButton("outline")}
-            </div>
+            <span className="text-muted-foreground tabular-nums">{inSpace.length}</span>
+          </TabsTrigger>
+        </TabsList>
+
+        {/* Study: what needs work, and the flashcards */}
+        <TabsContent value="study" className="grid gap-10">
+          {weak.length > 0 && (
+            <section aria-labelledby="space-weak">
+              <h2 id="space-weak" className="text-lg font-semibold">
+                Needs work
+              </h2>
+              <WeakTopicList topics={weak} subjectId={space.id} />
+            </section>
           )}
-        </div>
-        <div className="mt-4">
+          <section aria-labelledby="space-decks">
+            <div className="flex items-center justify-between gap-3">
+              <h2 id="space-decks" className="text-lg font-semibold">
+                Flashcards
+              </h2>
+              {decks.length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={!readyFiles || makeDeck.isPending}
+                  onClick={() => makeDeck.mutate({ body: { spaceId: space.id }, name: space.name })}
+                >
+                  <SparklesIcon />
+                  Make more cards
+                </Button>
+              )}
+            </div>
+            <div className="mt-4">
+              {decks.length > 0 ? (
+                <DeckList decks={decks} />
+              ) : (
+                <p className="text-muted-foreground">
+                  {inSpace.length === 0 ? "Add notes and your flashcards show up here." : preparing ? "Your flashcards are on the way." : "No flashcards yet."}
+                </p>
+              )}
+            </div>
+          </section>
+        </TabsContent>
+
+        {/* Ask: questions answered from this subject's notes */}
+        <TabsContent value="ask" className="grid gap-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-muted-foreground">Answers come only from {space.name}&apos;s notes, with the line each fact came from.</p>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              Answer style
+              <MethodPicker spaceId={space.id} />
+            </div>
+          </div>
+          <Composer spaceId={space.id} placeholder={`Ask about ${space.name}`} busy={space.documentIds.length === 0} className="max-w-none" />
+          {chats.length > 0 && (
+            <ItemGroup className={`${groupClass} gap-0`}>
+              {chats.map((c, i) => (
+                <Fragment key={c.id}>
+                  {i > 0 && <ItemSeparator className="my-0 bg-glass-divider" />}
+                  <Item asChild className="rounded-none px-5 py-3.5 first:rounded-t-xl last:rounded-b-xl hover:bg-glass-strong">
+                    <Link href={`/chat/${c.id}`}>
+                      <ItemMedia>
+                        <MessageSquareIcon className="size-4 text-muted-foreground" />
+                      </ItemMedia>
+                      <ItemContent>
+                        <ItemTitle className="text-[15px]">{c.title}</ItemTitle>
+                      </ItemContent>
+                      <ItemActions>
+                        <ChevronRightIcon className="size-4 text-muted-foreground" />
+                      </ItemActions>
+                    </Link>
+                  </Item>
+                </Fragment>
+              ))}
+            </ItemGroup>
+          )}
+        </TabsContent>
+
+        {/* Notes: the files this subject studies from */}
+        <TabsContent value="notes" className="grid gap-4">
           {inSpace.length === 0 ? (
             <Empty className={groupClass}>
               <EmptyHeader>
@@ -343,39 +367,42 @@ function SpaceDetail({ space }: { space: Space }) {
               </EmptyContent>
             </Empty>
           ) : (
-            <ItemGroup className={`${groupClass} gap-0`}>
-              {inSpace.map((doc, i) => (
-                <Fragment key={doc.id}>
-                  {i > 0 && <ItemSeparator className="my-0 bg-glass-divider" />}
-                  <Item className="px-5 py-4">
-                    <ItemMedia>
-                      <KindIcon doc={doc} className="size-9 rounded-lg" />
-                    </ItemMedia>
-                    <ItemContent>
-                      <ItemTitle className="text-[15px]">{doc.filename}</ItemTitle>
-                    </ItemContent>
-                    <DocStatus doc={doc} />
-                  </Item>
-                </Fragment>
-              ))}
-            </ItemGroup>
+            <>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="text-muted-foreground">New notes turn into flashcards on their own.</p>
+                <div className="flex gap-2">
+                  <Button variant="ghost" onClick={() => setEditing(true)}>
+                    Add from library
+                  </Button>
+                  {uploadButton("outline")}
+                </div>
+              </div>
+              <ItemGroup className={`${groupClass} gap-0`}>
+                {inSpace.map((doc, i) => (
+                  <Fragment key={doc.id}>
+                    {i > 0 && <ItemSeparator className="my-0 bg-glass-divider" />}
+                    <Item className="px-5 py-4">
+                      <ItemMedia>
+                        <KindIcon doc={doc} className="size-9 rounded-lg" />
+                      </ItemMedia>
+                      <ItemContent>
+                        <ItemTitle className="text-[15px]">{doc.filename}</ItemTitle>
+                      </ItemContent>
+                      <DocStatus doc={doc} />
+                    </Item>
+                  </Fragment>
+                ))}
+              </ItemGroup>
+            </>
           )}
-        </div>
-      </section>
-
-      {/* Instructions, when set */}
-      {space.instructions && (
-        <section aria-labelledby="space-instructions" className="mt-14">
-          <h2 id="space-instructions" className="text-xl font-semibold">
-            Instructions
-          </h2>
-          <Item className={`${groupClass} mt-4 px-5 py-4`}>
-            <ItemContent className="min-w-0">
-              <p className="whitespace-pre-wrap wrap-anywhere">{space.instructions}</p>
-            </ItemContent>
-          </Item>
-        </section>
-      )}
+          {space.instructions && (
+            <div className={`${groupClass} px-5 py-4`}>
+              <p className="text-xs font-medium text-muted-foreground">Instructions for answers</p>
+              <p className="mt-1 whitespace-pre-wrap wrap-anywhere">{space.instructions}</p>
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
 
       <SpaceDialog open={editing} onOpenChange={setEditing} space={space} />
       <AlertDialog open={confirming} onOpenChange={setConfirming}>
@@ -395,6 +422,15 @@ function SpaceDetail({ space }: { space: Space }) {
         </AlertDialogContent>
       </AlertDialog>
     </>
+  );
+}
+
+function Legend({ className, label }: { className: string; label: string }) {
+  return (
+    <span className="flex items-center gap-1.5">
+      <span className={cn("size-2 rounded-full", className)} aria-hidden />
+      {label}
+    </span>
   );
 }
 
