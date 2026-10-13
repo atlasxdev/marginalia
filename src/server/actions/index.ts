@@ -3,6 +3,7 @@ import { z } from "zod";
 import type { Action, ActionKind, Source } from "@/lib/types";
 import { generateJson } from "@/server/gemini";
 import { checklist } from "./checklist";
+import { flashcards } from "./flashcards";
 
 /** A passage the answer was built from, numbered as the model sees it. */
 export type Excerpt = { n: number; source: Source; content: string };
@@ -17,7 +18,7 @@ export type ActionBuilder<S extends z.ZodType, P> = {
   toPayload: (raw: z.infer<S>, sourceIdOf: (n: number) => string | null) => P | null;
 };
 
-const BUILDERS = { checklist } satisfies Partial<Record<ActionKind, unknown>>;
+const BUILDERS = { flashcards, checklist } satisfies Partial<Record<ActionKind, unknown>>;
 
 export type BuiltKind = keyof typeof BUILDERS;
 export const BUILT_KINDS = Object.keys(BUILDERS) as [BuiltKind, ...BuiltKind[]];
@@ -39,7 +40,8 @@ const SYSTEM = `You turn an answer about the user's own documents into something
 export class NothingToMakeError extends Error {}
 
 export async function buildAction(kind: BuiltKind, input: ActionInput): Promise<Action["payload"]> {
-  const builder = BUILDERS[kind];
+  // Each builder's payload matches its kind; the union is only lost in this lookup
+  const builder = BUILDERS[kind] as unknown as ActionBuilder<z.ZodType, Action["payload"]>;
   const excerpts = input.excerpts
     .map(({ n, source, content }) => {
       const where = [source.documentTitle, source.headingPath].filter(Boolean).join(" › ");

@@ -3,9 +3,17 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { CopyIcon, ListChecksIcon, MoreHorizontalIcon, Trash2Icon, type LucideIcon } from "lucide-react";
+import {
+  CopyIcon,
+  GalleryVerticalEndIcon,
+  ListChecksIcon,
+  MoreHorizontalIcon,
+  Trash2Icon,
+  type LucideIcon,
+} from "lucide-react";
+import { isDue } from "@/lib/leitner";
 import { conversationQuery } from "@/lib/queries";
-import type { Action, ActionKind, Conversation, Source } from "@/lib/types";
+import type { Action, ActionKind, CardProgress, Conversation, Source } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,9 +27,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Spinner } from "@/components/ui/spinner";
 import { useSources } from "./sources";
+import { StudyDialog, type StudyMode } from "./study";
 
 // The actions that can be made from an answer so far
 const ACTIONS: { kind: ActionKind; label: string; pending: string; icon: LucideIcon }[] = [
+  { kind: "flashcards", label: "Make flashcards", pending: "Making flashcards…", icon: GalleryVerticalEndIcon },
   { kind: "checklist", label: "Make a checklist", pending: "Making a checklist…", icon: ListChecksIcon },
 ];
 
@@ -72,17 +82,97 @@ export function ActionBar({ conversationId, messageId }: { conversationId: strin
   });
 }
 
-type CardProps = { conversationId: string; action: Action; sources: Source[] };
+type CardProps<K extends ActionKind = ActionKind> = {
+  conversationId: string;
+  action: Extract<Action, { kind: K }>;
+  sources: Source[];
+};
 
 /** Something made from an answer, shown under it. */
-export function ActionCard(props: CardProps) {
-  switch (props.action.kind) {
+export function ActionCard({ action, ...props }: CardProps) {
+  switch (action.kind) {
     case "checklist":
-      return <ChecklistCard {...props} />;
+      return <ChecklistCard action={action} {...props} />;
+    case "flashcards":
+      return <FlashcardsCard action={action} {...props} />;
   }
 }
 
-function ChecklistCard({ conversationId, action, sources }: CardProps) {
+const sourceName = (source: Source) => [source.documentTitle, source.headingPath].filter(Boolean).join(" › ");
+
+function FlashcardsCard({ conversationId, action, sources }: CardProps<"flashcards">) {
+  const updateActions = useUpdateActions(conversationId, action.messageId);
+  const { cards, title } = action.payload;
+  const [progress, setProgress] = useState<Record<string, CardProgress>>(() => action.state.cards ?? {});
+  const [mode, setMode] = useState<StudyMode | null>(null);
+
+  const save = useMutation({
+    mutationFn: (next: Record<string, CardProgress>) =>
+      send(`/api/actions/${action.id}`, { method: "PATCH", body: JSON.stringify({ cards: next }) }),
+    onSuccess: (_, next) =>
+      updateActions((actions) => actions.map((a) => (a.id === action.id ? ({ ...a, state: { cards: next } } as Action) : a))),
+    onError: (error) => toast.error(error.message),
+  });
+
+  const onRate = (index: number, card: CardProgress) =>
+    setProgress((p) => {
+      const next = { ...p, [index]: card };
+      save.mutate(next);
+      return next;
+    });
+
+  // Recounted when a session ends, so the footer reflects what you just studied
+  const due = mode ? null : cards.filter((_, i) => isDue(progress[i])).length;
+  const nextDue = Object.values(progress)
+    .map((p) => p.due)
+    .sort()[0];
+
+  return (
+    <ActionShell
+      icon={GalleryVerticalEndIcon}
+      title={title}
+      action={action}
+      conversationId={conversationId}
+      copyText={() => [title, ...cards.map((c) => `Q: ${c.front}\nA: ${c.back}`)].join("\n\n")}
+      footer={
+        due
+          ? `${cards.length} cards, ${due} to review now`
+          : nextDue
+            ? `All caught up. Next review ${new Date(nextDue).toLocaleDateString(undefined, { weekday: "long" })}`
+            : `${cards.length} cards`
+      }
+    >
+      <ul className="grid gap-1 px-2 pb-1 text-muted-foreground">
+        {cards.slice(0, 3).map((c, i) => (
+          <li key={i} className="truncate">
+            {c.front}
+          </li>
+        ))}
+        {cards.length > 3 && <li className="text-xs">and {cards.length - 3} more</li>}
+      </ul>
+      <div className="mt-3 flex flex-wrap gap-2 px-2">
+        <Button onClick={() => setMode("cards")}>{due === cards.length ? "Study" : due ? `Review ${due}` : "Study again"}</Button>
+        <Button variant="outline" onClick={() => setMode("quiz")}>
+          Quiz me
+        </Button>
+      </div>
+      <StudyDialog
+        mode={mode}
+        onClose={() => setMode(null)}
+        title={title}
+        cards={cards}
+        progress={progress}
+        onRate={onRate}
+        sourceLabel={(card) => {
+          const source = sources.find((s) => s.chunkId === card.sourceId);
+          return source ? sourceName(source) : null;
+        }}
+      />
+    </ActionShell>
+  );
+}
+
+function ChecklistCard({ conversationId, action, sources }: CardProps<"checklist">) {
   const updateActions = useUpdateActions(conversationId, action.messageId);
   const { items, title } = action.payload;
   const [done, setDone] = useState(() => new Set(action.state.done ?? []));
@@ -91,7 +181,7 @@ function ChecklistCard({ conversationId, action, sources }: CardProps) {
     mutationFn: (next: number[]) =>
       send(`/api/actions/${action.id}`, { method: "PATCH", body: JSON.stringify({ done: next }) }),
     onSuccess: (_, next) =>
-      updateActions((actions) => actions.map((a) => (a.id === action.id ? { ...a, state: { done: next } } : a))),
+      updateActions((actions) => actions.map((a) => (a.id === action.id ? ({ ...a, state: { done: next } } as Action) : a))),
     onError: (error) => toast.error(error.message),
   });
 
@@ -156,7 +246,7 @@ function ItemMeta({ due, source, viewKey }: { due: string | null; source?: Sourc
           onClick={() => view.show(viewKey, [{ ...source, index: 1 }], 1)}
           className="max-w-full truncate text-left hover:text-primary hover:underline"
         >
-          {[source.documentTitle, source.headingPath].filter(Boolean).join(" › ")}
+          {sourceName(source)}
         </button>
       )}
     </div>

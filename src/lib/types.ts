@@ -48,16 +48,35 @@ export type ChecklistItem = {
   sourceId: string | null;
 };
 
+export type Flashcard = {
+  front: string;
+  back: string;
+  /** Plausible wrong answers, for quiz mode. */
+  wrong: string[];
+  sourceId: string | null;
+};
+
+/** Where a card is in spaced repetition: its Leitner box and when it's next due. */
+export type CardProgress = { box: number; due: string };
+
 export type Action = {
   id: string;
   messageId: string;
   createdAt: string;
-} & {
-  kind: "checklist";
-  payload: { title: string; items: ChecklistItem[] };
-  /** Indexes of ticked items. */
-  state: { done?: number[] };
-};
+} & (
+  | {
+      kind: "checklist";
+      payload: { title: string; items: ChecklistItem[] };
+      /** Indexes of ticked items. */
+      state: { done?: number[] };
+    }
+  | {
+      kind: "flashcards";
+      payload: { title: string; cards: Flashcard[] };
+      /** Progress by card index; cards not in here are new. */
+      state: { cards?: Record<string, CardProgress> };
+    }
+);
 
 export type ConversationSummary = {
   id: string;

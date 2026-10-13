@@ -1,8 +1,18 @@
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 
-// After an action is made, only the user's progress changes: which items are ticked
-const stateSchema = z.object({ done: z.array(z.number().int().min(0).max(100)).max(100) });
+// After an action is made, only the user's progress changes: ticked items, or where each flashcard is
+const stateSchema = z.union([
+  z.object({ done: z.array(z.number().int().min(0).max(100)).max(100) }).strict(),
+  z
+    .object({
+      cards: z.record(
+        z.string().regex(/^\d{1,2}$/),
+        z.object({ box: z.number().int().min(0).max(5), due: z.iso.datetime() })
+      ),
+    })
+    .strict(),
+]);
 
 export async function PATCH(req: Request, ctx: RouteContext<"/api/actions/[id]">) {
   const { id } = await ctx.params;
@@ -12,7 +22,7 @@ export async function PATCH(req: Request, ctx: RouteContext<"/api/actions/[id]">
   const supabase = await createClient();
   const { error, count } = await supabase
     .from("actions")
-    .update({ state: { done: [...new Set(state.data.done)] } }, { count: "exact" })
+    .update({ state: "done" in state.data ? { done: [...new Set(state.data.done)] } : state.data }, { count: "exact" })
     .eq("id", id);
   if (error) return Response.json({ error: "Couldn't save your progress." }, { status: 500 });
   if (!count) return Response.json({ error: "Not found." }, { status: 404 });
