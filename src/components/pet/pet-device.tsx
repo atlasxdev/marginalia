@@ -210,7 +210,7 @@ export function PetDevice({
     <div
       onKeyDown={onKey}
       className="relative mx-auto select-none"
-      style={{ ["--u" as string]: "min(6.5px, calc((100vw - 2rem) / 72), calc((100dvh - 3rem) / 100))", width: u(GW), height: u(GH) }}
+      style={{ ["--u" as string]: "min(6.5px, calc(3px + 0.27vw), calc((100vw - 2rem) / 88), calc((100dvh - 3rem) / 116))", width: u(GW), height: u(GH) }}
     >
       {/* The body: flat colour, a hard bevel, a soft shadow underneath */}
       <div

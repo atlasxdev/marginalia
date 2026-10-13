@@ -828,7 +828,7 @@ export function HandheldDemo() {
   return (
     <div className="grid justify-items-center gap-3">
       {!hydrated ? (
-        <div className="aspect-[72/100] w-full max-w-[468px]" aria-hidden />
+        <div className="aspect-[72/100] w-[min(468px,calc(216px+19.44vw),calc((100vw-2rem)*0.818))]" aria-hidden />
       ) : (
       <PetDevice
         pet={{ ...DEFAULT_LOOK, species: "cat", name: "Mochi", xp: 150 }}
