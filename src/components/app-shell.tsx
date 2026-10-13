@@ -8,6 +8,7 @@ import {
   HouseIcon,
   LayersIcon,
   LibraryIcon,
+  ListMusicIcon,
   PlusIcon,
   SearchIcon,
 } from "lucide-react";
@@ -187,6 +188,14 @@ function AppSidebar() {
                   {readyCount}
                 </SidebarMenuBadge>
               )}
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild isActive={pathname === "/playlists"}>
+                <Link href="/playlists" onClick={close}>
+                  <ListMusicIcon className="text-primary" />
+                  <span>Playlists</span>
+                </Link>
+              </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarGroup>

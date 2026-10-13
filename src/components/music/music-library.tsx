@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { MusicControls, SourcePicker } from "./music-button";
 
 /** Settings: your music library. Upload songs, name them, make playlists, choose what plays. */
-export function MusicLibrary() {
+export function MusicLibrary({ showUpload = true }: { showUpload?: boolean }) {
   const music = useMusic();
   const fileRef = useRef<HTMLInputElement>(null);
   const [newPlaylist, setNewPlaylist] = useState("");
@@ -45,9 +45,11 @@ export function MusicLibrary() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="font-medium">Your songs</p>
-            <p className="text-sm text-muted-foreground">
-              {SONG_FORMATS_LABEL}, up to {formatBytes(MAX_SONG_BYTES)} each. Saved on this device and never uploaded.
-            </p>
+            {showUpload && (
+              <p className="text-sm text-muted-foreground">
+                {SONG_FORMATS_LABEL}, up to {formatBytes(MAX_SONG_BYTES)} each. Saved on this device and never uploaded.
+              </p>
+            )}
           </div>
           <input
             ref={fileRef}
@@ -63,10 +65,12 @@ export function MusicLibrary() {
               e.target.value = "";
             }}
           />
-          <Button variant="outline" onClick={() => fileRef.current?.click()}>
-            <UploadIcon />
-            Upload songs
-          </Button>
+          {showUpload && (
+            <Button variant="outline" onClick={() => fileRef.current?.click()}>
+              <UploadIcon />
+              Upload songs
+            </Button>
+          )}
         </div>
         {/* How much of the library is used */}
         <div className="grid gap-1.5">

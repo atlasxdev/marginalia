@@ -19,7 +19,7 @@ import { readTimer, saveTimer } from "@/lib/timer-pref";
 import type { ActionState, FocusMethod } from "@/lib/types";
 import { useHydrated } from "@/lib/use-hydrated";
 import { MethodPicker } from "./method-picker";
-import { MusicLibrary } from "./music/music-library";
+import Link from "next/link";
 import { PetBuilder } from "./pet/pet-builder";
 import { PetSprite } from "./pet/pet-sprite";
 
@@ -52,8 +52,14 @@ export function SettingsView() {
               </Section>
               <Section id="music" title="Music" description="Your own sounds to study to. They keep playing as you move around.">
                 <Card className={cardClass}>
-                  <CardContent className="p-6">
-                    <MusicLibrary />
+                  <CardContent className="flex flex-wrap items-center justify-between gap-4 p-6">
+                    <div>
+                      <p className="font-medium">Your songs and playlists</p>
+                      <p className="text-sm text-muted-foreground">Upload sounds, make playlists and choose what plays.</p>
+                    </div>
+                    <Button variant="outline" asChild>
+                      <Link href="/playlists">Open Playlists</Link>
+                    </Button>
                   </CardContent>
                 </Card>
               </Section>

@@ -99,7 +99,7 @@ export function MusicButton({ className, align = "end" }: { className?: string; 
         <div className="flex items-center justify-between gap-2">
           <p className="font-semibold">Music</p>
           <Button variant="link" size="sm" asChild className="h-auto p-0">
-            <Link href="/settings#music">Your library</Link>
+            <Link href="/playlists">Playlists</Link>
           </Button>
         </div>
         <p className="mt-0.5 text-sm text-muted-foreground">Keeps playing as you move around the app.</p>
