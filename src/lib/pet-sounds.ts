@@ -5,7 +5,7 @@
  */
 import type { Species } from "./pet-art";
 
-export type PetSound = "hi" | "pet" | "found" | "shrug" | "eat" | "land" | "wake" | "hatch" | "play" | "nap";
+export type PetSound = "hi" | "pet" | "found" | "shrug" | "notes" | "hatch";
 
 const PITCH: Record<Species, number> = { bird: 1.5, cat: 1.15, bookworm: 0.95, blob: 0.8 };
 
@@ -55,22 +55,9 @@ export function playPetSound(sound: PetSound, species: Species) {
     case "shrug": // a falling "hmm"
       note(a, t, 440 * p, 0.32, { to: 300 * p, type: "triangle", gain: 0.06 });
       break;
-    case "eat": // nom nom
-      note(a, t, 220 * p, 0.06, { to: 160 * p, gain: 0.07 });
-      note(a, t + 0.11, 240 * p, 0.06, { to: 170 * p, gain: 0.07 });
-      break;
-    case "land": // soft thump
-      note(a, t, 160 * p, 0.09, { to: 90 * p, type: "sine", gain: 0.12 });
-      break;
-    case "wake": // yawn
-      note(a, t, 300 * p, 0.45, { to: 520 * p, type: "triangle", gain: 0.05 });
-      break;
-    case "play": // boing!
-      note(a, t, 260 * p, 0.18, { to: 780 * p, type: "triangle", gain: 0.06 });
-      note(a, t + 0.2, 780 * p, 0.12, { to: 520 * p, type: "triangle", gain: 0.05 });
-      break;
-    case "nap": // a sleepy sigh
-      note(a, t, 420 * p, 0.6, { to: 220 * p, type: "sine", gain: 0.06 });
+    case "notes": // "ooh!", new notes to study
+      note(a, t, 440 * p, 0.08, { type: "triangle", gain: 0.06 });
+      note(a, t + 0.09, 660 * p, 0.16, { to: 720 * p, type: "triangle", gain: 0.06 });
       break;
     case "hatch": // crack, then a fanfare
       note(a, t, 1400, 0.03, { type: "sawtooth", gain: 0.04 });

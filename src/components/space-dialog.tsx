@@ -67,7 +67,7 @@ function SpaceForm({ space, onDone }: { space?: Space; onDone: (id: string) => v
     },
     onSuccess: ({ id }, file) => {
       setPicked((p) => new Set(p).add(id));
-      petSignal({ kind: "eat", label: fileLabel(file.name) });
+      petSignal({ kind: "notes", label: fileLabel(file.name) });
     },
     onError: (e) => toast.error(e instanceof Error && e.message ? e.message : "Couldn't upload that file. Try again."),
   });

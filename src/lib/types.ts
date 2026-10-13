@@ -128,12 +128,9 @@ export type ActionState = {
   fieldErrors?: Record<string, string[] | undefined>;
 };
 
-/** Your pet, and when it was last fed, played with and put to bed (its needs wear down from those). */
+/** Your study buddy: how it looks, and the XP it has earned from your studying. */
 export type Pet = import("./pet-art").PetLook & {
   name: string;
-  fedAt: string;
-  playedAt: string;
-  sleptAt: string;
   xp: number;
 };
 

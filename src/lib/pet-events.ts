@@ -7,7 +7,8 @@ export type PetSignal =
   | { kind: "reading" }
   | { kind: "found"; count: number }
   | { kind: "shrug" }
-  | { kind: "eat"; label: string }
+  /** New notes were added. */
+  | { kind: "notes"; label: string }
   /** A study session ended: how many cards, and how many you got right. */
   | { kind: "studied"; count: number; right: number }
   /** A focus session ended. */

@@ -28,22 +28,6 @@ export async function savePet(input: PetInput): Promise<ActionState> {
   return { ok: true };
 }
 
-/** Feeding, playing and sleeping reset that need; each also earns a little XP. */
-export async function carePet(kind: "feed" | "play" | "sleep", xp = 1): Promise<ActionState> {
-  const column = z.enum(["feed", "play", "sleep"]).parse(kind);
-  const gain = z.number().int().min(0).max(20).parse(xp);
-  const supabase = await createClient();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return { ok: false };
-  const { data } = await supabase.from("pets").select("xp").eq("user_id", auth.user.id).maybeSingle();
-  const at = { feed: "fed_at", play: "played_at", sleep: "slept_at" }[column];
-  const { error } = await supabase
-    .from("pets")
-    .update({ [at]: new Date().toISOString(), xp: (data?.xp ?? 0) + gain })
-    .eq("user_id", auth.user.id);
-  return { ok: !error };
-}
-
 /** XP for using Marginalia: answered questions and uploads. */
 export async function addPetXp(amount: number): Promise<ActionState> {
   const gain = z.number().int().min(1).max(20).safeParse(amount);

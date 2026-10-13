@@ -43,7 +43,7 @@ export function UploadForm() {
   const [dragging, setDragging] = useState(false);
   const mutation = useMutation({
     mutationFn: (file: File) => uploadFile(file).then((r) => r.message),
-    onSuccess: (_message, file) => petSignal({ kind: "eat", label: fileLabel(file.name) }),
+    onSuccess: (_message, file) => petSignal({ kind: "notes", label: fileLabel(file.name) }),
     onSettled: () => queryClient.invalidateQueries({ queryKey: ["documents"] }),
   });
   const { mutate } = mutation;

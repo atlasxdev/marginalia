@@ -2,10 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
-import { useQueryClient } from "@tanstack/react-query";
-import { carePet } from "@/app/actions/pet";
 import { palette } from "@/lib/pet-art";
-import { petMood, petStats } from "@/lib/pet-care";
+import { petGreeting, petLevel, petMood, type StudyStatus } from "@/lib/pet-care";
 import { onPetSignal } from "@/lib/pet-events";
 import { playPetSound } from "@/lib/pet-sounds";
 import type { Pet } from "@/lib/types";
@@ -31,35 +29,32 @@ const LCD = "#e7effc";
 const u = (n: number) => `calc(${n} * var(--u))`;
 const place = (x: number, y: number, w: number, h: number) => ({ left: u(x), top: u(y), width: u(w), height: u(h) });
 
-// Studying comes first: your buddy is a study buddy. Edit lives on the Stats screen.
+// Your buddy is a study partner: it studies with you, focuses with you, and
+// keeps score. Edit lives on the Stats screen.
 const MENU = [
   { id: "study", label: "Study" },
   { id: "focus", label: "Focus" },
-  { id: "feed", label: "Feed" },
-  { id: "play", label: "Play" },
-  { id: "sleep", label: "Sleep" },
   { id: "stats", label: "Stats" },
 ] as const;
 type MenuId = (typeof MENU)[number]["id"];
-type Screen = "home" | "stats" | "game" | "sleep";
-type Reaction = "found" | "shrug" | "eat" | "pet" | "wake";
+type Screen = "home" | "stats";
+type Reaction = "found" | "shrug" | "notes" | "pet";
 
 export function PetDevice({
   pet,
-  due = 0,
+  status,
   onEdit,
   onStudy,
   onFocus,
 }: {
   pet: Pet;
-  /** Cards to review now, for the greeting. */
-  due?: number;
+  /** How your studying is going: its mood, greeting and stats. */
+  status: StudyStatus;
   onEdit: () => void;
   onStudy: () => void;
   onFocus: () => void;
 }) {
   const reduced = useReducedMotion();
-  const queryClient = useQueryClient();
   const [screen, setScreen] = useState<Screen>("home");
   const [selected, setSelected] = useState(0);
   const [x, setX] = useState(16);
@@ -68,7 +63,6 @@ export function PetDevice({
   const [face, setFace] = useState<Face | null>(null);
   const [blink, setBlink] = useState(false);
   const [bubble, setBubble] = useState<string | null>(null);
-  const [cookie, setCookie] = useState(0);
   const [reading, setReading] = useState(false);
   const [pressed, setPressed] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
@@ -76,9 +70,8 @@ export function PetDevice({
   const later = (fn: () => void, ms: number) => timers.current.push(setTimeout(fn, ms));
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
 
-  const stats = petStats(pet, now);
-  const mood = petMood(pet, now);
-  const asleep = screen === "sleep";
+  const { level, progress } = petLevel(pet.xp);
+  const mood = petMood(status);
   const colors = palette(pet.color);
 
   const say = (text: string, ms = 2200) => {
@@ -93,14 +86,8 @@ export function PetDevice({
       later(() => setFace(null), ms);
     }
   };
-  const care = (kind: "feed" | "play" | "sleep", xp: number) => {
-    const at = new Date().toISOString();
-    const key = { feed: "fedAt", play: "playedAt", sleep: "sleptAt" } as const;
-    queryClient.setQueryData<Pet | null>(["pet"], (p) => (p ? { ...p, [key[kind]]: at, xp: p.xp + xp } : p));
-    void carePet(kind, xp);
-  };
 
-  // Clock for the needs and the window; blinking; wandering about the room
+  // Clock for the window; blinking; wandering about the room
   useEffect(() => {
     const clock = setInterval(() => setNow(Date.now()), 30_000);
     const blinker = setInterval(() => {
@@ -127,13 +114,7 @@ export function PetDevice({
   // Says hi, and keeps an eye on what you're doing in the app
   useEffect(() => {
     const hi = setTimeout(() => {
-      setBubble(
-        due > 0
-          ? `${due} ${due === 1 ? "card" : "cards"} due. Study?`
-          : mood === "Happy"
-            ? `Hi! I'm ${pet.name}.`
-            : `${pet.name} is ${mood.toLowerCase()}.`
-      );
+      setBubble(petGreeting(pet.name, status));
       playPetSound("hi", pet.species);
     }, 350);
     const off = onPetSignal((s) => {
@@ -148,12 +129,15 @@ export function PetDevice({
         setReading(false);
         react("shrug", "flat", 1400);
         say("Not in your files.");
-      } else if (s.kind === "eat") {
-        react("eat", "chomp", 700);
-        say(`Mm, a ${s.label}. +3 XP`);
-      } else if (s.kind === "studied" || s.kind === "focused") {
+      } else if (s.kind === "notes") {
+        react("notes", "happy", 900);
+        say(`New ${s.label} to study. +3 XP`);
+      } else if (s.kind === "studied") {
         react("found", "happy", 1400);
-        say(s.kind === "studied" ? `${s.count} cards! Nice.` : `${s.minutes} min focus!`);
+        say(s.right ? `${s.right}/${s.count} right!` : `${s.count} cards done!`);
+      } else if (s.kind === "focused") {
+        react("found", "happy", 1400);
+        say(`${s.minutes} min together!`);
       }
     });
     return () => {
@@ -172,48 +156,13 @@ export function PetDevice({
       onStudy();
     } else if (id === "focus") {
       onFocus();
-    } else if (id === "feed") {
-      if (stats.hunger > 95) return say("I'm full!");
-      setCookie((c) => c + 1);
-      later(() => {
-        react("eat", "chomp", 700);
-        say("Yum! +1 XP");
-      }, 450);
-      care("feed", 1);
-    } else if (id === "play") {
-      setScreen("game");
-    } else if (id === "sleep") {
-      setScreen("sleep");
-      setBubble(null);
-      playPetSound("nap", pet.species);
-      care("sleep", 1);
     } else if (id === "stats") {
       setScreen("stats");
     }
   };
-  const game = useCatchGame(
-    screen === "game",
-    (won, score) => {
-      care("play", won ? 4 : 1);
-      say(won ? "You won! +4 XP" : `${score} caught. +1 XP`, 2600);
-      if (won) react("found", "happy", 1400);
-      setScreen("home");
-    },
-    pet
-  );
-
   const press = (button: "left" | "right" | "a" | "b") => {
     setPressed(button);
     later(() => setPressed((p) => (p === button ? null : p)), 120);
-    if (screen === "game") return game.press(button, () => setScreen("home"));
-    if (screen === "sleep") {
-      if (button === "a" || button === "b") {
-        setScreen("home");
-        react("wake");
-        say("Morning!");
-      }
-      return;
-    }
     if (screen === "stats") {
       if (button === "a") onEdit();
       if (button === "b") setScreen("home");
@@ -280,21 +229,11 @@ export function PetDevice({
         autoFocus
       >
         {screen === "stats" ? (
-          <Stats pet={pet} stats={stats} mood={mood} />
+          <Stats pet={pet} status={status} level={level} progress={progress} mood={mood} />
         ) : (
           <svg viewBox={`0 0 ${RW} ${RH}`} shapeRendering="crispEdges" className="absolute inset-0 size-full" aria-hidden>
-            <Room hour={hour} dark={asleep} />
-            {screen === "game" ? (
-              game.scene()
-            ) : (
-              <>
-                {cookie > 0 && (
-                  <motion.g key={cookie} initial={{ y: -12, opacity: 1 }} animate={{ y: FLOOR - 4, opacity: [1, 1, 0] }} transition={{ duration: 0.45, ease: "easeIn" }}>
-                    <rect x={x + 7} y={0} width={3} height={2} fill="#c7893b" />
-                    <rect x={x + 8} y={0} width={1} height={1} fill="#5b3a1a" />
-                  </motion.g>
-                )}
-                <motion.g animate={{ x }} transition={{ duration: reduced ? 0 : 0.9, ease: "linear" }}>
+            <Room hour={hour} />
+            <motion.g animate={{ x }} transition={{ duration: reduced ? 0 : 0.9, ease: "linear" }}>
                   <motion.g
                     key={reaction?.seq ?? 0}
                     animate={reaction && !reduced ? MOVES[reaction.kind] : undefined}
@@ -307,36 +246,33 @@ export function PetDevice({
                     className="cursor-pointer"
                   >
                     <g transform={`translate(0 ${FLOOR - 14}) ${facing === -1 ? "translate(16 0) scale(-1 1)" : ""}`}>
-                      <PetSprite look={pet} face={asleep ? "closed" : face ?? (reading ? "side" : blink ? "closed" : "open")} book={reading} bare />
+                      <PetSprite look={pet} face={face ?? (reading ? "side" : blink ? "closed" : "open")} book={reading} bare />
                     </g>
                   </motion.g>
                 </motion.g>
-                {asleep && !reduced && <Zzz x={x + 14} />}
-              </>
-            )}
           </svg>
         )}
 
         {/* Status strip */}
         {screen !== "stats" && (
           <div className={cn(text, "absolute inset-x-0 top-0 flex items-center justify-between bg-white/80 text-[#1d2433]")} style={{ height: u(4), padding: `0 ${u(1.5)}`, fontSize: u(2.2) }}>
-            <span>Lv {stats.level}</span>
-            <span>{screen === "game" ? `${game.score}/${GOAL} caught, ${game.misses}/3 missed` : asleep ? "Sleeping" : mood}</span>
+            <span>Lv {level}</span>
+            <span>{status.streak > 0 ? `${status.streak}-day streak` : mood}</span>
           </div>
         )}
 
-        {(bubble || (screen === "game" && !game.running)) && screen !== "stats" && (
+        {bubble && screen !== "stats" && (
           <p
             className={cn(text, "absolute left-1/2 max-w-[90%] -translate-x-1/2 truncate rounded-[2px] bg-white text-[#1d2433] shadow-[0_1px_0_#1d243333]")}
             style={{ top: u(6), padding: `${u(1)} ${u(1.6)}`, fontSize: u(2.2) }}
           >
-            {screen === "game" && !game.running ? `Catch ${GOAL} books. Press A!` : bubble}
+            {bubble}
           </p>
         )}
       </div>
 
       {/* Menu, on the bezel under the screen */}
-      <div className="absolute grid grid-cols-6" style={{ ...place(SCREEN.x, 62, RW, 6), gap: u(0.8) }}>
+      <div className="absolute grid grid-cols-3" style={{ ...place(SCREEN.x, 62, RW, 6), gap: u(0.8) }}>
         {MENU.map((m, i) => {
           const on = screen === "home" && i === selected;
           return (
@@ -350,7 +286,7 @@ export function PetDevice({
                 if (screen === "home") run(m.id);
               }}
               className={cn(text, "flex flex-col items-center justify-center rounded-[3px] transition-colors duration-100 disabled:opacity-40", on ? "bg-[#e7effc] text-[#1d2433]" : "text-white/75 hover:bg-white/10")}
-              style={{ fontSize: u(1.7), gap: u(0.6) }}
+              style={{ fontSize: u(2), gap: u(0.6) }}
             >
               <PixelIcon name={m.id} color="currentColor" />
               {m.label}
@@ -374,9 +310,8 @@ export function PetDevice({
 const MOVES = {
   found: { y: [0, -8, 0, -3, 0], transition: { duration: 0.7 } },
   shrug: { rotate: [0, -8, 8, -4, 0], transition: { duration: 0.6 } },
-  eat: { scaleX: [1, 1.15, 0.92, 1.08, 1], scaleY: [1, 0.85, 1.08, 0.92, 1], transition: { duration: 0.6 } },
+  notes: { scaleX: [1, 1.15, 0.92, 1.08, 1], scaleY: [1, 0.85, 1.08, 0.92, 1], transition: { duration: 0.6 } },
   pet: { scaleX: [1, 1.12, 0.95, 1], scaleY: [1, 0.82, 1.1, 1], transition: { duration: 0.45 } },
-  wake: { scaleY: [1, 1.15, 1], transition: { duration: 0.5 } },
 };
 
 /* ---------- controls ---------- */
@@ -453,9 +388,6 @@ function DPad({ pressed, onPress, style }: { pressed: string | null; onPress: (d
 const ICONS: Record<MenuId, string[]> = {
   study: ["XXX.XXX", "X.XXX.X", "X..X..X", "X..X..X", "X..X..X", "X.XXX.X", "XXX.XXX"],
   focus: ["..XXX..", ".X.X.X.", "X..X..X", "X..XX.X", "X.....X", ".X...X.", "..XXX.."],
-  feed: ["..XXX..", ".XX.XX.", "XXXXX.X", "X.XXXXX", "XXX.XXX", ".XXXXX.", "..XXX.."],
-  play: ["..XXX..", ".X...X.", "X.X...X", "X..X..X", "X...X.X", ".X...X.", "..XXX.."],
-  sleep: ["..XXX..", ".XX....", "XX.....", "XX.....", "XX.....", ".XX..X.", "..XXX.."],
   stats: [".....XX", ".....XX", "...XXXX", "...XXXX", ".XXXXXX", ".XXXXXX", "XXXXXXX"],
 };
 
@@ -469,7 +401,7 @@ function PixelIcon({ name, color }: { name: MenuId; color: string }) {
 
 /* ---------- the room ---------- */
 
-function Room({ hour, dark }: { hour: number; dark: boolean }) {
+function Room({ hour }: { hour: number }) {
   const night = hour < 6 || hour >= 19;
   const dusk = !night && (hour >= 17 || hour < 7);
   const sky = night ? "#1b2a4a" : dusk ? "#f6a87a" : "#9fd3ff";
@@ -515,31 +447,18 @@ function Room({ hour, dark }: { hour: number; dark: boolean }) {
       {/* Rug */}
       <rect x={10} y={32} width={28} height={3} fill="#4d9cff" />
       <rect x={11} y={33} width={26} height={1} fill="#9cc7ff" />
-      {dark && <rect width={RW} height={RH} fill="#0b1220" opacity={0.55} />}
     </g>
-  );
-}
-
-function Zzz({ x }: { x: number }) {
-  const z = ["XXX", "..X", ".X.", "X..", "XXX"];
-  return (
-    <>
-      {[0, 1, 2].map((i) => (
-        <motion.g key={i} initial={{ opacity: 0 }} animate={{ opacity: [0, 1, 0], x: [x, x + 3 + i], y: [FLOOR - 16, FLOOR - 24 - i * 2] }} transition={{ duration: 2.4, delay: i * 0.8, repeat: Infinity }}>
-          {z.flatMap((row, y) => [...row].map((ch, cx) => (ch === "X" ? <rect key={`${cx}-${y}`} x={cx} y={y} width={1} height={1} fill={LCD} /> : null)))}
-        </motion.g>
-      ))}
-    </>
   );
 }
 
 /* ---------- stats ---------- */
 
-function Stats({ pet, stats, mood }: { pet: Pet; stats: ReturnType<typeof petStats>; mood: string }) {
-  const rows: [string, number][] = [
-    ["Hunger", stats.hunger],
-    ["Happy", stats.happy],
-    ["Energy", stats.energy],
+function Stats({ pet, status, level, progress, mood }: { pet: Pet; status: StudyStatus; level: number; progress: number; mood: string }) {
+  const rows: [string, string][] = [
+    ["Streak", status.streak ? `${status.streak} ${status.streak === 1 ? "day" : "days"}` : "Start today"],
+    ["Due now", `${status.due} ${status.due === 1 ? "card" : "cards"}`],
+    ["This week", `${status.week.reviewed} cards`],
+    ["Focus", `${status.week.focusMinutes} min`],
   ];
   const line = { fontSize: u(2.3) };
   return (
@@ -548,128 +467,28 @@ function Stats({ pet, stats, mood }: { pet: Pet; stats: ReturnType<typeof petSta
         <span className="font-semibold">{pet.name}</span>
         <span style={line}>{mood}</span>
       </div>
-      <div className="flex flex-col" style={{ marginTop: u(3), gap: u(2) }}>
+      <div className="flex flex-col" style={{ marginTop: u(2.5), gap: u(1.6) }}>
         {rows.map(([label, value]) => (
-          <div key={label} className="flex items-center" style={{ ...line, gap: u(2) }}>
-            <span style={{ width: u(11) }}>{label}</span>
-            <span className="flex" style={{ gap: u(1) }} aria-label={`${label} ${value} out of 100`}>
-              {[0, 1, 2, 3, 4].map((i) => (
-                <svg key={i} viewBox="0 0 7 6" shapeRendering="crispEdges" style={{ width: u(3.5), height: u(3) }} aria-hidden>
-                  <path d="M1 0h2v1h1V0h2v1h1v2H6v1H5v1H4v1H3V5H2V4H1V3H0V1h1z" fill={value > i * 20 + 10 ? "#df2224" : "#1d243333"} />
-                </svg>
-              ))}
-            </span>
+          <div key={label} className="flex justify-between" style={line}>
+            <span className="opacity-70">{label}</span>
+            <span>{value}</span>
           </div>
         ))}
         <div style={line}>
           <div className="flex justify-between">
-            <span>Level {stats.level}</span>
+            <span>Level {level}</span>
             <span>{pet.xp} XP</span>
           </div>
           <div className="flex" style={{ marginTop: u(1), gap: u(0.5) }}>
             {Array.from({ length: 12 }, (_, i) => (
-              <span key={i} style={{ width: u(2.9), height: u(1.5), background: i < Math.round(stats.progress * 12) ? "#0152cb" : "#1d243322" }} />
+              <span key={i} style={{ width: u(2.9), height: u(1.5), background: i < Math.round(progress * 12) ? "#0152cb" : "#1d243322" }} />
             ))}
           </div>
         </div>
       </div>
-      <p className="absolute inset-x-0 text-center opacity-70" style={{ bottom: u(2), fontSize: u(1.8) }}>
+      <p className="absolute inset-x-0 text-center opacity-70" style={{ bottom: u(1.6), fontSize: u(1.8) }}>
         Earn XP by studying. A to edit, B to go back
       </p>
     </div>
   );
-}
-
-/* ---------- play: catch the falling books ---------- */
-
-const GOAL = 8;
-const LANES = [10, 20, 30];
-
-function useCatchGame(active: boolean, onEnd: (won: boolean, score: number) => void, pet: Pet) {
-  const [running, setRunning] = useState(false);
-  const [lane, setLane] = useState(1);
-  const [books, setBooks] = useState<{ id: number; lane: number; y: number }[]>([]);
-  const [score, setScore] = useState(0);
-  const [misses, setMisses] = useState(0);
-  const laneRef = useRef(lane);
-  const endRef = useRef(onEnd);
-  useEffect(() => {
-    laneRef.current = lane;
-    endRef.current = onEnd;
-  });
-
-  useEffect(() => {
-    if (!active || !running) return;
-    let id = 0;
-    let caught = 0;
-    let missed = 0;
-    let spawnIn = 0;
-    const tick = setInterval(() => {
-      spawnIn -= 1;
-      setBooks((list) => {
-        let next = list.map((b) => ({ ...b, y: b.y + 1 }));
-        if (spawnIn <= 0) {
-          next = [...next, { id: id++, lane: Math.floor(Math.random() * 3), y: 2 }];
-          spawnIn = Math.max(10, 18 - caught);
-        }
-        const kept: typeof next = [];
-        for (const b of next) {
-          if (b.y >= FLOOR - 10) {
-            if (b.lane === laneRef.current) {
-              caught++;
-              playPetSound("eat", pet.species);
-            } else {
-              missed++;
-              playPetSound("shrug", pet.species);
-            }
-          } else kept.push(b);
-        }
-        setScore(caught);
-        setMisses(missed);
-        if (caught >= GOAL || missed >= 3) {
-          setRunning(false);
-          setTimeout(() => endRef.current(caught >= GOAL, caught), 0);
-          return [];
-        }
-        return kept;
-      });
-    }, 80);
-    return () => clearInterval(tick);
-  }, [active, running, pet.species]);
-
-  const press = (button: "left" | "right" | "a" | "b", exit: () => void) => {
-    if (button === "b") {
-      setRunning(false);
-      setBooks([]);
-      return exit();
-    }
-    if (!running) {
-      if (button === "a") {
-        setScore(0);
-        setMisses(0);
-        setBooks([]);
-        setRunning(true);
-        playPetSound("play", pet.species);
-      }
-      return;
-    }
-    if (button === "left") setLane((l) => Math.max(0, l - 1));
-    if (button === "right") setLane((l) => Math.min(2, l + 1));
-  };
-
-  const scene = () => (
-    <>
-      {books.map((b) => (
-        <g key={b.id}>
-          <rect x={LANES[b.lane] + 2} y={b.y} width={4} height={5} fill="#0152cb" />
-          <rect x={LANES[b.lane] + 3} y={b.y + 1} width={3} height={3} fill="#ffffff" />
-        </g>
-      ))}
-      <g transform={`translate(${LANES[lane] - 4} ${FLOOR - 14})`}>
-        <PetSprite look={pet} face={running ? "happy" : "open"} bare />
-      </g>
-    </>
-  );
-
-  return { running, score, misses, press, scene };
 }

@@ -6,7 +6,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { addPetXp } from "@/app/actions/pet";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Drawer, DrawerContent, DrawerDescription, DrawerTitle } from "@/components/ui/drawer";
-import { petMood, petStats } from "@/lib/pet-care";
+import { petLevel, petMood, studyStatus, type StudyStatus } from "@/lib/pet-care";
 import { onOpenPet, onPetSignal } from "@/lib/pet-events";
 import { clock, useFocus } from "@/lib/focus";
 import { isDue } from "@/lib/leitner";
@@ -19,7 +19,8 @@ import { PetDevice } from "./pet-device";
 import { PetSprite, type Face } from "./pet-sprite";
 
 /*
- * Your pet in the sidebar: a little screen with it, its mood and its needs.
+ * Your buddy in the sidebar: a little screen with it, its level and how your
+ * studying is going (cards due, or your streak).
  * Tap it to pick up its handheld (a dialog on desktop, a sheet on phones).
  * Before you have a pet, it offers to hatch one. It also hands out XP as you
  * use Marginalia: +5 for an answered question, +3 for an upload, and more for
@@ -35,8 +36,9 @@ export function PetWidget({ onOpen }: { onOpen?: () => void }) {
   const desktop = useMediaQuery("(min-width: 768px)");
   const focus = useFocus();
   const router = useRouter();
-  const due =
-    useQuery(studyQuery).data?.decks.reduce((n, d) => n + d.payload.cards.filter((_, i) => isDue(d.state.cards?.[i])).length, 0) ?? 0;
+  const overview = useQuery(studyQuery).data;
+  const due = overview?.decks.reduce((n, d) => n + d.payload.cards.filter((_, i) => isDue(d.state.cards?.[i])).length, 0) ?? 0;
+  const status = studyStatus(overview, due);
   const focusing = focus.state.phase !== "idle";
 
   // "Your pet" in the account menu
@@ -48,7 +50,7 @@ export function PetWidget({ onOpen }: { onOpen?: () => void }) {
       onPetSignal((s) => {
         const gain =
           s.kind === "found" ? 5
-          : s.kind === "eat" ? 3
+          : s.kind === "notes" ? 3
           : s.kind === "studied" ? Math.min(s.count, 10) + Math.min(s.right, 10)
           : s.kind === "focused" ? Math.min(Math.round(s.minutes / 2), 30)
           : 0;
@@ -57,9 +59,8 @@ export function PetWidget({ onOpen }: { onOpen?: () => void }) {
           void addPetXp(gain);
         }
         const show: Face | null =
-          s.kind === "found" || s.kind === "studied" || s.kind === "focused" ? "happy"
+          s.kind === "found" || s.kind === "studied" || s.kind === "focused" || s.kind === "notes" ? "happy"
           : s.kind === "shrug" ? "flat"
-          : s.kind === "eat" ? "chomp"
           : s.kind === "reading" ? "side"
           : null;
         setFace(show);
@@ -82,7 +83,7 @@ export function PetWidget({ onOpen }: { onOpen?: () => void }) {
   const handheld = data && (
     <PetDevice
       pet={data}
-      due={due}
+      status={status}
       onEdit={() => setBuilding(true)}
       onStudy={() => {
         setDevice(false);
@@ -102,7 +103,7 @@ export function PetWidget({ onOpen }: { onOpen?: () => void }) {
         onClick={open}
         className="group/pet flex w-full items-center gap-3 rounded-xl p-2 text-left transition-colors duration-150 hover:bg-sidebar-accent"
         aria-label={
-          focusing ? "Open the focus timer" : data ? `${data.name}: ${petMood(data)}. Open its handheld.` : "Hatch your study buddy"
+          focusing ? "Open the focus timer" : data ? `${data.name}: ${petMood(status)}. Open its handheld.` : "Hatch your study buddy"
         }
       >
         <span className="grid size-11 shrink-0 place-items-center overflow-hidden rounded-lg bg-[#e7effc] ring-1 ring-foreground/10 dark:bg-[#2b354a]">
@@ -124,7 +125,7 @@ export function PetWidget({ onOpen }: { onOpen?: () => void }) {
               {focus.state.phase === "break" ? "On a break" : "Focusing"} {clock(focus.seconds)}
             </span>
           ) : data ? (
-            <Needs pet={data} />
+            <Progress pet={data} status={status} />
           ) : (
             <span className="truncate text-xs text-muted-foreground">Your study buddy</span>
           )}
@@ -136,7 +137,7 @@ export function PetWidget({ onOpen }: { onOpen?: () => void }) {
           <Dialog open={device} onOpenChange={setDevice}>
             <DialogContent className="border-0 bg-transparent p-0 shadow-none ring-0 sm:max-w-[520px]" showCloseButton={false}>
               <DialogTitle className="sr-only">{data.name}</DialogTitle>
-              <DialogDescription className="sr-only">Study, focus, and look after your buddy.</DialogDescription>
+              <DialogDescription className="sr-only">Study and focus with your buddy.</DialogDescription>
               {device && handheld}
             </DialogContent>
           </Dialog>
@@ -144,7 +145,7 @@ export function PetWidget({ onOpen }: { onOpen?: () => void }) {
           <Drawer open={device} onOpenChange={setDevice}>
             <DrawerContent className="glass border-glass-border bg-glass-strong pb-[max(1.5rem,env(safe-area-inset-bottom))]">
               <DrawerTitle className="sr-only">{data.name}</DrawerTitle>
-              <DrawerDescription className="sr-only">Study, focus, and look after your buddy.</DrawerDescription>
+              <DrawerDescription className="sr-only">Study and focus with your buddy.</DrawerDescription>
               <div className="px-4 pt-2">{device && handheld}</div>
             </DrawerContent>
           </Drawer>
@@ -154,23 +155,14 @@ export function PetWidget({ onOpen }: { onOpen?: () => void }) {
   );
 }
 
-/** Three tiny bars: hunger, happiness, energy. */
-function Needs({ pet }: { pet: Pet }) {
-  const { hunger, happy, energy, level } = petStats(pet);
+/** Its level, and the next thing to do: cards due, or your streak. */
+function Progress({ pet, status }: { pet: Pet; status: StudyStatus }) {
+  const { level } = petLevel(pet.xp);
+  const note = status.due > 0 ? `${status.due} due` : status.streak > 0 ? `${status.streak}-day streak` : petMood(status);
   return (
-    <span className="flex items-center gap-1.5">
-      <span className="text-[10px] font-semibold text-muted-foreground">Lv {level}</span>
-      {(
-        [
-          ["Hunger", hunger],
-          ["Happy", happy],
-          ["Energy", energy],
-        ] as const
-      ).map(([label, v]) => (
-        <span key={label} title={`${label} ${v}%`} className="h-1.5 w-6 overflow-hidden rounded-full bg-foreground/10">
-          <span className={cn("block h-full rounded-full", v < 30 ? "bg-destructive" : v < 60 ? "bg-amber-500" : "bg-success")} style={{ width: `${v}%` }} />
-        </span>
-      ))}
+    <span className="flex items-center gap-1.5 text-xs">
+      <span className="font-semibold text-muted-foreground">Lv {level}</span>
+      <span className={cn("truncate", status.due > 0 ? "font-medium text-primary" : "text-muted-foreground")}>{note}</span>
     </span>
   );
 }

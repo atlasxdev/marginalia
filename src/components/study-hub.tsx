@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { GalleryVerticalEndIcon, PenLineIcon, TimerIcon } from "lucide-react";
 import { useFocus } from "@/lib/focus";
 import { isDue } from "@/lib/leitner";
+import { streakFrom } from "@/lib/pet-care";
 import { meQuery, petQuery, studyQuery } from "@/lib/queries";
 import type { StudyOverview, WeakTopic } from "@/lib/types";
 import { useHydrated } from "@/lib/use-hydrated";
@@ -16,20 +17,6 @@ import { PetSprite } from "./pet/pet-sprite";
 import { useStudySession } from "./study";
 
 const groupClass = "glass rounded-xl border border-glass-border bg-glass";
-
-/** Days in a row you've studied, counting today or, if you haven't yet, yesterday. */
-function streakFrom(activity: string[]) {
-  const day = (d: Date) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-  const days = new Set(activity.map((t) => day(new Date(t))));
-  const cursor = new Date();
-  if (!days.has(day(cursor))) cursor.setDate(cursor.getDate() - 1);
-  let streak = 0;
-  while (days.has(day(cursor))) {
-    streak++;
-    cursor.setDate(cursor.getDate() - 1);
-  }
-  return streak;
-}
 
 function minutes(total: number) {
   if (total < 60) return `${total}m`;
