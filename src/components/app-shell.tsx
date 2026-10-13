@@ -5,27 +5,12 @@ import { usePathname, useRouter } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
-  ChevronsUpDownIcon,
   HouseIcon,
   LayersIcon,
   LibraryIcon,
-  LogOutIcon,
-  MoonIcon,
-  PawPrintIcon,
   PlusIcon,
   SearchIcon,
-  SettingsIcon,
-  SunIcon,
 } from "lucide-react";
-import { useTheme } from "next-themes";
-import { signOut } from "@/app/actions/auth";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   Sidebar,
   SidebarContent,
@@ -58,8 +43,8 @@ import { cn } from "@/lib/utils";
 import { Wordmark } from "./logo";
 import { SearchChats } from "./search-chats";
 import { PetWidget } from "./pet/pet-widget";
-import { openPet } from "@/lib/pet-events";
 import { SpaceDialog } from "./space-dialog";
+import { AccountMenu } from "./account-menu";
 import { AutoCards } from "@/lib/auto-cards";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -120,7 +105,6 @@ function AppSidebar() {
     : undefined;
   const meResult = useQuery(meQuery);
   const me = meResult.data;
-  const email = me?.email;
   // A session ended elsewhere (like a password reset) still has a cookie, so sign out properly
   useEffect(() => {
     if (!meResult.isSuccess || me) return;
@@ -128,8 +112,6 @@ function AppSidebar() {
       .auth.signOut({ scope: "local" })
       .finally(() => router.replace("/sign-in"));
   }, [meResult.isSuccess, me, router]);
-  const name = me?.user_metadata?.name as string | undefined;
-  const { resolvedTheme, setTheme } = useTheme();
   const [creating, setCreating] = useState(false);
   const [searching, setSearching] = useState(false);
   // ⌘K / Ctrl+K opens search from anywhere in the app
@@ -182,7 +164,7 @@ function AppSidebar() {
               <SidebarMenuButton onClick={() => setSearching(true)}>
                 <SearchIcon className="text-primary" />
                 <span>Search chats</span>
-                <kbd className="ml-auto rounded border border-border px-1 font-sans text-[10px] text-muted-foreground">
+                <kbd className="ml-auto hidden rounded border border-border px-1 font-sans text-[10px] text-muted-foreground md:inline">
                   ⌘K
                 </kbd>
               </SidebarMenuButton>
@@ -254,62 +236,7 @@ function AppSidebar() {
         <PetWidget onOpen={close} />
         <SidebarMenu>
           <SidebarMenuItem>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <SidebarMenuButton
-                  size="lg"
-                  aria-label="Account"
-                  className="data-[state=open]:bg-sidebar-accent"
-                >
-                  <span className="grid size-8 shrink-0 place-items-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
-                    {(name || email || "?").charAt(0).toUpperCase()}
-                  </span>
-                  <span className="grid min-w-0 flex-1 text-left leading-tight">
-                    <span className="truncate font-medium">
-                      {name || "Account"}
-                    </span>
-                    <span className="truncate text-xs text-muted-foreground">
-                      {email}
-                    </span>
-                  </span>
-                  <ChevronsUpDownIcon className="ml-auto text-muted-foreground" />
-                </SidebarMenuButton>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                side="top"
-                align="start"
-                className="w-(--radix-dropdown-menu-trigger-width) min-w-56"
-              >
-                <DropdownMenuItem asChild>
-                  <Link href="/settings" onClick={close}>
-                    <SettingsIcon />
-                    Settings
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onSelect={() => {
-                    close();
-                    openPet();
-                  }}
-                >
-                  <PawPrintIcon />
-                  Your study buddy
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onSelect={() =>
-                    setTheme(resolvedTheme === "dark" ? "light" : "dark")
-                  }
-                >
-                  {resolvedTheme === "dark" ? <SunIcon /> : <MoonIcon />}
-                  {resolvedTheme === "dark" ? "Light mode" : "Dark mode"}
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onSelect={() => signOut()}>
-                  <LogOutIcon />
-                  Sign out
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <AccountMenu onNavigate={close} />
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
