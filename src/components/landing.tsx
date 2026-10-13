@@ -1012,3 +1012,92 @@ export function TodayDemo() {
     </div>
   );
 }
+
+/* ---------- the feature tour: one feature at a time, picked from a list ---------- */
+
+const TOUR = [
+  {
+    label: "Flashcards",
+    title: "Add your notes. The flashcards make themselves.",
+    body: "Drop a subject's notes in and your buddy writes flashcards on what you'd be tested on, each linked to the line it came from.",
+    Demo: NotesDemo,
+  },
+  {
+    label: "Checked answers",
+    title: "Say it in your own words. Your buddy checks it.",
+    body: "Type what you remember and it's marked right, almost or wrong against your notes, with the line that has the full answer.",
+    Demo: RecallDemo,
+  },
+  {
+    label: "Explanations",
+    title: "Get one wrong? It explains, then you explain it back.",
+    body: "Muddled idea? Your buddy explains it from your notes, then checks your own explanation. Slipped on a detail? Two fresh practice questions on that exact point.",
+    Demo: ExplainDemo,
+  },
+  {
+    label: "Practice exams",
+    title: "Practice exams, before the real one.",
+    body: "Timed, mixed questions with no hints until you hand it in. A score for every topic, and one tap to study the ones you missed.",
+    Demo: ExamDemo,
+  },
+  {
+    label: "Today",
+    title: "It knows what to study today.",
+    body: "Your buddy picks the subject that needs you most. Set a daily goal, keep your streak, and watch your focus time add up.",
+    Demo: TodayDemo,
+  },
+  {
+    label: "Study music",
+    title: "Your own study music.",
+    body: "Upload lo-fi, rain or piano tracks and make playlists. Music keeps playing as you move around, and can pause itself on breaks.",
+    Demo: MusicDemo,
+  },
+] as const;
+
+const TOUR_MS = 8000;
+
+export function FeatureTour() {
+  const reduced = useReducedMotion();
+  const [ref, inView] = useInView<HTMLDivElement>({ once: false, margin: "0px" });
+  const [active, setActive] = useState(0);
+  const [hovering, setHovering] = useState(false);
+  const running = inView && !hovering && !reduced;
+  // Moves on by itself while it's on screen and you're not pointing at it
+  const t = useClock(running, active, TOUR_MS, () => setActive((a) => (a + 1) % TOUR.length));
+  const { Demo } = TOUR[active];
+
+  return (
+    <div ref={ref} onPointerEnter={() => setHovering(true)} onPointerLeave={() => setHovering(false)} className="grid grid-cols-[minmax(0,1fr)] items-center gap-8 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-14">
+      {/* The list: every feature, the active one opened with its progress */}
+      <div role="tablist" aria-label="Features" className="grid gap-1.5">
+        {TOUR.map((f, i) => {
+          const on = i === active;
+          return (
+            <button
+              key={f.label}
+              type="button"
+              role="tab"
+              aria-selected={on}
+              onClick={() => setActive(i)}
+              className={cn("relative overflow-hidden rounded-2xl px-5 py-4 text-left transition-colors duration-200", on ? "glass border border-glass-border bg-glass" : "hover:bg-foreground/5")}
+            >
+              <span className={cn("block text-lg font-semibold transition-colors", on ? "text-foreground" : "text-muted-foreground")}>{on ? f.title : f.label}</span>
+              {on && <span className="mt-1.5 block text-muted-foreground animate-in fade-in duration-300 motion-reduce:animate-none">{f.body}</span>}
+              {on && (
+                <span className="absolute inset-x-0 bottom-0 h-0.5 bg-foreground/5" aria-hidden>
+                  <span className="block h-full bg-primary" style={{ width: `${reduced ? 100 : Math.min(100, (t / TOUR_MS) * 100)}%` }} />
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+      {/* The demo for the active feature */}
+      <div role="tabpanel" aria-label={TOUR[active].label} className="grid min-h-[28rem] items-center">
+        <div key={active} className="animate-in fade-in slide-in-from-bottom-3 duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:animate-none">
+          <Demo />
+        </div>
+      </div>
+    </div>
+  );
+}

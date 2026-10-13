@@ -6,10 +6,8 @@ import { cn } from "@/lib/utils";
  * swapped with the theme. Sizes are the files' own.
  */
 const SHOTS = {
-  hero: { width: 2460, height: 1500 },
-  "laptop-sources": { width: 2100, height: 1350 },
-  "laptop-pet": { width: 2100, height: 1350 },
-  phones: { width: 1230, height: 1290 },
+  devices: { width: 2400, height: 1460 },
+  today: { width: 2400, height: 1460 },
 } as const;
 
 export function ProductShot({ name, alt, priority, className }: { name: keyof typeof SHOTS; alt: string; priority?: boolean; className?: string }) {
