@@ -1,7 +1,8 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { GalleryVerticalEndIcon, PenLineIcon } from "lucide-react";
+import { GalleryVerticalEndIcon, PenLineIcon, TimerIcon } from "lucide-react";
+import { useFocus } from "@/lib/focus";
 import { isDue } from "@/lib/leitner";
 import { meQuery, petQuery, studyQuery } from "@/lib/queries";
 import type { StudyOverview, WeakTopic } from "@/lib/types";
@@ -55,6 +56,7 @@ function Hub({ overview }: { overview: StudyOverview }) {
   const pet = useQuery(petQuery).data;
   const name = useQuery(meQuery).data?.user_metadata?.name as string | undefined;
   const due = session.dueItems().length;
+  const focus = useFocus();
   const streak = streakFrom(activity);
 
   const greeting =
@@ -91,7 +93,11 @@ function Hub({ overview }: { overview: StudyOverview }) {
             Review {due} due
           </Button>
         )}
-        <MakeDeckButton variant={due > 0 ? "glass" : "default"} />
+        <Button size="lg" variant="glass" onClick={() => focus.setOpen(true)}>
+          <TimerIcon />
+          {focus.state.phase === "idle" ? `Focus with ${pet?.name ?? "your buddy"}` : "Open the timer"}
+        </Button>
+        <MakeDeckButton size="lg" variant={due > 0 ? "glass" : "default"} />
       </div>
 
       {/* This week */}

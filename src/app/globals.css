@@ -408,3 +408,8 @@
   0%, 100% { transform: scale(1, 1); }
   40% { transform: scale(1.18, 0.8); transform-origin: bottom; }
 }
+/* Your buddy reading beside the focus timer: a slow nod over the book */
+@keyframes pet-read {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(1.5px); }
+}

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ChevronsUpDownIcon,
   GraduationCapIcon,
@@ -46,7 +46,13 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { isDue } from "@/lib/leitner";
-import { conversationsQuery, documentsQuery, meQuery, spacesQuery, studyQuery } from "@/lib/queries";
+import {
+  conversationsQuery,
+  documentsQuery,
+  meQuery,
+  spacesQuery,
+  studyQuery,
+} from "@/lib/queries";
 import type { ConversationSummary } from "@/lib/types";
 import { getBrowserClient } from "@/lib/supabase/client";
 import { useHydrated } from "@/lib/use-hydrated";
@@ -58,28 +64,38 @@ import { SearchChats } from "./search-chats";
 import { PetWidget } from "./pet/pet-widget";
 import { openPet } from "@/lib/pet-events";
 import { SpaceDialog } from "./space-dialog";
+import { FocusProvider } from "@/lib/focus";
+import { FocusChip, FocusPanel } from "./focus-panel";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
+  const queryClient = useQueryClient();
   return (
-    <SidebarProvider className="h-dvh min-h-0">
-      <Suspense>
-        <AppSidebar />
-      </Suspense>
-      <SidebarInset className="min-w-0 bg-transparent">
-        <header className="glass flex items-center gap-2 border-b border-glass-border bg-glass px-3 py-2 md:hidden">
-          <SidebarTrigger aria-label="Open menu" />
-          <Wordmark className="text-[22px]" />
-        </header>
-        {/* Pages render from client data, so they stream in after the shell */}
-        <div className="min-h-0 flex-1">
-          <Suspense>{children}</Suspense>
-        </div>
-      </SidebarInset>
-    </SidebarProvider>
+    <FocusProvider
+      onSaved={() => queryClient.invalidateQueries({ queryKey: ["study"] })}
+    >
+      <SidebarProvider className="h-dvh min-h-0">
+        <Suspense>
+          <AppSidebar />
+        </Suspense>
+        <SidebarInset className="min-w-0 bg-transparent">
+          <header className="glass flex items-center gap-2 border-b border-glass-border bg-glass px-3 py-2 md:hidden">
+            <SidebarTrigger aria-label="Open menu" />
+            <Wordmark className="text-[22px]" />
+            <FocusChip className="ml-auto" />
+          </header>
+          {/* Pages render from client data, so they stream in after the shell */}
+          <div className="min-h-0 flex-1">
+            <Suspense>{children}</Suspense>
+          </div>
+        </SidebarInset>
+      </SidebarProvider>
+      <FocusPanel />
+    </FocusProvider>
   );
 }
 
-const SLIDE_IN = "animate-in fade-in slide-in-from-left-2 duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:animate-none";
+const SLIDE_IN =
+  "animate-in fade-in slide-in-from-left-2 duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:animate-none";
 
 /** True for ids that weren't in the list when it first loaded. */
 function useFresh(ids: string[] | undefined) {
@@ -103,7 +119,12 @@ function AppSidebar() {
   const readyCount = documents?.filter((d) => d.status === "ready").length;
   const studyResult = useQuery(studyQuery);
   const dueCount = hydrated
-    ? studyResult.data?.decks.reduce((n, d) => n + d.payload.cards.filter((_, i) => isDue(d.state.cards?.[i])).length, 0)
+    ? studyResult.data?.decks.reduce(
+        (n, d) =>
+          n +
+          d.payload.cards.filter((_, i) => isDue(d.state.cards?.[i])).length,
+        0,
+      )
     : undefined;
   const meResult = useQuery(meQuery);
   const me = meResult.data;
@@ -160,7 +181,10 @@ function AppSidebar() {
                 </Link>
               </SidebarMenuButton>
               {!!dueCount && (
-                <SidebarMenuBadge className="tabular-nums" aria-label={`${dueCount} cards due`}>
+                <SidebarMenuBadge
+                  className="tabular-nums"
+                  aria-label={`${dueCount} cards due`}
+                >
                   {dueCount}
                 </SidebarMenuBadge>
               )}
@@ -177,35 +201,55 @@ function AppSidebar() {
               <SidebarMenuButton onClick={() => setSearching(true)}>
                 <SearchIcon className="text-primary" />
                 <span>Search chats</span>
-                <kbd className="ml-auto rounded border border-border px-1 font-sans text-[10px] text-muted-foreground">⌘K</kbd>
+                <kbd className="ml-auto rounded border border-border px-1 font-sans text-[10px] text-muted-foreground">
+                  ⌘K
+                </kbd>
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={pathname === "/library" || pathname.startsWith("/library/")}>
+              <SidebarMenuButton
+                asChild
+                isActive={
+                  pathname === "/library" || pathname.startsWith("/library/")
+                }
+              >
                 <Link href="/library" onClick={close}>
                   <LibraryIcon className="text-primary" />
                   <span>Library</span>
                 </Link>
               </SidebarMenuButton>
-              {readyCount !== undefined && <SidebarMenuBadge className="tabular-nums">{readyCount}</SidebarMenuBadge>}
+              {readyCount !== undefined && (
+                <SidebarMenuBadge className="tabular-nums">
+                  {readyCount}
+                </SidebarMenuBadge>
+              )}
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarGroup>
 
         <SidebarGroup>
           <SidebarGroupLabel>Subjects</SidebarGroupLabel>
-          <SidebarGroupAction aria-label="New subject" title="New subject" onClick={() => setCreating(true)}>
+          <SidebarGroupAction
+            aria-label="New subject"
+            title="New subject"
+            onClick={() => setCreating(true)}
+          >
             <PlusIcon />
           </SidebarGroupAction>
           <SidebarGroupContent>
             <SidebarMenu>
               {spaces?.length === 0 && (
-                <p className="px-2 py-1.5 text-sm text-muted-foreground">Group your notes by class</p>
+                <p className="px-2 py-1.5 text-sm text-muted-foreground">
+                  Group your notes by class
+                </p>
               )}
               {spaces?.map((s) => {
                 const href = `/spaces/${s.id}`;
                 return (
-                  <SidebarMenuItem key={s.id} className={cn(freshSpace(s.id) && SLIDE_IN)}>
+                  <SidebarMenuItem
+                    key={s.id}
+                    className={cn(freshSpace(s.id) && SLIDE_IN)}
+                  >
                     <SidebarMenuButton asChild isActive={pathname === href}>
                       <Link href={href} onClick={close}>
                         <LayersIcon className="text-primary" />
@@ -236,29 +280,50 @@ function AppSidebar() {
           <SidebarMenuItem>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <SidebarMenuButton size="lg" aria-label="Account" className="data-[state=open]:bg-sidebar-accent">
+                <SidebarMenuButton
+                  size="lg"
+                  aria-label="Account"
+                  className="data-[state=open]:bg-sidebar-accent"
+                >
                   <span className="grid size-8 shrink-0 place-items-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
                     {(name || email || "?").charAt(0).toUpperCase()}
                   </span>
                   <span className="grid min-w-0 flex-1 text-left leading-tight">
-                    <span className="truncate font-medium">{name || "Account"}</span>
-                    <span className="truncate text-xs text-muted-foreground">{email}</span>
+                    <span className="truncate font-medium">
+                      {name || "Account"}
+                    </span>
+                    <span className="truncate text-xs text-muted-foreground">
+                      {email}
+                    </span>
                   </span>
                   <ChevronsUpDownIcon className="ml-auto text-muted-foreground" />
                 </SidebarMenuButton>
               </DropdownMenuTrigger>
-              <DropdownMenuContent side="top" align="start" className="w-(--radix-dropdown-menu-trigger-width) min-w-56">
+              <DropdownMenuContent
+                side="top"
+                align="start"
+                className="w-(--radix-dropdown-menu-trigger-width) min-w-56"
+              >
                 <DropdownMenuItem asChild>
                   <Link href="/settings" onClick={close}>
                     <SettingsIcon />
                     Settings
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => { close(); openPet(); }}>
+                <DropdownMenuItem
+                  onSelect={() => {
+                    close();
+                    openPet();
+                  }}
+                >
                   <PawPrintIcon />
                   Your study buddy
                 </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}>
+                <DropdownMenuItem
+                  onSelect={() =>
+                    setTheme(resolvedTheme === "dark" ? "light" : "dark")
+                  }
+                >
                   {resolvedTheme === "dark" ? <SunIcon /> : <MoonIcon />}
                   {resolvedTheme === "dark" ? "Light mode" : "Dark mode"}
                 </DropdownMenuItem>
@@ -281,8 +346,16 @@ function AppSidebar() {
           close();
         }}
       />
-      <SearchChats open={searching} onOpenChange={setSearching} conversations={conversations} onNavigate={close} />
-      <RenameConversation conversation={renaming} onClose={() => setRenaming(null)} />
+      <SearchChats
+        open={searching}
+        onOpenChange={setSearching}
+        conversations={conversations}
+        onNavigate={close}
+      />
+      <RenameConversation
+        conversation={renaming}
+        onClose={() => setRenaming(null)}
+      />
       <DeleteConversation
         conversation={deleting}
         onClose={() => setDeleting(null)}

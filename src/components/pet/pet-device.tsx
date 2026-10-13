@@ -31,18 +31,33 @@ const LCD = "#e7effc";
 const u = (n: number) => `calc(${n} * var(--u))`;
 const place = (x: number, y: number, w: number, h: number) => ({ left: u(x), top: u(y), width: u(w), height: u(h) });
 
+// Studying comes first: your buddy is a study buddy. Edit lives on the Stats screen.
 const MENU = [
+  { id: "study", label: "Study" },
+  { id: "focus", label: "Focus" },
   { id: "feed", label: "Feed" },
   { id: "play", label: "Play" },
   { id: "sleep", label: "Sleep" },
   { id: "stats", label: "Stats" },
-  { id: "edit", label: "Edit" },
 ] as const;
 type MenuId = (typeof MENU)[number]["id"];
 type Screen = "home" | "stats" | "game" | "sleep";
 type Reaction = "found" | "shrug" | "eat" | "pet" | "wake";
 
-export function PetDevice({ pet, onEdit }: { pet: Pet; onEdit: () => void }) {
+export function PetDevice({
+  pet,
+  due = 0,
+  onEdit,
+  onStudy,
+  onFocus,
+}: {
+  pet: Pet;
+  /** Cards to review now, for the greeting. */
+  due?: number;
+  onEdit: () => void;
+  onStudy: () => void;
+  onFocus: () => void;
+}) {
   const reduced = useReducedMotion();
   const queryClient = useQueryClient();
   const [screen, setScreen] = useState<Screen>("home");
@@ -112,7 +127,13 @@ export function PetDevice({ pet, onEdit }: { pet: Pet; onEdit: () => void }) {
   // Says hi, and keeps an eye on what you're doing in the app
   useEffect(() => {
     const hi = setTimeout(() => {
-      setBubble(mood === "Happy" ? `Hi! I'm ${pet.name}.` : `${pet.name} is ${mood.toLowerCase()}.`);
+      setBubble(
+        due > 0
+          ? `${due} ${due === 1 ? "card" : "cards"} due. Study?`
+          : mood === "Happy"
+            ? `Hi! I'm ${pet.name}.`
+            : `${pet.name} is ${mood.toLowerCase()}.`
+      );
       playPetSound("hi", pet.species);
     }, 350);
     const off = onPetSignal((s) => {
@@ -130,6 +151,9 @@ export function PetDevice({ pet, onEdit }: { pet: Pet; onEdit: () => void }) {
       } else if (s.kind === "eat") {
         react("eat", "chomp", 700);
         say(`Mm, a ${s.label}. +3 XP`);
+      } else if (s.kind === "studied" || s.kind === "focused") {
+        react("found", "happy", 1400);
+        say(s.kind === "studied" ? `${s.count} cards! Nice.` : `${s.minutes} min focus!`);
       }
     });
     return () => {
@@ -144,7 +168,11 @@ export function PetDevice({ pet, onEdit }: { pet: Pet; onEdit: () => void }) {
 
   const run = (id: MenuId) => {
     playPetSound("pet", pet.species);
-    if (id === "feed") {
+    if (id === "study") {
+      onStudy();
+    } else if (id === "focus") {
+      onFocus();
+    } else if (id === "feed") {
       if (stats.hunger > 95) return say("I'm full!");
       setCookie((c) => c + 1);
       later(() => {
@@ -161,8 +189,6 @@ export function PetDevice({ pet, onEdit }: { pet: Pet; onEdit: () => void }) {
       care("sleep", 1);
     } else if (id === "stats") {
       setScreen("stats");
-    } else if (id === "edit") {
-      onEdit();
     }
   };
   const game = useCatchGame(
@@ -189,7 +215,8 @@ export function PetDevice({ pet, onEdit }: { pet: Pet; onEdit: () => void }) {
       return;
     }
     if (screen === "stats") {
-      if (button === "b" || button === "a") setScreen("home");
+      if (button === "a") onEdit();
+      if (button === "b") setScreen("home");
       return;
     }
     if (button === "left") setSelected((s) => (s + MENU.length - 1) % MENU.length);
@@ -309,7 +336,7 @@ export function PetDevice({ pet, onEdit }: { pet: Pet; onEdit: () => void }) {
       </div>
 
       {/* Menu, on the bezel under the screen */}
-      <div className="absolute grid grid-cols-5" style={{ ...place(SCREEN.x, 62, RW, 6), gap: u(1) }}>
+      <div className="absolute grid grid-cols-6" style={{ ...place(SCREEN.x, 62, RW, 6), gap: u(0.8) }}>
         {MENU.map((m, i) => {
           const on = screen === "home" && i === selected;
           return (
@@ -323,7 +350,7 @@ export function PetDevice({ pet, onEdit }: { pet: Pet; onEdit: () => void }) {
                 if (screen === "home") run(m.id);
               }}
               className={cn(text, "flex flex-col items-center justify-center rounded-[3px] transition-colors duration-100 disabled:opacity-40", on ? "bg-[#e7effc] text-[#1d2433]" : "text-white/75 hover:bg-white/10")}
-              style={{ fontSize: u(1.8), gap: u(0.6) }}
+              style={{ fontSize: u(1.7), gap: u(0.6) }}
             >
               <PixelIcon name={m.id} color="currentColor" />
               {m.label}
@@ -424,11 +451,12 @@ function DPad({ pressed, onPress, style }: { pressed: string | null; onPress: (d
 }
 
 const ICONS: Record<MenuId, string[]> = {
+  study: ["XXX.XXX", "X.XXX.X", "X..X..X", "X..X..X", "X..X..X", "X.XXX.X", "XXX.XXX"],
+  focus: ["..XXX..", ".X.X.X.", "X..X..X", "X..XX.X", "X.....X", ".X...X.", "..XXX.."],
   feed: ["..XXX..", ".XX.XX.", "XXXXX.X", "X.XXXXX", "XXX.XXX", ".XXXXX.", "..XXX.."],
   play: ["..XXX..", ".X...X.", "X.X...X", "X..X..X", "X...X.X", ".X...X.", "..XXX.."],
   sleep: ["..XXX..", ".XX....", "XX.....", "XX.....", "XX.....", ".XX..X.", "..XXX.."],
   stats: [".....XX", ".....XX", "...XXXX", "...XXXX", ".XXXXXX", ".XXXXXX", "XXXXXXX"],
-  edit: [".....XX", "....XXX", "...XXX.", "..XXX..", ".XXX...", "XXX....", "XX....."],
 };
 
 function PixelIcon({ name, color }: { name: MenuId; color: string }) {
@@ -546,7 +574,7 @@ function Stats({ pet, stats, mood }: { pet: Pet; stats: ReturnType<typeof petSta
         </div>
       </div>
       <p className="absolute inset-x-0 text-center opacity-70" style={{ bottom: u(2), fontSize: u(1.8) }}>
-        Earn XP by asking and uploading. B to go back
+        Earn XP by studying. A to edit, B to go back
       </p>
     </div>
   );

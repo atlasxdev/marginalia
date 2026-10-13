@@ -207,11 +207,11 @@ export function MakeDeckDialog({ open, onOpenChange }: { open: boolean; onOpenCh
 }
 
 /** The "Make a reviewer" button, with its picker. */
-export function MakeDeckButton({ variant = "default" }: { variant?: "default" | "glass" | "outline" }) {
+export function MakeDeckButton({ variant = "default", size }: { variant?: "default" | "glass" | "outline"; size?: "lg" }) {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <Button variant={variant} onClick={() => setOpen(true)}>
+      <Button variant={variant} size={size} onClick={() => setOpen(true)}>
         <SparklesIcon />
         Make a reviewer
       </Button>
