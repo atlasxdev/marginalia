@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ListMusicIcon, MusicIcon, PauseIcon, PlayIcon, PlusIcon, Repeat1Icon, RepeatIcon, SkipBackIcon, SkipForwardIcon, Volume2Icon } from "lucide-react";
+import { XIcon, ShuffleIcon, ListMusicIcon, MusicIcon, PauseIcon, PlayIcon, PlusIcon, Repeat1Icon, RepeatIcon, SkipBackIcon, SkipForwardIcon, Volume2Icon } from "lucide-react";
 import { useMusic } from "@/lib/music";
 import { toast } from "sonner";
 import { setSoundsOn, soundsOn } from "@/lib/pet-sounds";
@@ -11,6 +11,7 @@ import { MAX_SONG_BYTES, SONG_ACCEPT, SONG_FORMATS_LABEL, formatBytes } from "@/
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -32,6 +33,16 @@ export function MusicControls({ compact = false }: { compact?: boolean }) {
             <SkipForwardIcon />
           </Button>
         </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => music.setShuffle(!music.shuffle)}
+          aria-label={music.shuffle ? "Shuffle on" : "Shuffle off"}
+          aria-pressed={music.shuffle}
+          className={music.shuffle ? "text-primary" : "text-muted-foreground"}
+        >
+          <ShuffleIcon />
+        </Button>
         <Button
           variant="ghost"
           size="icon"
@@ -112,20 +123,22 @@ export function MusicButton({ className, align = "end", focused = false }: { cla
           <SourcePicker />
         </div>
 
+        {/* Songs: searchable, in a short scrolling list, however many there are */}
         {music.queue.length > 0 && (
-          <ul className="mt-2 grid max-h-44 gap-0.5 overflow-y-auto" aria-label="Songs">
-            {music.queue.map((s) => (
-              <li key={s.id}>
-                <button
-                  type="button"
-                  onClick={() => music.play(s.id)}
-                  className={cn("w-full truncate rounded-lg px-2 py-1.5 text-left text-sm hover:bg-foreground/5", music.song?.id === s.id && "text-primary")}
-                >
-                  {s.name}
-                </button>
-              </li>
-            ))}
-          </ul>
+          <Command className="mt-2 rounded-xl border border-border bg-transparent">
+            {music.queue.length > 5 && <CommandInput placeholder="Search songs" className="h-9" />}
+            <CommandList className="max-h-40">
+              <CommandEmpty>No songs match.</CommandEmpty>
+              <CommandGroup>
+                {music.queue.map((s) => (
+                  <CommandItem key={s.id} value={`${s.name} ${s.id}`} onSelect={() => music.play(s.id)} className={cn("gap-2", music.song?.id === s.id && "text-primary")}>
+                    {music.song?.id === s.id && music.playing ? <PauseIcon className="size-3.5 shrink-0" /> : <PlayIcon className="size-3.5 shrink-0 opacity-50" />}
+                    <span className="min-w-0 flex-1 truncate">{s.name}</span>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            </CommandList>
+          </Command>
         )}
 
         <input
@@ -197,6 +210,9 @@ export function FloatingPlayer() {
         <SkipForwardIcon />
       </Button>
       <MusicButton className="size-8 shrink-0 rounded-full" />
+      <Button variant="ghost" size="icon" onClick={music.stop} aria-label="Stop music and close" className="size-8 shrink-0 rounded-full text-muted-foreground">
+        <XIcon />
+      </Button>
     </div>
   );
 }

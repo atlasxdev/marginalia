@@ -14,6 +14,7 @@ import {
   Repeat1Icon,
   RepeatIcon,
   SkipBackIcon,
+  ShuffleIcon,
   SkipForwardIcon,
   Trash2Icon,
   UploadIcon,
@@ -34,6 +35,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 
@@ -165,6 +167,16 @@ function NowPlaying() {
         </Button>
         <Button variant="ghost" size="icon" disabled={music.queue.length < 2} onClick={() => music.step(1)} aria-label="Next song">
           <SkipForwardIcon />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => music.setShuffle(!music.shuffle)}
+          aria-label={music.shuffle ? "Shuffle on" : "Shuffle off"}
+          aria-pressed={music.shuffle}
+          className={music.shuffle ? "text-primary" : "text-muted-foreground"}
+        >
+          <ShuffleIcon />
         </Button>
         <Button
           variant="ghost"
@@ -322,6 +334,18 @@ function Tracks({ title, playlistId, songs }: { title: string; playlistId: strin
             </p>
           </div>
         )}
+        {playlistId && <AddSongs playlistId={playlistId} />}
+        <Button
+          variant="outline"
+          disabled={!songs.length}
+          onClick={() => {
+            music.setSource(playlistId ?? "all");
+            music.shufflePlay(songs.map((s) => s.id));
+          }}
+        >
+          <ShuffleIcon />
+          Shuffle
+        </Button>
         <Button disabled={!songs.length} onClick={playAll}>
           <PlayIcon />
           {playingHere && music.playing ? "Playing" : "Play all"}
@@ -348,7 +372,7 @@ function Tracks({ title, playlistId, songs }: { title: string; playlistId: strin
       </div>
 
       {songs.length === 0 ? (
-        <p className="p-8 text-center text-muted-foreground">{playlistId ? "This playlist is empty. Add songs below." : "No songs yet."}</p>
+        <p className="p-8 text-center text-muted-foreground">{playlistId ? "This playlist is empty. Use Add songs to fill it." : "No songs yet."}</p>
       ) : (
         <ol className="p-2">
           {songs.map((s, i) => (
@@ -356,9 +380,6 @@ function Tracks({ title, playlistId, songs }: { title: string; playlistId: strin
           ))}
         </ol>
       )}
-
-      {/* In a playlist: every other song, one click to add */}
-      {playlistId && <AddList playlistId={playlistId} />}
     </section>
   );
 }
@@ -435,29 +456,50 @@ function TrackRow({ song, index, playlistId, onPlay }: { song: Song; index: numb
   );
 }
 
-/** The songs not in a playlist yet, each with an Add button. */
-function AddList({ playlistId }: { playlistId: string }) {
+/** Add songs: a dialog with a search box; tick songs in or out of the playlist. */
+function AddSongs({ playlistId }: { playlistId: string }) {
   const music = useMusic();
+  const [open, setOpen] = useState(false);
   const playlist = music.playlists.find((p) => p.id === playlistId);
   if (!playlist) return null;
-  const rest = music.songs.filter((s) => !playlist.songIds.includes(s.id));
-  if (!rest.length) return null;
   return (
-    <div className="border-t border-glass-divider p-2">
-      <p className="px-3 pt-3 pb-2 text-sm font-semibold">Add songs</p>
-      <ul>
-        {rest.map((s) => (
-          <li key={s.id} className="flex items-center gap-3 rounded-xl px-3 py-2 hover:bg-foreground/5">
-            <MusicIcon className="size-4 shrink-0 text-muted-foreground" />
-            <span className="min-w-0 flex-1 truncate">{s.name}</span>
-            <Button size="sm" variant="outline" onClick={() => music.toggleInPlaylist(playlistId, s.id)}>
-              <PlusIcon />
-              Add
-            </Button>
-          </li>
-        ))}
-      </ul>
-    </div>
+    <>
+      <Button variant="outline" onClick={() => setOpen(true)}>
+        <PlusIcon />
+        Add songs
+      </Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="glass gap-4 border border-glass-border bg-glass-strong sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add songs to {playlist.name}</DialogTitle>
+            <DialogDescription>Tick a song to add it, untick to take it out.</DialogDescription>
+          </DialogHeader>
+          <Command className="rounded-xl border border-border bg-transparent">
+            <CommandInput placeholder="Search your songs" />
+            <CommandList className="max-h-72">
+              <CommandEmpty>{music.songs.length ? "No songs match." : "Upload songs first."}</CommandEmpty>
+              <CommandGroup>
+                {music.songs.map((s) => {
+                  const added = playlist.songIds.includes(s.id);
+                  return (
+                    <CommandItem key={s.id} value={`${s.name} ${s.id}`} onSelect={() => music.toggleInPlaylist(playlistId, s.id)} className="gap-3 py-2.5">
+                      <span className={cn("grid size-5 shrink-0 place-items-center rounded-md border", added ? "border-primary bg-primary text-primary-foreground" : "border-input")}>
+                        {added && <CheckIcon className="size-3.5" />}
+                      </span>
+                      <span className="min-w-0 flex-1 truncate">{s.name}</span>
+                      <span className="text-xs text-muted-foreground tabular-nums">{formatBytes(s.blob.size)}</span>
+                    </CommandItem>
+                  );
+                })}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+          <Button onClick={() => setOpen(false)}>
+            Done ({playlist.songIds.length} {playlist.songIds.length === 1 ? "song" : "songs"})
+          </Button>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 

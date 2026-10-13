@@ -22,8 +22,8 @@ import {
  */
 
 const PREFS = "marginalia:music";
-type Prefs = { volume: number; source: string; stopOnBreak: boolean };
-const DEFAULT_PREFS: Prefs = { volume: 50, source: "all", stopOnBreak: false };
+type Prefs = { volume: number; source: string; stopOnBreak: boolean; shuffle: boolean };
+const DEFAULT_PREFS: Prefs = { volume: 50, source: "all", stopOnBreak: false, shuffle: false };
 
 function readPrefs(): Prefs {
   try {
@@ -97,10 +97,36 @@ function useMusicState() {
   };
   const pause = () => audio.current?.pause();
   const toggle = () => (playing ? pause() : play());
+  /** Stops and unloads the song, which closes the floating player. */
+  const stop = () => {
+    pause();
+    setCurrent(null);
+    setUrl(null);
+    setPlaying(false);
+  };
+  // Songs already played in this shuffle, so it goes through them all before repeating
+  const played = useRef<Set<string>>(new Set());
   const step = (by: 1 | -1) => {
     if (!queue.length) return;
     const at = queue.findIndex((s) => s.id === current);
+    if (prefs.shuffle && queue.length > 1 && by === 1) {
+      if (current) played.current.add(current);
+      let left = queue.filter((s) => !played.current.has(s.id) && s.id !== current);
+      if (!left.length) {
+        played.current = new Set(current ? [current] : []);
+        left = queue.filter((s) => s.id !== current);
+      }
+      play(left[Math.floor(Math.random() * left.length)].id);
+      return;
+    }
     play(queue[(at + by + queue.length) % queue.length].id);
+  };
+  /** Plays a list from a random song, with shuffle on. */
+  const shufflePlay = (ids: string[]) => {
+    if (!ids.length) return;
+    updatePrefs({ shuffle: true });
+    played.current = new Set();
+    play(ids[Math.floor(Math.random() * ids.length)]);
   };
 
   const used = songs.reduce((n, s) => n + s.blob.size, 0);
@@ -186,6 +212,9 @@ function useMusicState() {
     song,
     playing,
     repeatOne,
+    shuffle: prefs.shuffle,
+    setShuffle: (shuffle: boolean) => updatePrefs({ shuffle }),
+    shufflePlay,
     setRepeatOne,
     volume: prefs.volume,
     setVolume: (volume: number) => updatePrefs({ volume }),
@@ -195,6 +224,7 @@ function useMusicState() {
     setStopOnBreak: (stopOnBreak: boolean) => updatePrefs({ stopOnBreak }),
     play,
     pause,
+    stop,
     toggle,
     step,
     add,
