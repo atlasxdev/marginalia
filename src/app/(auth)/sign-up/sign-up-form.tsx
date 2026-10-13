@@ -15,7 +15,7 @@ export function SignUpForm() {
   return (
     <>
       <h1 className="text-3xl font-semibold tracking-tight">Create your account</h1>
-      <p className="mt-2 text-muted-foreground">Your documents stay private to you.</p>
+      <p className="mt-2 text-muted-foreground">Study from your own notes. They stay private to you.</p>
 
       <form action={formAction} className="mt-8 grid gap-6 text-left" noValidate>
         <FieldGroup>

@@ -19,7 +19,7 @@ export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   applicationName: "Marginalia",
   title: { default: "Marginalia", template: "%s · Marginalia" },
-  description: "Ask questions about your documents and get answers with sources.",
+  description: "Your study buddy for your own notes: flashcards, quizzes and answers, each cited to the line it came from.",
   authors: [{ name: "Ace Guevarra", url: "https://www.aceguevarra.xyz" }],
   creator: "Ace Guevarra",
   openGraph: { type: "website", siteName: "Marginalia", locale: "en_US" },

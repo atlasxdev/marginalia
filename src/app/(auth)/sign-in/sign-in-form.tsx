@@ -15,7 +15,7 @@ export function SignInForm({ linkFailed = false }: { linkFailed?: boolean }) {
   return (
     <>
       <h1 className="text-3xl font-semibold tracking-tight">Sign in</h1>
-      <p className="mt-2 text-muted-foreground">Ask questions about your documents.</p>
+      <p className="mt-2 text-muted-foreground">Pick up where you left off with your study buddy.</p>
 
       {linkFailed && (
         <Alert variant="destructive" role="alert" className="mt-8 text-left">

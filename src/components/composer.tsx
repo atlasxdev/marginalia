@@ -20,7 +20,7 @@ type ComposerProps = {
   className?: string;
 };
 
-export function Composer({ conversationId, spaceId, placeholder = "Ask about your documents", busy = false, textareaRef, className }: ComposerProps) {
+export function Composer({ conversationId, spaceId, placeholder = "Ask about your notes", busy = false, textareaRef, className }: ComposerProps) {
   const [state, formAction, pending] = useActionState<AskState, FormData>(askQuestion, { ok: false });
   const queryClient = useQueryClient();
   const router = useRouter();

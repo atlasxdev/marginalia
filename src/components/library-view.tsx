@@ -187,15 +187,15 @@ export function LibraryView() {
           <UploadForm />
         </div>
         <p className="mt-2 text-muted-foreground">
-          Markdown, PDF, and Word files. Drop a file anywhere on this page to upload it, or write a new
-          one in Markdown.
+          Your lecture notes, readings and handouts, as PDF, Word or Markdown. Drop a file anywhere on
+          this page to upload it, or write notes here.
         </p>
 
-        <section aria-label="Documents" className="mt-10">
-          {error && <p className="text-destructive">Couldn&apos;t load your documents. Refresh to try again.</p>}
+        <section aria-label="Your files" className="mt-10">
+          {error && <p className="text-destructive">Couldn&apos;t load your files. Refresh to try again.</p>}
 
           {isPending && (
-            <div className="glass overflow-hidden rounded-xl border border-glass-border bg-glass" aria-label="Loading documents">
+            <div className="glass overflow-hidden rounded-xl border border-glass-border bg-glass" aria-label="Loading files">
               <Table>
                 <TableBody>
                   {[0, 1, 2].map((i) => (
@@ -219,14 +219,14 @@ export function LibraryView() {
                 <EmptyMedia variant="icon">
                   <FileTextIcon />
                 </EmptyMedia>
-                <EmptyTitle>No documents yet</EmptyTitle>
-                <EmptyDescription>Upload a Markdown, PDF, or Word file, or write a new one.</EmptyDescription>
+                <EmptyTitle>No notes yet</EmptyTitle>
+                <EmptyDescription>Upload your notes for a class, then make a reviewer or ask your buddy about them.</EmptyDescription>
               </EmptyHeader>
               <EmptyContent>
                 <Button asChild variant="glass">
                   <Link href="/library/new">
                     <FilePlusIcon />
-                    Write a document
+                    Write notes
                   </Link>
                 </Button>
               </EmptyContent>
@@ -242,8 +242,8 @@ export function LibraryView() {
                   <SearchIcon className="pointer-events-none absolute top-1/2 left-3 z-10 size-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
                     type="search"
-                    aria-label="Search documents"
-                    placeholder="Search documents"
+                    aria-label="Search files"
+                    placeholder="Search files"
                     value={search}
                     onChange={(e) => {
                       table.getColumn("filename")?.setFilterValue(e.target.value || undefined);

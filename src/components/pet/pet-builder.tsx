@@ -27,7 +27,7 @@ import type { Pet } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { PetSprite } from "./pet-sprite";
 
-/** "Create your pet": pick a body, colour, eyes and accessory, name it, watch it come alive. */
+/** "Create your study buddy": pick a body, colour, eyes and accessory, name it, watch it come alive. */
 export function PetBuilder({ open, onOpenChange, pet }: { open: boolean; onOpenChange: (open: boolean) => void; pet: Pet | null }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -81,8 +81,8 @@ function Builder({ pet, onDone }: { pet: Pet | null; onDone: () => void }) {
       }}
     >
       <DialogHeader>
-        <DialogTitle>{pet ? `Edit ${pet.name}` : "Create your pet"}</DialogTitle>
-        <DialogDescription>It keeps you company in the margin and reacts as you read.</DialogDescription>
+        <DialogTitle>{pet ? `Edit ${pet.name}` : "Create your study buddy"}</DialogTitle>
+        <DialogDescription>It studies with you: it runs your focus sessions, quizzes you, and grows as you learn.</DialogDescription>
       </DialogHeader>
 
       <div className="mt-5 grid gap-6 sm:grid-cols-[13rem_1fr]">
@@ -178,7 +178,7 @@ function Builder({ pet, onDone }: { pet: Pet | null; onDone: () => void }) {
           <span />
         )}
         <Button type="submit" disabled={!name.trim() || save.isPending}>
-          {pet ? "Save" : `Hatch ${name.trim() || "your pet"}`}
+          {pet ? "Save" : `Hatch ${name.trim() || "your buddy"}`}
         </Button>
       </DialogFooter>
     </form>
