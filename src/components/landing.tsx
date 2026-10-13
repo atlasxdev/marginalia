@@ -1110,8 +1110,8 @@ export function FeatureTour() {
         <div className="sticky top-0 flex h-screen items-center">
           <div className="grid max-h-[820px] w-full grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] items-center gap-12 xl:gap-16">
             <div>
-              <h2 className="text-4xl font-semibold tracking-tight text-balance 2xl:text-5xl">Everything you need to study, in one place.</h2>
-              <ol className="mt-8 grid gap-1 2xl:mt-10 2xl:[zoom:1.15]">
+              <h2 className="text-4xl font-semibold tracking-tight text-balance min-[1800px]:text-5xl">Everything you need to study, in one place.</h2>
+              <ol className="mt-8 grid gap-1 min-[1800px]:mt-10 min-[1800px]:[zoom:1.15]">
                 {TOUR.map((f, i) => {
                   const on = i === active;
                   return (
@@ -1166,7 +1166,7 @@ export function FeatureTour() {
                   </span>
                 </div>
                 <div className="relative grid min-h-[30rem] place-items-center">
-                  <div key={active} className="w-full max-w-xl 2xl:[zoom:1.25] animate-in fade-in slide-in-from-bottom-4 duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:animate-none">
+                  <div key={active} className="w-full max-w-xl min-[1800px]:[zoom:1.25] animate-in fade-in slide-in-from-bottom-4 duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:animate-none">
                     <Demo />
                   </div>
                 </div>
@@ -1197,5 +1197,67 @@ export function FeatureTour() {
         })}
       </div>
     </>
+  );
+}
+
+/* ---------- a statement that lights up word by word as you scroll ---------- */
+
+const STATEMENT =
+  "Rereading your notes feels like studying. It isn't. What sticks is pulling the answer out of your own head, getting it wrong, finding out why, and trying again tomorrow. Marginalia does that with you, from your own notes.";
+
+/** The paragraph stays pinned while the page scrolls past; each word brightens in turn. */
+export function ScrollReveal() {
+  const reduced = useReducedMotion();
+  const track = useRef<HTMLDivElement>(null);
+  const [progress, setProgress] = useState(0);
+  const words = STATEMENT.split(" ");
+
+  useEffect(() => {
+    let frame = 0;
+    const measure = () => {
+      frame = 0;
+      const el = track.current;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      const range = r.height - window.innerHeight;
+      setProgress(range > 0 ? Math.min(1, Math.max(0, -r.top / range)) : 1);
+    };
+    const onScroll = () => {
+      if (!frame) frame = requestAnimationFrame(measure);
+    };
+    measure();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+      cancelAnimationFrame(frame);
+    };
+  }, []);
+
+  // The last fifth of the scroll holds the finished paragraph
+  const lit = reduced ? words.length : Math.min(words.length, progress * 1.25 * words.length);
+
+  return (
+    <div ref={track} className="relative" style={{ height: reduced ? "auto" : "220vh" }}>
+      <div className={cn("flex items-center", !reduced && "sticky top-0 h-screen")}>
+        <p className="max-w-5xl text-3xl leading-[1.25] font-semibold tracking-tight sm:text-5xl min-[1800px]:text-6xl">
+          {words.map((w, i) => {
+            const amount = Math.min(1, Math.max(0, lit - i));
+            const brand = w.startsWith("Marginalia");
+            return (
+              <span key={i}>
+                <span
+                  className={cn("transition-colors duration-150", brand && amount > 0.5 && "text-primary")}
+                  style={brand && amount > 0.5 ? undefined : { color: `color-mix(in oklab, var(--foreground) ${18 + amount * 82}%, transparent)` }}
+                >
+                  {w}
+                </span>{" "}
+              </span>
+            );
+          })}
+        </p>
+      </div>
+    </div>
   );
 }

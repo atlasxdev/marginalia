@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, Brain, Check, GraduationCap, Lightbulb, Mail, MapPin, Timer } from "lucide-react";
 import {
-  DocChip, FeatureTour, HandheldDemo, NavShell, OpeningWordmark, Reveal, SessionDemo, SpotlightCard, Steps, StreamedAnswer,
+  DocChip, FeatureTour, ScrollReveal, HandheldDemo, NavShell, OpeningWordmark, Reveal, SessionDemo, SpotlightCard, Steps, StreamedAnswer,
 } from "@/components/landing";
 import { Wordmark } from "@/components/logo";
 import { ProductShot } from "@/components/product-shot";
@@ -177,8 +177,13 @@ export default function Landing() {
           </Reveal>
         </section>
 
+        {/* Why it works, lit up as you scroll */}
+        <section className="mx-auto max-w-6xl px-5 min-[1800px]:max-w-[1500px]">
+          <ScrollReveal />
+        </section>
+
         {/* Everything it does, one at a time */}
-        <section id="tour" className="mx-auto max-w-6xl scroll-mt-24 px-5 py-20 lg:py-0 2xl:max-w-[1500px]">
+        <section id="tour" className="mx-auto max-w-6xl scroll-mt-24 px-5 py-20 lg:py-0 min-[1800px]:max-w-[1500px]">
           <FeatureTour />
         </section>
 
