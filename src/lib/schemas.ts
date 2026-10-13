@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { MAX_NOTE_JSON_CHARS } from "@/lib/note";
 
 export const MAX_FILE_BYTES = 10 * 1024 * 1024;
 export const MAX_QUESTION_CHARS = 2000;
@@ -60,7 +61,7 @@ export const uploadSchema = z.object({
     ),
 });
 
-// Notes are saved through a server action, so they stay well under its 1 MB body limit.
+// Notes are saved through a server action; with the editor's JSON beside the text they stay under its 4 MB body limit.
 export const MAX_NOTE_CHARS = 200_000;
 
 export const noteSchema = z.object({
@@ -74,6 +75,18 @@ export const noteSchema = z.object({
     .string()
     .refine((c) => c.trim().length > 0, "Write something first.")
     .refine((c) => c.length <= MAX_NOTE_CHARS, "This document is too long to edit here."),
+  // The editor's JSON, as text
+  note: z
+    .string()
+    .max(MAX_NOTE_JSON_CHARS, "This note has too much handwriting to save. Split it into two notes.")
+    .refine((n) => {
+      try {
+        return JSON.parse(n)?.type === "doc";
+      } catch {
+        return false;
+      }
+    }, "This note couldn't be saved. Try again.")
+    .optional(),
 });
 
 export const questionSchema = z.object({

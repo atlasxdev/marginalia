@@ -13,11 +13,12 @@ export type DocumentItem = {
   suggestedQuestions: string[];
 };
 
-// A Markdown document opened in the editor
+// A note opened in the editor: its Markdown, and the editor's own JSON once it's been saved from the editor
 export type EditableDocument = {
   id: string;
   title: string;
   content: string;
+  note?: Record<string, unknown> | null;
 };
 
 export type Source = {

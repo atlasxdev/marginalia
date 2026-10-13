@@ -2,10 +2,12 @@
 
 import { after } from "next/server";
 import { z } from "zod";
+import { noteJsonPath } from "@/lib/note";
 import { ACCEPTED_TYPES, MAX_FILE_BYTES, noteSchema } from "@/lib/schemas";
 import { admin } from "@/lib/supabase/admin";
 import { createClient, getUserId } from "@/lib/supabase/server";
 import type { ActionState } from "@/lib/types";
+import { readHandwriting } from "@/server/gemini";
 import { ingestDocument } from "@/server/ingest";
 
 const MIME_BY_EXTENSION = Object.fromEntries(
@@ -51,15 +53,17 @@ export async function registerDocument(input: z.input<typeof registerSchema>): P
 
 export type SaveState = ActionState & { id?: string };
 
-/* Saves a Markdown document from the editor: a new one is created in the user's
-   folder, an existing one has its file overwritten. Either way it's re-indexed;
+/* Saves a note from the editor: its Markdown, which is indexed, and the editor's
+   JSON beside it, so it reopens as written. A new note is created in the user's
+   folder, an existing one has its files overwritten. Either way it's re-indexed;
    the old chunks stay searchable until the new ones replace them. */
 export async function saveDocument(input: z.input<typeof noteSchema>): Promise<SaveState> {
   const parsed = noteSchema.safeParse(input);
   if (!parsed.success) return { ok: false, fieldErrors: z.flattenError(parsed.error).fieldErrors };
-  const { id, title, content } = parsed.data;
+  const { id, title, content, note } = parsed.data;
   const filename = `${title}.md`;
   const file = new Blob([content], { type: "text/markdown" });
+  const json = note ? new Blob([note], { type: "application/json" }) : null;
 
   const supabase = await createClient();
   const userId = await getUserId(supabase);
@@ -68,8 +72,15 @@ export async function saveDocument(input: z.input<typeof noteSchema>): Promise<S
   if (!id) {
     const newId = crypto.randomUUID();
     const storagePath = `${userId}/${newId}/${filename.replace(/[^\w.\- ()]/g, "_")}`;
-    const { error: uploadError } = await supabase.storage.from("documents").upload(storagePath, file);
-    if (uploadError) return { ok: false, message: "Couldn't save. Try again." };
+    const storage = supabase.storage.from("documents");
+    const uploads = await Promise.all([
+      storage.upload(storagePath, file),
+      json ? storage.upload(noteJsonPath(storagePath), json) : Promise.resolve({ error: null }),
+    ]);
+    if (uploads.some((u) => u.error)) {
+      await storage.remove([storagePath, noteJsonPath(storagePath)]);
+      return { ok: false, message: "Couldn't save. Try again." };
+    }
     const { error } = await supabase.from("documents").insert({
       id: newId,
       filename,
@@ -78,7 +89,7 @@ export async function saveDocument(input: z.input<typeof noteSchema>): Promise<S
       storage_path: storagePath,
     });
     if (error) {
-      await supabase.storage.from("documents").remove([storagePath]);
+      await storage.remove([storagePath, noteJsonPath(storagePath)]);
       return { ok: false, message: "Couldn't save. Try again." };
     }
     after(() => ingestDocument(newId));
@@ -104,10 +115,12 @@ export async function saveDocument(input: z.input<typeof noteSchema>): Promise<S
     .select("id");
   if (!claimed?.length) return { ok: false, message: "Wait for indexing to finish, then save again." };
 
-  const { error: uploadError } = await admin.storage
-    .from("documents")
-    .upload(doc.storage_path, file, { upsert: true, contentType: "text/markdown" });
-  if (uploadError) {
+  const storage = admin.storage.from("documents");
+  const uploads = await Promise.all([
+    storage.upload(doc.storage_path, file, { upsert: true, contentType: "text/markdown" }),
+    json ? storage.upload(noteJsonPath(doc.storage_path), json, { upsert: true, contentType: "application/json" }) : Promise.resolve({ error: null }),
+  ]);
+  if (uploads.some((u) => u.error)) {
     await admin.from("documents").update({ status: doc.status, error: doc.error }).eq("id", id);
     return { ok: false, message: "Couldn't save. Try again." };
   }
@@ -140,7 +153,24 @@ export async function deleteDocument(id: string): Promise<ActionState> {
     .select("storage_path")
     .maybeSingle();
   if (error || !data) return { ok: false, message: "Couldn't delete this document. Try again." };
-  // Chunks go with the row (on delete cascade); the original file is removed from Storage
-  await supabase.storage.from("documents").remove([data.storage_path]);
+  // Chunks go with the row (on delete cascade); the file, and a note's JSON, are removed from Storage
+  await supabase.storage.from("documents").remove([data.storage_path, noteJsonPath(data.storage_path)]);
   return { ok: true };
+}
+
+// A PNG of one handwriting block, base64, at most about 1.5 MB
+const inkSchema = z.string().min(1).max(2_000_000).regex(/^[A-Za-z0-9+/=]+$/);
+
+/** Reads the handwriting in a note's drawing, so it can be searched and studied. */
+export async function transcribeInk(png: string): Promise<{ ok: true; text: string } | { ok: false }> {
+  const parsed = inkSchema.safeParse(png);
+  if (!parsed.success) return { ok: false };
+  const supabase = await createClient();
+  if (!(await getUserId(supabase))) return { ok: false };
+  try {
+    return { ok: true, text: await readHandwriting(parsed.data) };
+  } catch (error) {
+    console.error("Couldn't read handwriting", error);
+    return { ok: false };
+  }
 }

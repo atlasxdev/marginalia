@@ -42,6 +42,17 @@
   --glass-border: rgb(255 255 255 / 0.7);
   --glass-highlight: rgb(255 255 255 / 0.85);
   --glass-divider: rgb(17 24 38 / 0.08);
+  /* Note text colors, highlighter and ink */
+  --note-red: #d70015;
+  --note-orange: #c93400;
+  --note-green: #248a3d;
+  --note-blue: #0152cb;
+  --note-purple: #8944ab;
+  --hl-yellow: #fff1a6;
+  --hl-green: #c9f2cf;
+  --hl-blue: #cfe3ff;
+  --hl-pink: #ffd6e5;
+  --hl-purple: #e8d9ff;
   --glass-edge: rgb(17 24 38 / 0.1);
   --glass-drop: 0 8px 24px -12px rgb(1 40 110 / 0.16);
   --wash-1: rgb(1 82 203 / 0.2);
@@ -88,6 +99,16 @@
   --glass-border: rgb(228 232 239 / 0.1);
   --glass-highlight: rgb(255 255 255 / 0.08);
   --glass-divider: rgb(228 232 239 / 0.08);
+  --note-red: #ff6961;
+  --note-orange: #ffb340;
+  --note-green: #4ad66d;
+  --note-blue: #6ca8ff;
+  --note-purple: #da8fff;
+  --hl-yellow: rgb(255 214 10 / 0.32);
+  --hl-green: rgb(48 209 88 / 0.3);
+  --hl-blue: rgb(64 156 255 / 0.32);
+  --hl-pink: rgb(255 55 135 / 0.3);
+  --hl-purple: rgb(191 90 242 / 0.32);
   --glass-edge: rgb(0 0 0 / 0.35);
   --glass-drop: 0 10px 30px -12px rgb(0 0 0 / 0.5);
   --wash-1: rgb(1 101 253 / 0.3);
@@ -264,6 +285,34 @@
   /* A document preview shows tables as written; answers style theirs as label/value pairs */
   .answer.doc th { text-align: left; font-weight: 600; padding: 0.6em 1em 0.6em 0; }
   .answer.doc td:first-child { color: inherit; white-space: normal; }
+
+  /* The notes editor */
+  .note { min-height: 100%; outline: none; font-size: 1rem; line-height: 1.65; }
+  .note p.is-editor-empty:first-child::before {
+    content: attr(data-placeholder);
+    float: left;
+    height: 0;
+    pointer-events: none;
+    color: color-mix(in oklab, var(--muted-foreground) 70%, transparent);
+  }
+  .note mark { border-radius: 0.2em; padding: 0.05em 0.1em; color: inherit; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+  .note a { color: var(--primary); text-decoration: underline; text-underline-offset: 2px; }
+  .note u { text-underline-offset: 2px; }
+  .note code:not(pre code) { border-radius: 0.3em; background: var(--muted); padding: 0.1em 0.3em; }
+  .note ul[data-type="taskList"] { list-style: none; padding-left: 0; }
+  .note ul[data-type="taskList"] li { display: flex; align-items: flex-start; gap: 0.55em; }
+  .note ul[data-type="taskList"] li > label { margin-top: 0.3em; user-select: none; }
+  .note ul[data-type="taskList"] li > label input { width: 1em; height: 1em; accent-color: var(--primary); cursor: pointer; }
+  .note ul[data-type="taskList"] li > div { flex: 1; min-width: 0; }
+  .note ul[data-type="taskList"] li[data-checked="true"] > div { color: var(--muted-foreground); text-decoration: line-through; }
+  .note table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  .note :is(td, th) { border: 1px solid var(--border); padding: 0.45em 0.7em; vertical-align: top; position: relative; }
+  .note th { background: color-mix(in oklab, var(--foreground) 4%, transparent); }
+  .note :is(td, th) > p { margin: 0; }
+  .note .selectedCell::after { content: ""; position: absolute; inset: 0; background: color-mix(in oklab, var(--primary) 14%, transparent); pointer-events: none; }
+  .note .tableWrapper { overflow-x: auto; }
+  .note hr.ProseMirror-selectednode, .note .ink.ProseMirror-selectednode > div { outline: 2px solid color-mix(in oklab, var(--ring) 60%, transparent); outline-offset: 2px; }
+  .note .ProseMirror-gapcursor::after { border-top-color: var(--foreground); }
 
   /* A source passage, rendered from the document's Markdown: compact, headings at body size */
   .answer.excerpt { font-size: 0.9375rem; }

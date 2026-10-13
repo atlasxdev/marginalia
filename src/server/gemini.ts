@@ -60,6 +60,28 @@ export async function generateText(prompt: string) {
   return response.text?.trim() ?? "";
 }
 
+/** What's written in a picture of handwriting, as Markdown. Empty if there are no words. */
+export async function readHandwriting(png: string) {
+  const response = await withFallback((model) =>
+    ai.models.generateContent({
+      model,
+      contents: [
+        {
+          role: "user",
+          parts: [
+            { inlineData: { mimeType: "image/png", data: png } },
+            {
+              text: "Transcribe the handwritten notes in this image as Markdown. Keep the student's wording, line breaks and lists. Write formulas in plain text. If part is a drawing or diagram, describe it in one short line in square brackets. If nothing is readable, reply with nothing. Reply with the transcription only.",
+            },
+          ],
+        },
+      ],
+      config: { temperature: 0, thinkingConfig: thinkingFor(model) },
+    })
+  );
+  return response.text?.trim() ?? "";
+}
+
 /* Structured output: the model must reply with JSON matching `schema`.
    The caller still validates it, since the schema only guides the model. */
 export async function generateJson(systemInstruction: string, prompt: string, schema: object): Promise<unknown> {

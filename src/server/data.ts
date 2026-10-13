@@ -11,6 +11,7 @@ import type {
   Source,
   Space,
 } from "@/lib/types";
+import { noteJsonPath } from "@/lib/note";
 import { documentTitle } from "@/server/ingest";
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
@@ -45,9 +46,15 @@ export async function getEditableDocument(supabase: Supabase, id: string): Promi
     .eq("id", id)
     .maybeSingle();
   if (!doc || doc.mime_type !== "text/markdown") return null;
-  const { data: file } = await supabase.storage.from("documents").download(doc.storage_path);
+  const storage = supabase.storage.from("documents");
+  const [{ data: file }, { data: json }] = await Promise.all([storage.download(doc.storage_path), storage.download(noteJsonPath(doc.storage_path))]);
   if (!file) return null;
-  return { id: doc.id, title: documentTitle(doc.filename), content: await file.text() };
+  // Uploaded Markdown, and notes written before the editor kept styles, have no JSON
+  let note: EditableDocument["note"] = null;
+  try {
+    note = json ? JSON.parse(await json.text()) : null;
+  } catch {}
+  return { id: doc.id, title: documentTitle(doc.filename), content: await file.text(), note };
 }
 
 const SUMMARY = "id, title, updated_at, space_id, pinned, position";
