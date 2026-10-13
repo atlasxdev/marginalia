@@ -33,7 +33,7 @@ const place = (x: number, y: number, w: number, h: number) => ({ left: u(x), top
 // keeps score. Edit lives on the Stats screen.
 const MENU = [
   { id: "study", label: "Study" },
-  { id: "focus", label: "Focus" },
+  { id: "today", label: "Today" },
   { id: "stats", label: "Stats" },
 ] as const;
 type MenuId = (typeof MENU)[number]["id"];
@@ -44,15 +44,18 @@ export function PetDevice({
   pet,
   status,
   onEdit,
+  studyLabel,
   onStudy,
-  onFocus,
+  onToday,
 }: {
   pet: Pet;
   /** How your studying is going: its mood, greeting and stats. */
   status: StudyStatus;
+  /** The subject Study starts a session on, for the greeting. */
+  studyLabel?: string;
   onEdit: () => void;
   onStudy: () => void;
-  onFocus: () => void;
+  onToday: () => void;
 }) {
   const reduced = useReducedMotion();
   const [screen, setScreen] = useState<Screen>("home");
@@ -72,6 +75,9 @@ export function PetDevice({
 
   const { level, progress } = petLevel(pet.xp);
   const mood = petMood(status);
+  // It naps while it misses you; any button wakes it
+  const [woken, setWoken] = useState(false);
+  const asleep = mood === "Misses you" && !woken;
   const colors = palette(pet.color);
 
   const say = (text: string, ms = 2200) => {
@@ -100,7 +106,7 @@ export function PetDevice({
     };
   }, []);
   useEffect(() => {
-    if (screen !== "home" || reduced || reading) return;
+    if (screen !== "home" || reduced || reading || asleep) return;
     const wander = setInterval(() => {
       setX((cur) => {
         const next = Math.max(4, Math.min(RW - 20, cur + (Math.random() < 0.5 ? -1 : 1) * (2 + Math.floor(Math.random() * 6))));
@@ -109,12 +115,12 @@ export function PetDevice({
       });
     }, 1700);
     return () => clearInterval(wander);
-  }, [screen, reduced, reading]);
+  }, [screen, reduced, reading, asleep]);
 
   // Says hi, and keeps an eye on what you're doing in the app
   useEffect(() => {
     const hi = setTimeout(() => {
-      setBubble(petGreeting(pet.name, status));
+      setBubble(asleep ? "Zzz… press A to wake me" : status.due > 0 && studyLabel ? `${status.due} due. Study ${studyLabel}?` : petGreeting(pet.name, status));
       playPetSound("hi", pet.species);
     }, 350);
     const off = onPetSignal((s) => {
@@ -154,15 +160,22 @@ export function PetDevice({
     playPetSound("pet", pet.species);
     if (id === "study") {
       onStudy();
-    } else if (id === "focus") {
-      onFocus();
+    } else if (id === "today") {
+      onToday();
     } else if (id === "stats") {
       setScreen("stats");
     }
   };
+  const wake = () => {
+    setWoken(true);
+    react("pet", "happy", 900);
+    say(studyLabel ? `I'm up! Study ${studyLabel}?` : "I'm up! Let's study.");
+  };
+
   const press = (button: "left" | "right" | "a" | "b") => {
     setPressed(button);
     later(() => setPressed((p) => (p === button ? null : p)), 120);
+    if (asleep && (button === "a" || button === "b")) return wake();
     if (screen === "stats") {
       if (button === "a") onEdit();
       if (button === "b") setScreen("home");
@@ -232,7 +245,7 @@ export function PetDevice({
           <Stats pet={pet} status={status} level={level} progress={progress} mood={mood} />
         ) : (
           <svg viewBox={`0 0 ${RW} ${RH}`} shapeRendering="crispEdges" className="absolute inset-0 size-full" aria-hidden>
-            <Room hour={hour} />
+            <Room hour={hour} level={level} />
             <motion.g animate={{ x }} transition={{ duration: reduced ? 0 : 0.9, ease: "linear" }}>
                   <motion.g
                     key={reaction?.seq ?? 0}
@@ -240,14 +253,17 @@ export function PetDevice({
                     style={{ originX: "8px", originY: `${FLOOR}px` }}
                     onClick={() => {
                       if (screen !== "home") return;
+                      if (asleep) return wake();
                       react("pet", "happy", 800);
                       say("♥");
                     }}
                     className="cursor-pointer"
                   >
                     <g transform={`translate(0 ${FLOOR - 14}) ${facing === -1 ? "translate(16 0) scale(-1 1)" : ""}`}>
-                      <PetSprite look={pet} face={face ?? (reading ? "side" : blink ? "closed" : "open")} book={reading} bare />
+                      <PetSprite look={pet} face={face ?? (asleep ? "closed" : reading ? "side" : blink ? "closed" : "open")} book={reading} bare />
                     </g>
+                    {/* How it feels about your studying, at a glance */}
+                    {!reaction && !reduced && <MoodMark mood={mood} asleep={asleep} />}
                   </motion.g>
                 </motion.g>
           </svg>
@@ -257,7 +273,16 @@ export function PetDevice({
         {screen !== "stats" && (
           <div className={cn(text, "absolute inset-x-0 top-0 flex items-center justify-between bg-white/80 text-[#1d2433]")} style={{ height: u(4), padding: `0 ${u(1.5)}`, fontSize: u(2.2) }}>
             <span>Lv {level}</span>
-            <span>{status.streak > 0 ? `${status.streak}-day streak` : mood}</span>
+            <span className="flex items-center" style={{ gap: u(1.5) }}>
+              <span className="flex items-center" style={{ gap: u(0.6) }} aria-label={`${status.streak}-day streak`}>
+                <Glyph rows={FLAME} color={status.streak ? "#f97316" : "#1d243355"} />
+                {status.streak}
+              </span>
+              <span className="flex items-center" style={{ gap: u(0.6) }} aria-label={`${status.due} cards due`}>
+                <Glyph rows={CARD} color={status.due ? "#0152cb" : "#1d243355"} />
+                {status.due}
+              </span>
+            </span>
           </div>
         )}
 
@@ -387,7 +412,7 @@ function DPad({ pressed, onPress, style }: { pressed: string | null; onPress: (d
 
 const ICONS: Record<MenuId, string[]> = {
   study: ["XXX.XXX", "X.XXX.X", "X..X..X", "X..X..X", "X..X..X", "X.XXX.X", "XXX.XXX"],
-  focus: ["..XXX..", ".X.X.X.", "X..X..X", "X..XX.X", "X.....X", ".X...X.", "..XXX.."],
+  today: ["...X...", "..XXX..", ".XXXXX.", "XXXXXXX", ".X...X.", ".X.X.X.", ".X.X.X."],
   stats: [".....XX", ".....XX", "...XXXX", "...XXXX", ".XXXXXX", ".XXXXXX", "XXXXXXX"],
 };
 
@@ -401,7 +426,60 @@ function PixelIcon({ name, color }: { name: MenuId; color: string }) {
 
 /* ---------- the room ---------- */
 
-function Room({ hour }: { hour: number }) {
+// Small pixel glyphs for the status strip
+const FLAME = ["..X..", ".XX..", ".XXX.", "XXXXX", "XX.XX", ".XXX."];
+const CARD = ["XXXXX", "X...X", "X.X.X", "X...X", "X...X", "XXXXX"];
+
+function Glyph({ rows, color }: { rows: string[]; color: string }) {
+  return (
+    <svg viewBox={`0 0 ${rows[0].length} ${rows.length}`} shapeRendering="crispEdges" style={{ width: u(2.1), height: u(2.5) }} aria-hidden>
+      {rows.flatMap((row, y) => [...row].map((ch, x) => (ch === "X" ? <rect key={`${x}-${y}`} x={x} y={y} width={1} height={1} fill={color} /> : null)))}
+    </svg>
+  );
+}
+
+/** Sparkles when it's proud of you, a sweat drop when cards pile up, Zzz while it naps. */
+function MoodMark({ mood, asleep }: { mood: string; asleep: boolean }) {
+  if (asleep) {
+    return (
+      <g transform={`translate(13 ${FLOOR - 19})`}>
+        {[0, 1].map((i) => (
+          <motion.g key={i} initial={{ opacity: 0 }} animate={{ opacity: [0, 1, 0], x: [0, 2 + i], y: [0, -4 - i * 2] }} transition={{ duration: 2.4, delay: i * 1.2, repeat: Infinity }}>
+            {["XXX", "..X", ".X.", "XXX"].flatMap((row, y) => [...row].map((ch, x) => (ch === "X" ? <rect key={`${x}-${y}`} x={x} y={y} width={1} height={1} fill="#1d2433" /> : null)))}
+          </motion.g>
+        ))}
+      </g>
+    );
+  }
+  if (mood === "Proud") {
+    return (
+      <g>
+        {[
+          [-1, FLOOR - 16],
+          [15, FLOOR - 13],
+        ].map(([x, y], i) => (
+          <motion.g key={i} animate={{ opacity: [0, 1, 0] }} transition={{ duration: 1.6, delay: i * 0.8, repeat: Infinity }}>
+            <rect x={x} y={y - 1} width={1} height={3} fill="#f5a524" />
+            <rect x={x - 1} y={y} width={3} height={1} fill="#f5a524" />
+          </motion.g>
+        ))}
+      </g>
+    );
+  }
+  if (mood === "Worried") {
+    return (
+      <motion.g animate={{ y: [0, 1, 0] }} transition={{ duration: 1.2, repeat: Infinity }}>
+        <rect x={14} y={FLOOR - 15} width={1} height={1} fill="#4d9cff" />
+        <rect x={13} y={FLOOR - 14} width={3} height={2} fill="#4d9cff" />
+        <rect x={14} y={FLOOR - 12} width={1} height={1} fill="#4d9cff" />
+      </motion.g>
+    );
+  }
+  return null;
+}
+
+/* The room grows with your level: the shelf fills with books, then a desk lamp, a trophy and a diploma appear. */
+function Room({ hour, level }: { hour: number; level: number }) {
   const night = hour < 6 || hour >= 19;
   const dusk = !night && (hour >= 17 || hour < 7);
   const sky = night ? "#1b2a4a" : dusk ? "#f6a87a" : "#9fd3ff";
@@ -429,16 +507,42 @@ function Room({ hour }: { hour: number }) {
       )}
       <rect x={36} y={7} width={1} height={9} fill="#ffffff" />
       <rect x={31} y={11} width={11} height={1} fill="#ffffff" />
-      {/* Bookshelf */}
+      {/* Bookshelf: two more books each level, up to a full shelf */}
       <rect x={3} y={8} width={13} height={17} fill="#8a5a3b" />
       {[9, 14, 19].map((y, row) => (
         <g key={y}>
           <rect x={4} y={y} width={11} height={4} fill="#6d4429" />
-          {books.slice(row * 2, row * 2 + 4).map((c, i) => (
-            <rect key={i} x={5 + i * 2} y={y + (i % 2)} width={2} height={4 - (i % 2)} fill={c} />
-          ))}
+          {[0, 1, 2, 3, 4].map((i) =>
+            row * 5 + i < Math.min(15, 1 + level * 2) ? (
+              <rect key={i} x={5 + i * 2} y={y + (i % 2)} width={2} height={4 - (i % 2)} fill={books[(row * 5 + i) % books.length]} />
+            ) : null
+          )}
         </g>
       ))}
+      {/* Level 3: a desk lamp on the shelf */}
+      {level >= 3 && (
+        <g>
+          <rect x={12} y={6} width={3} height={1} fill="#f5a524" />
+          <rect x={13} y={7} width={1} height={1} fill="#1d2433" />
+          <rect x={12} y={5} width={3} height={1} fill="#fde68a" />
+        </g>
+      )}
+      {/* Level 5: a trophy */}
+      {level >= 5 && (
+        <g>
+          <rect x={5} y={4} width={3} height={2} fill="#f5a524" />
+          <rect x={6} y={6} width={1} height={1} fill="#c47f12" />
+          <rect x={5} y={7} width={3} height={1} fill="#c47f12" />
+        </g>
+      )}
+      {/* Level 8: a diploma on the wall */}
+      {level >= 8 && (
+        <g>
+          <rect x={19} y={9} width={7} height={5} fill="#ffffff" />
+          <rect x={20} y={11} width={5} height={1} fill="#1d243355" />
+          <rect x={24} y={13} width={2} height={2} fill="#df2224" />
+        </g>
+      )}
       {/* Plant */}
       <rect x={43} y={21} width={4} height={4} fill="#c4643b" />
       <rect x={44} y={17} width={2} height={4} fill="#22c55e" />
@@ -455,7 +559,6 @@ function Room({ hour }: { hour: number }) {
 
 function Stats({ pet, status, level, progress, mood }: { pet: Pet; status: StudyStatus; level: number; progress: number; mood: string }) {
   const rows: [string, string][] = [
-    ["Streak", status.streak ? `${status.streak} ${status.streak === 1 ? "day" : "days"}` : "Start today"],
     ["Due now", `${status.due} ${status.due === 1 ? "card" : "cards"}`],
     ["This week", `${status.week.reviewed} cards`],
     ["Focus", `${status.week.focusMinutes} min`],
@@ -468,6 +571,15 @@ function Stats({ pet, status, level, progress, mood }: { pet: Pet; status: Study
         <span style={line}>{mood}</span>
       </div>
       <div className="flex flex-col" style={{ marginTop: u(2.5), gap: u(1.6) }}>
+        {/* The last seven days: a filled square for each day you studied */}
+        <div className="flex items-center justify-between" style={line}>
+          <span className="opacity-70">Streak {status.streak}</span>
+          <span className="flex" style={{ gap: u(0.8) }} aria-label={`Studied ${status.weekDays.filter(Boolean).length} of the last 7 days`}>
+            {status.weekDays.map((on, i) => (
+              <span key={i} style={{ width: u(2.4), height: u(2.4), background: on ? "#22c55e" : "#1d243322", outline: i === 6 ? `${u(0.3)} solid #1d2433` : undefined }} />
+            ))}
+          </span>
+        </div>
         {rows.map(([label, value]) => (
           <div key={label} className="flex justify-between" style={line}>
             <span className="opacity-70">{label}</span>

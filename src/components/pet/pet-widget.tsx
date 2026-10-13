@@ -8,8 +8,8 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/compone
 import { Drawer, DrawerContent, DrawerDescription, DrawerTitle } from "@/components/ui/drawer";
 import { petLevel, petMood, studyStatus, type StudyStatus } from "@/lib/pet-care";
 import { onOpenPet, onPetSignal } from "@/lib/pet-events";
-import { petQuery, studyQuery } from "@/lib/queries";
-import { dueCount, sessionHref } from "@/lib/subjects";
+import { petQuery, spacesQuery, studyQuery } from "@/lib/queries";
+import { dueCount, rankSubjects, sessionHref } from "@/lib/subjects";
 import type { Pet } from "@/lib/types";
 import { useMediaQuery } from "@/lib/use-media-query";
 import { cn } from "@/lib/utils";
@@ -37,6 +37,8 @@ export function PetWidget({ onOpen }: { onOpen?: () => void }) {
   const overview = useQuery(studyQuery).data;
   const due = overview ? dueCount(overview.decks) : 0;
   const status = studyStatus(overview, due);
+  const spaces = useQuery(spacesQuery).data;
+  const pick = overview && spaces ? rankSubjects(spaces, overview.decks, overview.weakTopics)[0]?.space : undefined;
 
   // "Your pet" in the account menu
   useEffect(() => onOpenPet(() => (queryClient.getQueryData(["pet"]) ? setDevice(true) : setBuilding(true))), [queryClient]);
@@ -80,13 +82,14 @@ export function PetWidget({ onOpen }: { onOpen?: () => void }) {
       pet={data}
       status={status}
       onEdit={() => setBuilding(true)}
+      studyLabel={pick?.name}
       onStudy={() => {
         setDevice(false);
-        router.push("/study");
+        router.push(pick ? sessionHref({ subject: pick.id }) : "/study");
       }}
-      onFocus={() => {
+      onToday={() => {
         setDevice(false);
-        router.push(sessionHref({}));
+        router.push("/study");
       }}
     />
   );

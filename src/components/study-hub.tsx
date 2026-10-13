@@ -8,7 +8,7 @@ import { CheckIcon, PlayIcon, PlusIcon, SparklesIcon, TargetIcon } from "lucide-
 import { streakFrom } from "@/lib/pet-care";
 import { useCardQueue } from "@/lib/auto-cards";
 import { documentsQuery, meQuery, petQuery, spacesQuery, studyQuery } from "@/lib/queries";
-import { cardCounts, dueCount, sessionHref, subjectDecks, topicsIn, waitingLine } from "@/lib/subjects";
+import { cardCounts, dueCount, rankSubjects, sessionHref, subjectDecks, topicsIn, waitingLine } from "@/lib/subjects";
 import type { DocumentItem, Pet, Space, StudyOverview, WeakTopic } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useHydrated } from "@/lib/use-hydrated";
@@ -58,15 +58,7 @@ function Today({ overview, spaces, documents }: { overview: StudyOverview; space
   const loose = decks.filter((d) => !spaces.some((s) => subjectDecks([d], s).length));
 
   // Today's pick: the subject with reviews due first, then weak topics, then new cards
-  const ranked = spaces
-    .map((s) => {
-      const sd = subjectDecks(decks, s);
-      const counts = cardCounts(sd);
-      const weak = topicsIn(weakTopics, sd);
-      return { space: s, counts, weak, score: counts.review * 3 + weak.length * 2 + (counts.fresh ? 1 : 0) };
-    })
-    .filter((r) => r.score > 0)
-    .sort((a, b) => b.score - a.score);
+  const ranked = rankSubjects(spaces, decks, weakTopics);
   const pick = ranked[0];
   const first = name?.split(" ")[0];
   const hello = `${hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening"}${first ? `, ${first}` : ""}`;

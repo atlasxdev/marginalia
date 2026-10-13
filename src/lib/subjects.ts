@@ -41,6 +41,19 @@ export function topicsIn(topics: WeakTopic[], decks: Deck[]) {
   return topics.filter((t) => t.cards.some((c) => ids.has(c.deckId)));
 }
 
+/** Subjects ranked by what they need: reviews due first, then weak topics, then new cards. */
+export function rankSubjects(spaces: Space[], decks: Deck[], weakTopics: WeakTopic[]) {
+  return spaces
+    .map((space) => {
+      const sd = subjectDecks(decks, space);
+      const counts = cardCounts(sd);
+      const weak = topicsIn(weakTopics, sd);
+      return { space, counts, weak, score: counts.review * 3 + weak.length * 2 + (counts.fresh ? 1 : 0) };
+    })
+    .filter((r) => r.score > 0)
+    .sort((a, b) => b.score - a.score);
+}
+
 /** Where to study: a subject, one deck, or one weak topic (optionally within a subject). */
 export type SessionScope = { subject?: string; deck?: string; topic?: string };
 

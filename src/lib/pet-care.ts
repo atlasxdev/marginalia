@@ -32,6 +32,8 @@ export type StudyStatus = {
   studiedToday: boolean;
   /** Whether you've studied at all lately. */
   studiedBefore: boolean;
+  /** The last seven days, oldest first: whether you studied on each. */
+  weekDays: boolean[];
   week: StudyOverview["week"];
 };
 
@@ -43,6 +45,11 @@ export function studyStatus(overview: StudyOverview | undefined, due: number, no
     due,
     studiedToday: activity.some((t) => new Date(t).toDateString() === today),
     studiedBefore: activity.length > 0,
+    weekDays: Array.from({ length: 7 }, (_, i) => {
+      const day = new Date(now);
+      day.setDate(day.getDate() - (6 - i));
+      return activity.some((t) => new Date(t).toDateString() === day.toDateString());
+    }),
     week: overview?.week ?? { reviewed: 0, accuracy: null, focusMinutes: 0, sessions: 0 },
   };
 }
