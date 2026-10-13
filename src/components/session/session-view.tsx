@@ -8,7 +8,7 @@ import { CoffeeIcon, HourglassIcon, InfinityIcon, MessageCircleQuestionIcon, Pau
 import { addPetXp } from "@/app/actions/pet";
 import { petQuery, spacesQuery, studyQuery } from "@/lib/queries";
 import { deckInSubject, topicsIn } from "@/lib/subjects";
-import type { AttemptResult, Deck, FocusMethod, Pet, Space, StudyOverview } from "@/lib/types";
+import type { AttemptResult, Deck, FocusMethod, MissKind, Pet, Space, StudyOverview } from "@/lib/types";
 import { readTimer, saveTimer } from "@/lib/timer-pref";
 import { useHydrated } from "@/lib/use-hydrated";
 import { useStudy, type StudyItem } from "@/lib/use-study";
@@ -102,7 +102,7 @@ function Session({ overview, space, scope }: { overview: StudyOverview; space?: 
   const [asking, setAsking] = useState<{ step: Step; question?: string } | null>(null);
   const pet = useQuery(petQuery).data;
   // Flip cards answer and move on in one tap, before the results state updates
-  const lastAnswer = useRef<{ key: string; result: AttemptResult } | null>(null);
+  const lastAnswer = useRef<{ key: string; result: AttemptResult; miss?: MissKind; typed?: string } | null>(null);
   const react = (face: Reaction["face"], line: string, explain?: Step) => setReaction((r) => ({ face, line, explain, seq: (r?.seq ?? 0) + 1 }));
 
   // Timer: focus time is counted from timestamps, so a backgrounded tab stays accurate
@@ -171,24 +171,38 @@ function Session({ overview, space, scope }: { overview: StudyOverview; space?: 
     setPausedLeft(null);
   };
 
-  const answer = (step: Step, result: AttemptResult) => {
+  const answer = (step: Step, result: AttemptResult, detail?: { miss?: MissKind; typed?: string }) => {
     const knew = result === "right";
-    study.rate(step.item, knew);
-    // Typed answers are saved when they're checked
-    if (step.mode !== "recall") study.saveAttempt({ deckId: step.item.deckId, index: step.item.index, result, mode: step.mode });
-    lastAnswer.current = { key: step.key, result };
+    // Follow-ups don't move a card's schedule; the card already counted
+    if (step.reason !== "followup") {
+      study.rate(step.item, knew);
+      // Typed answers are saved when they're checked
+      if (step.mode === "cards" || step.mode === "quiz") study.saveAttempt({ deckId: step.item.deckId, index: step.item.index, result, mode: step.mode });
+    }
+    lastAnswer.current = { key: step.key, result, miss: detail?.miss, typed: detail?.typed };
     setAnsweredSeq(stepSeq);
     setResults((r) => [...r, { step, result, block }]);
-    if (knew) react("happy", pick(RIGHT_LINES));
+    if (knew) react("happy", step.reason === "followup" ? "Now you've got it." : pick(RIGHT_LINES));
+    else if (detail?.miss === "misunderstood") react("flat", "That one's mixed up. Let's untangle it.");
+    else if (detail?.miss === "misapplied") react("flat", "You know it. Let's practise using it.");
+    else if (step.reason === "followup") react("flat", "Getting there. It comes back later.");
     else react("flat", result === "almost" ? "Almost. Want me to explain it?" : "Not quite. Want me to explain it?", step);
   };
 
   const next = () => {
     const [step, ...rest] = queue;
-    const last = lastAnswer.current;
+    const last = step && lastAnswer.current?.key === step.key ? lastAnswer.current : null;
+    const missed = !!last && last.result !== "right" && step.reason !== "followup";
     // A miss comes back later in the session, as a flip card
-    const again: Step[] = step && last?.key === step.key && last.result !== "right" ? [{ ...step, mode: "cards", reason: "again" }] : [];
-    const updated = [...rest, ...again];
+    const again: Step[] = missed ? [{ ...step, key: `${step.key}:again`, mode: "cards", reason: "again" }] : [];
+    // Why it missed decides what comes straight after: explain it back, or practise using it
+    const follow: Step[] =
+      missed && last?.miss === "misunderstood"
+        ? [{ ...step, key: `${step.key}:teach`, mode: "teach", reason: "followup" }]
+        : missed && last?.miss === "misapplied"
+          ? [{ ...step, key: `${step.key}:practice`, mode: "practice", reason: "followup", context: last.typed }]
+          : [];
+    const updated = [...follow, ...rest, ...again];
     setQueue(updated);
     setStepSeq((n) => n + 1);
     if (updated.length === 0) finish();
@@ -310,7 +324,7 @@ function Session({ overview, space, scope }: { overview: StudyOverview; space?: 
               {/* Your buddy perches on top of the card and reacts to each answer */}
               <div className="relative pt-[54px]">
                 <Perch pet={pet} reaction={reaction} onExplain={(step) => setAsking({ step, question: "Explain why this is the answer, simply." })} />
-                <StepView key={`${current.key}-${stepSeq}`} step={current} onAnswer={(r) => answer(current, r)} onNext={next} />
+                <StepView key={`${current.key}-${stepSeq}`} step={current} spaceId={space?.id} onAnswer={(r, d) => answer(current, r, d)} onNext={next} />
               </div>
               <div className="mt-8 flex flex-wrap justify-center gap-3">
                 <Button variant="glass" onClick={() => current && setAsking({ step: current })}>
@@ -513,7 +527,7 @@ function BreakView({
 }) {
   const pet = useQuery(petQuery).data;
   const right = results.filter((r) => r.result === "right").length;
-  const missed = [...new Map(results.filter((r) => r.result !== "right").map((r) => [r.step.key, r.step])).values()];
+  const missed = [...new Map(results.filter((r) => r.result !== "right" && r.step.reason !== "followup").map((r) => [itemKey(r.step.item), r.step])).values()];
   const size = 220;
   const r = size / 2 - 6;
   const c = 2 * Math.PI * r;
@@ -600,7 +614,8 @@ function Summary({
 }) {
   const queryClient = useQueryClient();
   const pet = useQuery(petQuery).data;
-  const cards = new Set(results.map((r) => r.step.key)).size;
+  // Distinct cards studied; follow-ups and repeats of a card count once
+  const cards = new Set(results.filter((r) => r.step.reason !== "followup").map((r) => itemKey(r.step.item))).size;
   const right = results.filter((r) => r.result === "right").length;
   const accuracy = results.length ? right / results.length : null;
   const minutes = Math.round(focusedSeconds / 60);

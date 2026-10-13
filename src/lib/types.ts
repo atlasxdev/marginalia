@@ -162,4 +162,10 @@ export type StudyOverview = {
 };
 
 /** How a typed answer was marked. */
-export type CheckResult = { deckId: string; index: number; result: AttemptResult; feedback: string };
+/** Why an answer missed: it was forgotten, the idea was misunderstood, or it was applied wrongly. */
+export type MissKind = "forgot" | "misunderstood" | "misapplied";
+
+export type CheckResult = { deckId: string; index: number; result: AttemptResult; feedback: string; miss?: MissKind };
+
+/** A practice question made on the spot, not saved as a card. */
+export type PracticeQuestion = { front: string; back: string; wrong: string[] };

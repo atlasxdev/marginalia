@@ -1,13 +1,18 @@
 import type { StudyItem } from "@/lib/use-study";
 import type { StudyMode } from "@/lib/types";
 
+/** How a step is asked: a card mode, or a follow-up to a miss (explain it back, or practice using it). */
+export type StepMode = StudyMode | "teach" | "practice";
+
 /** One thing to do in a session: a card, and how it's asked. */
 export type Step = {
   key: string;
   item: StudyItem;
-  mode: StudyMode;
-  /** Why it's in the plan: due for review, a weak topic, new, or missed earlier in this session. */
-  reason: "due" | "weak" | "new" | "again";
+  mode: StepMode;
+  /** Why it's in the plan: due for review, a weak topic, new, missed earlier, or a follow-up to a miss. */
+  reason: "due" | "weak" | "new" | "again" | "followup";
+  /** For practice: the answer that missed, so the questions target that mistake. */
+  context?: string;
 };
 
 const WEAK_LIMIT = 5;
