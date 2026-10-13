@@ -266,7 +266,7 @@ function EditorForm({ initial }: { initial: Draft }) {
       </div>
 
       <AlertDialog open={confirmLeave} onOpenChange={setConfirmLeave}>
-        <AlertDialogContent className="glass border border-glass-border bg-glass-strong">
+        <AlertDialogContent className="border border-glass-border bg-popover">
           <AlertDialogHeader>
             <AlertDialogTitle>Discard your changes?</AlertDialogTitle>
             <AlertDialogDescription>Your edits since the last save will be lost.</AlertDialogDescription>

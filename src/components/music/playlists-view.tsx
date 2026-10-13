@@ -13,6 +13,7 @@ import {
   PlusIcon,
   Repeat1Icon,
   RepeatIcon,
+  SearchIcon,
   SkipBackIcon,
   ShuffleIcon,
   SkipForwardIcon,
@@ -24,6 +25,16 @@ import { toast } from "sonner";
 import { useMusic } from "@/lib/music";
 import { MAX_LIBRARY_BYTES, MAX_SONGS, MAX_SONG_BYTES, SONG_ACCEPT, SONG_FORMATS_LABEL, formatBytes, type Song } from "@/lib/song-store";
 import { cn } from "@/lib/utils";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -131,7 +142,7 @@ export function PlaylistsView() {
           <>
             <Lists view={view} setView={setView} />
             <div className="mt-8">
-              <Tracks title={playlist ? playlist.name : "All songs"} playlistId={playlist?.id ?? null} songs={list} />
+              <Tracks key={playlist?.id ?? "all"} title={playlist ? playlist.name : "All songs"} playlistId={playlist?.id ?? null} songs={list} />
             </div>
           </>
         )}
@@ -272,7 +283,7 @@ function Lists({ view, setView }: { view: string; setView: (v: string) => void }
       </div>
 
       <Dialog open={creating} onOpenChange={setCreating}>
-        <DialogContent className="glass border border-glass-border bg-glass-strong sm:max-w-sm">
+        <DialogContent className="border border-glass-border bg-popover sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>New playlist</DialogTitle>
             <DialogDescription>A list for a mood, like Rainy focus or Exam week.</DialogDescription>
@@ -303,6 +314,10 @@ function Lists({ view, setView }: { view: string; setView: (v: string) => void }
 
 function Tracks({ title, playlistId, songs }: { title: string; playlistId: string | null; songs: Song[] }) {
   const music = useMusic();
+  const [query, setQuery] = useState("");
+  const q = query.trim().toLowerCase();
+  const shown = q ? songs.filter((s) => s.name.toLowerCase().includes(q)) : songs;
+  const [confirming, setConfirming] = useState(false);
   const [renaming, setRenaming] = useState(false);
   const [draft, setDraft] = useState(title);
   const playingHere = music.source === (playlistId ?? "all");
@@ -362,7 +377,7 @@ function Tracks({ title, playlistId, songs }: { title: string; playlistId: strin
                 <PencilIcon />
                 Rename playlist
               </DropdownMenuItem>
-              <DropdownMenuItem variant="destructive" onSelect={() => music.removePlaylist(playlistId)}>
+              <DropdownMenuItem variant="destructive" onSelect={() => setConfirming(true)}>
                 <Trash2Icon />
                 Delete playlist
               </DropdownMenuItem>
@@ -371,14 +386,47 @@ function Tracks({ title, playlistId, songs }: { title: string; playlistId: strin
         )}
       </div>
 
-      {songs.length === 0 ? (
+      {/* Search this list */}
+      {songs.length > 0 && (
+        <div className="relative border-b border-glass-divider px-5 py-3">
+          <SearchIcon className="pointer-events-none absolute top-1/2 left-8 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={`Search ${title}`}
+            aria-label={`Search ${title}`}
+            className="h-10 rounded-xl pl-9"
+          />
+        </div>
+      )}
+
+      {songs.length > 0 && shown.length === 0 ? (
+        <p className="p-8 text-center text-muted-foreground">No songs match &ldquo;{query.trim()}&rdquo;.</p>
+      ) : songs.length === 0 ? (
         <p className="p-8 text-center text-muted-foreground">{playlistId ? "This playlist is empty. Use Add songs to fill it." : "No songs yet."}</p>
       ) : (
         <ol className="p-2">
-          {songs.map((s, i) => (
-            <TrackRow key={s.id} song={s} index={i} playlistId={playlistId} onPlay={() => (music.setSource(playlistId ?? "all"), music.play(s.id))} />
+          {shown.map((s) => (
+            <TrackRow key={s.id} song={s} index={songs.indexOf(s)} playlistId={playlistId} onPlay={() => (music.setSource(playlistId ?? "all"), music.play(s.id))} />
           ))}
         </ol>
+      )}
+      {playlistId && (
+        <AlertDialog open={confirming} onOpenChange={setConfirming}>
+          <AlertDialogContent className="border border-glass-border bg-popover">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete “{title}”?</AlertDialogTitle>
+              <AlertDialogDescription>The playlist goes away. Its songs stay in All songs.</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction variant="destructive" onClick={() => music.removePlaylist(playlistId)}>
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       )}
     </section>
   );
@@ -469,7 +517,7 @@ function AddSongs({ playlistId }: { playlistId: string }) {
         Add songs
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="glass gap-4 border border-glass-border bg-glass-strong sm:max-w-md">
+        <DialogContent className="gap-4 border border-glass-border bg-popover sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Add songs to {playlist.name}</DialogTitle>
             <DialogDescription>Tick a song to add it, untick to take it out.</DialogDescription>

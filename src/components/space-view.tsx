@@ -418,7 +418,7 @@ function SpaceDetail({ space }: { space: Space }) {
 
       <SpaceDialog open={editing} onOpenChange={setEditing} space={space} />
       <AlertDialog open={confirming} onOpenChange={setConfirming}>
-        <AlertDialogContent className="glass border border-glass-border bg-glass-strong">
+        <AlertDialogContent className="border border-glass-border bg-popover">
           <AlertDialogHeader>
             <AlertDialogTitle>Delete “{space.name}”?</AlertDialogTitle>
             <AlertDialogDescription>

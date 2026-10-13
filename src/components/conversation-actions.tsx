@@ -236,7 +236,7 @@ export function DeleteConversation({
 
   return (
     <AlertDialog open={!!conversation} onOpenChange={(open) => !open && onClose()}>
-      <AlertDialogContent className="glass border border-glass-border bg-glass-strong">
+      <AlertDialogContent className="border border-glass-border bg-popover">
         <AlertDialogHeader>
           <AlertDialogTitle>Delete “{conversation?.title}”?</AlertDialogTitle>
           <AlertDialogDescription>

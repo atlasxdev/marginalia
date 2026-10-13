@@ -586,7 +586,7 @@ function RowActions({ doc }: { doc: DocumentItem }) {
         </DropdownMenuContent>
       </DropdownMenu>
       <AlertDialog open={confirming} onOpenChange={setConfirming}>
-        <AlertDialogContent className="glass border border-glass-border bg-glass-strong">
+        <AlertDialogContent className="border border-glass-border bg-popover">
           <AlertDialogHeader>
             <AlertDialogTitle>Delete “{doc.filename}”?</AlertDialogTitle>
             <AlertDialogDescription>It will be removed from your library, its subjects, and search.</AlertDialogDescription>
