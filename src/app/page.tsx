@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, Brain, CalendarClock, Mail, MapPin, MessageCircleQuestion, Quote } from "lucide-react";
+import { ArrowRight, Brain, Check, GraduationCap, Lightbulb, Mail, MapPin, Timer } from "lucide-react";
 import {
   DocChip, HandheldDemo, NavShell, NotesDemo, OpeningWordmark, RecallDemo, Reveal, SessionDemo, SpotlightCard, Steps, StreamedAnswer,
 } from "@/components/landing";
@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { SITE_URL } from "@/lib/site";
 
 const DESCRIPTION =
-  "Add your lecture notes and they turn into flashcards on their own. Study in focus sessions with a pixel buddy that checks your answers against your notes, explains what you miss, and tells you what to review next.";
+  "Add your lecture notes and they turn into flashcards on their own. Study in focus sessions with a pixel buddy that checks your answers against your notes, explains what you miss, runs practice exams and plays your own study music.";
 
 export const metadata: Metadata = {
   title: { absolute: "Marginalia · Your study buddy for your own notes" },
@@ -46,26 +46,31 @@ const JSON_LD = {
   author: { "@type": "Person", name: "Ace Guevarra", url: "https://www.aceguevarra.xyz" },
 };
 
-const FEATURES = [
+/* The four ways Marginalia helps. Each is a set of real features, not a separate mode. */
+const MODES = [
+  {
+    icon: Timer,
+    title: "Focus",
+    tagline: "Build a study habit that sticks.",
+    points: ["Focus sessions with Pomodoro or long blocks", "A buddy that studies beside you and grows", "Your own study music, and a daily goal"],
+  },
   {
     icon: Brain,
-    title: "Answers checked against your notes",
-    body: "Type what you remember in your own words. Your buddy marks it right, almost or wrong, and shows the line.",
+    title: "Remember",
+    tagline: "Keep what you learn for longer.",
+    points: ["Flashcards made from your notes on their own", "Typed answers checked against your notes", "Cards come back right before you'd forget them"],
   },
   {
-    icon: MessageCircleQuestion,
-    title: "Stuck? It explains",
-    body: "Miss a card and your buddy offers to explain it, from your notes. Or ask anything about the card you're on.",
+    icon: Lightbulb,
+    title: "Understand",
+    tagline: "Get the ideas, not just the words.",
+    points: ["Miss a card and your buddy explains it", "Explain it back and it checks your explanation", "Practice questions on the exact point you missed"],
   },
   {
-    icon: CalendarClock,
-    title: "Knows what to review next",
-    body: "Cards come back right before you'd forget them, and the topics you keep missing come up first.",
-  },
-  {
-    icon: Quote,
-    title: "Every answer shows its source",
-    body: "Ask a subject anything. Tap a citation and the page opens with the passage highlighted. If your notes don't say, it tells you.",
+    icon: GraduationCap,
+    title: "Exam",
+    tagline: "Walk in ready.",
+    points: ["Timed practice exams across a whole subject", "A score for every topic, weakest first", "A session on the questions you missed"],
   },
 ];
 
@@ -114,7 +119,7 @@ export default function Landing() {
             <Wordmark className="text-2xl" />
           </Link>
           <div className="hidden items-center gap-7 text-sm text-muted-foreground md:flex">
-            <a href="#features" className="transition-colors hover:text-foreground">Features</a>
+            <a href="#features" className="transition-colors hover:text-foreground">How it helps</a>
             <a href="#buddy" className="transition-colors hover:text-foreground">Your buddy</a>
             <a href="#how" className="transition-colors hover:text-foreground">How it works</a>
           </div>
@@ -145,7 +150,7 @@ export default function Landing() {
             <span className="block animate-in fade-in slide-in-from-bottom-4 fill-mode-both delay-75 duration-500">With a buddy that keeps you going.</span>
           </h1>
           <p className="mx-auto mt-5 max-w-xl text-lg text-pretty text-muted-foreground animate-in fade-in fill-mode-both delay-150 duration-500">
-            Add your lecture notes and they turn into flashcards on their own. Then study in focus sessions with a buddy that checks your answers against your notes and explains what you miss.
+            Add your lecture notes and they turn into flashcards on their own. Then study in focus sessions with a buddy that checks your answers, explains what you miss, and gets you exam-ready.
           </p>
           <div className="mt-8 flex flex-col justify-center gap-3 animate-in fade-in slide-in-from-bottom-2 fill-mode-both delay-200 duration-500 sm:flex-row">
             <Button asChild size="lg" className="group/cta h-11 px-5 text-base">
@@ -190,21 +195,31 @@ export default function Landing() {
           </div>
         </section>
 
-        {/* Features */}
+        {/* Four ways it helps */}
         <section id="features" className="mx-auto max-w-6xl scroll-mt-24 px-5 py-20">
           <Reveal>
-            <h2 className="max-w-2xl text-3xl font-semibold tracking-tight sm:text-4xl">Built for how studying actually works.</h2>
-            <p className="mt-4 max-w-2xl text-lg text-muted-foreground">From a pile of notes to knowing it for the exam.</p>
+            <h2 className="max-w-2xl text-3xl font-semibold tracking-tight sm:text-4xl">Four ways it helps you study.</h2>
+            <p className="mt-4 max-w-2xl text-lg text-muted-foreground">
+              All in one session, from your own notes. Your buddy picks what you need next.
+            </p>
           </Reveal>
-          <div className="mt-10 grid gap-4 sm:grid-cols-2">
-            {FEATURES.map(({ icon: Icon, title, body }, i) => (
+          <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {MODES.map(({ icon: Icon, title, tagline, points }, i) => (
               <Reveal key={title} delay={i * 60} className="h-full">
-                <SpotlightCard className="p-6">
+                <SpotlightCard className="flex h-full flex-col p-6">
                   <span className="grid size-10 place-items-center rounded-lg bg-primary/10 text-primary transition-transform duration-300 group-hover/spot:scale-110 group-hover/spot:-rotate-6">
                     <Icon className="size-5" />
                   </span>
-                  <h3 className="mt-5 text-lg font-semibold">{title}</h3>
-                  <p className="mt-2 text-muted-foreground">{body}</p>
+                  <h3 className="mt-5 text-xl font-semibold">{title}</h3>
+                  <p className="mt-1 text-muted-foreground">{tagline}</p>
+                  <ul className="mt-5 grid gap-2.5 text-sm">
+                    {points.map((pt) => (
+                      <li key={pt} className="flex gap-2">
+                        <Check className="mt-0.5 size-4 shrink-0 text-primary" />
+                        {pt}
+                      </li>
+                    ))}
+                  </ul>
                 </SpotlightCard>
               </Reveal>
             ))}
@@ -289,7 +304,7 @@ export default function Landing() {
           <div className="text-sm">
             <p className="font-medium">Product</p>
             <ul className="mt-3 space-y-2 text-muted-foreground">
-              <li><a href="#features" className="transition-colors hover:text-foreground">Features</a></li>
+              <li><a href="#features" className="transition-colors hover:text-foreground">How it helps</a></li>
               <li><a href="#buddy" className="transition-colors hover:text-foreground">Your buddy</a></li>
               <li><a href="#how" className="transition-colors hover:text-foreground">How it works</a></li>
               <li><Link href="/sign-up" className="transition-colors hover:text-foreground">Start studying</Link></li>
