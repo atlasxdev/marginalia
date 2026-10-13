@@ -95,7 +95,7 @@ export function ChatMenu({ conversation, onFind }: { conversation: Conversation;
       </DropdownMenu>
 
       <RenameConversation conversation={renaming ? conversation : null} onClose={() => setRenaming(false)} />
-      <DeleteConversation conversation={deleting ? conversation : null} onClose={() => setDeleting(false)} onDeleted={() => router.push("/chat")} />
+      <DeleteConversation conversation={deleting ? conversation : null} onClose={() => setDeleting(false)} onDeleted={() => router.push(conversation.space ? `/spaces/${conversation.space.id}` : "/study")} />
       <FilesInChat open={files} onOpenChange={setFiles} docs={docs} />
     </>
   );

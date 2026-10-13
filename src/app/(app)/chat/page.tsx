@@ -1,8 +1,6 @@
-import type { Metadata } from "next";
-import { NewQuestion } from "@/components/new-question";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = { title: "New question" };
-
+// Questions are asked inside a subject now, so a bare /chat goes to Today
 export default function ChatPage() {
-  return <NewQuestion />;
+  redirect("/study");
 }

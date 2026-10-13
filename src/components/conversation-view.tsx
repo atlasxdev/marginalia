@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { ArrowDownIcon, LayersIcon, MessageSquareIcon, PinIcon } from "lucide-react";
+import { ArrowDownIcon, ChevronLeftIcon, LayersIcon, MessageSquareIcon, PinIcon } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { conversationQuery } from "@/lib/queries";
 import { useAnswerStream } from "@/lib/use-answer-stream";
@@ -75,7 +75,7 @@ export function ConversationView({ id }: { id: string }) {
         </EmptyHeader>
         <EmptyContent>
           <Button asChild>
-            <Link href="/chat">Ask a new question</Link>
+            <Link href="/study">Back to Today</Link>
           </Button>
         </EmptyContent>
       </Empty>
@@ -90,22 +90,31 @@ export function ConversationView({ id }: { id: string }) {
           <div ref={scrollRef} className="h-full overflow-y-auto" onScroll={onScroll}>
             {/* The title and the chat's menu stay in reach while you scroll */}
             <header className="sticky top-0 z-10 px-5 pt-3 sm:px-8 lg:px-12">
-              <div className="glass mx-auto flex h-14 max-w-4xl items-center gap-2 rounded-2xl border border-glass-border bg-glass-strong pr-2 pl-4">
+              <div className="glass mx-auto flex h-16 max-w-4xl items-center gap-2 rounded-2xl border border-glass-border bg-glass-strong pr-2 pl-2">
                 {isPending ? (
-                  <Skeleton className="h-5 w-1/2" />
+                  <Skeleton className="ml-2 h-5 w-1/2" />
                 ) : (
                   <>
-                    {conversation?.pinned && <PinIcon aria-label="Pinned" className="size-4 shrink-0 text-primary" />}
-                    <h1 className="min-w-0 flex-1 truncate font-semibold tracking-tight">{conversation?.title}</h1>
-                    {conversation?.space && (
-                      <Link
-                        href={`/spaces/${conversation.space.id}`}
-                        className="hidden max-w-48 shrink-0 items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary hover:bg-primary/15 sm:inline-flex"
-                      >
-                        <LayersIcon className="size-3.5 shrink-0" />
-                        <span className="truncate">{conversation.space.name}</span>
+                    {/* Where this chat lives: its subject, or all your notes */}
+                    <Button variant="ghost" size="icon" asChild className="shrink-0 text-muted-foreground">
+                      <Link href={conversation?.space ? `/spaces/${conversation.space.id}` : "/study"} aria-label={conversation?.space ? `Back to ${conversation.space.name}` : "Back to Today"}>
+                        <ChevronLeftIcon />
                       </Link>
-                    )}
+                    </Button>
+                    <div className="grid min-w-0 flex-1 gap-0.5">
+                      {conversation?.space ? (
+                        <Link href={`/spaces/${conversation.space.id}`} className="flex w-fit max-w-full items-center gap-1 text-xs font-medium text-primary hover:underline">
+                          <LayersIcon className="size-3.5 shrink-0" />
+                          <span className="truncate">{conversation.space.name}</span>
+                        </Link>
+                      ) : (
+                        <span className="text-xs font-medium text-muted-foreground">All notes</span>
+                      )}
+                      <h1 className="flex min-w-0 items-center gap-1.5 font-semibold tracking-tight">
+                        {conversation?.pinned && <PinIcon aria-label="Pinned" className="size-3.5 shrink-0 text-primary" />}
+                        <span className="truncate">{conversation?.title}</span>
+                      </h1>
+                    </div>
                     {conversation && <MethodPicker spaceId={conversation.space?.id} className="hidden sm:inline-flex" />}
                     {conversation && <ChatMenu conversation={conversation} onFind={() => setFinding(true)} />}
                   </>

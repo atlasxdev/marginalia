@@ -4,19 +4,18 @@ import { Fragment, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { CheckIcon, ChevronRightIcon, MessageSquareIcon, PlayIcon, PlusIcon, SparklesIcon, TargetIcon } from "lucide-react";
+import { CheckIcon, PlayIcon, PlusIcon, SparklesIcon, TargetIcon } from "lucide-react";
 import { streakFrom } from "@/lib/pet-care";
 import { useCardQueue } from "@/lib/auto-cards";
-import { conversationsQuery, documentsQuery, meQuery, petQuery, spacesQuery, studyQuery } from "@/lib/queries";
+import { documentsQuery, meQuery, petQuery, spacesQuery, studyQuery } from "@/lib/queries";
 import { cardCounts, dueCount, sessionHref, subjectDecks, topicsIn, waitingLine } from "@/lib/subjects";
-import type { ConversationSummary, DocumentItem, Pet, Space, StudyOverview, WeakTopic } from "@/lib/types";
+import type { DocumentItem, Pet, Space, StudyOverview, WeakTopic } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useHydrated } from "@/lib/use-hydrated";
 import { Button } from "@/components/ui/button";
-import { Item, ItemActions, ItemContent, ItemDescription, ItemGroup, ItemMedia, ItemSeparator, ItemTitle } from "@/components/ui/item";
+import { Item, ItemActions, ItemContent, ItemDescription, ItemGroup, ItemSeparator, ItemTitle } from "@/components/ui/item";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
-import { Composer } from "./composer";
 import { DeckList, useMakeDeck } from "./deck";
 import { PetSprite } from "./pet/pet-sprite";
 import { SpaceDialog } from "./space-dialog";
@@ -50,7 +49,6 @@ function Today({ overview, spaces, documents }: { overview: StudyOverview; space
   const router = useRouter();
   const pet = useQuery(petQuery).data;
   const name = useQuery(meQuery).data?.user_metadata?.name as string | undefined;
-  const chats = useQuery(conversationsQuery).data?.filter((c) => !c.spaceId).slice(0, 4) ?? [];
   const [creating, setCreating] = useState(false);
   const [hour] = useState(() => new Date().getHours());
   const { decks, weakTopics, week, activity } = overview;
@@ -163,19 +161,6 @@ function Today({ overview, spaces, documents }: { overview: StudyOverview; space
             topics={weakTopics.slice(0, 3)}
             subjectOf={(t) => spaces.find((s) => topicsIn([t], subjectDecks(decks, s)).length)}
           />
-        </section>
-      )}
-
-      {documents.length > 0 && (
-        <section aria-labelledby="ask-all" className="mt-12">
-          <h2 id="ask-all" className="text-xl font-semibold">
-            Ask all your notes
-          </h2>
-          <p className="mt-1 text-sm text-muted-foreground">Searches every subject. To stay within one class, ask from its subject page.</p>
-          <div className="mt-4">
-            <Composer placeholder="Ask anything from your notes" className="max-w-none" />
-          </div>
-          {chats.length > 0 && <RecentChats chats={chats} />}
         </section>
       )}
 
@@ -370,32 +355,6 @@ function GettingStarted({
         ))}
       </ol>
     </section>
-  );
-}
-
-/** Chats asked across all notes, for picking back up. */
-function RecentChats({ chats }: { chats: ConversationSummary[] }) {
-  return (
-    <ItemGroup className={`${groupClass} mt-4 gap-0`}>
-      {chats.map((c, i) => (
-        <Fragment key={c.id}>
-          {i > 0 && <ItemSeparator className="my-0 bg-glass-divider" />}
-          <Item asChild className="rounded-none px-5 py-3.5 first:rounded-t-xl last:rounded-b-xl hover:bg-glass-strong">
-            <Link href={`/chat/${c.id}`}>
-              <ItemMedia>
-                <MessageSquareIcon className="size-4 text-muted-foreground" />
-              </ItemMedia>
-              <ItemContent>
-                <ItemTitle className="text-[15px]">{c.title}</ItemTitle>
-              </ItemContent>
-              <ItemActions>
-                <ChevronRightIcon className="size-4 text-muted-foreground" />
-              </ItemActions>
-            </Link>
-          </Item>
-        </Fragment>
-      ))}
-    </ItemGroup>
   );
 }
 

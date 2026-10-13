@@ -104,6 +104,8 @@ function AppSidebar() {
   const documentsResult = useQuery(documentsQuery);
   const spacesResult = useQuery(spacesQuery);
   const conversations = hydrated ? conversationsResult.data : undefined;
+  // On a chat, its subject stays highlighted
+  const chatSubject = pathname.startsWith("/chat/") ? conversations?.find((c) => pathname === `/chat/${c.id}`)?.spaceId : undefined;
   const documents = hydrated ? documentsResult.data : undefined;
   const spaces = hydrated ? spacesResult.data : undefined;
   const readyCount = documents?.filter((d) => d.status === "ready").length;
@@ -233,7 +235,7 @@ function AppSidebar() {
                     key={s.id}
                     className={cn(freshSpace(s.id) && SLIDE_IN)}
                   >
-                    <SidebarMenuButton asChild isActive={pathname === href || pathname.startsWith(`${href}/`)}>
+                    <SidebarMenuButton asChild isActive={pathname === href || pathname.startsWith(`${href}/`) || chatSubject === s.id}>
                       <Link href={href} onClick={close}>
                         <LayersIcon className="text-primary" />
                         <span>{s.name}</span>
