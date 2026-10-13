@@ -125,7 +125,7 @@ export function PlaylistsView() {
             </span>
           </button>
         ) : (
-          <div className="mt-8 grid items-start gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
+          <div className="mt-8 grid items-start gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
             <Lists view={view} setView={setView} />
             <Tracks title={playlist ? playlist.name : "All songs"} playlistId={playlist?.id ?? null} songs={list} />
           </div>
@@ -187,29 +187,36 @@ function NowPlaying() {
 function Lists({ view, setView }: { view: string; setView: (v: string) => void }) {
   const music = useMusic();
   const [name, setName] = useState("");
-  const row = (id: string, label: string, count: number, icon: React.ReactNode) => (
-    <button
-      key={id}
-      type="button"
-      onClick={() => setView(id)}
-      className={cn(
-        "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition-colors duration-150",
-        view === id ? "bg-primary/10 font-medium text-primary" : "hover:bg-foreground/5"
-      )}
-    >
-      {icon}
-      <span className="min-w-0 flex-1 truncate">{label}</span>
-      <span className="text-xs text-muted-foreground tabular-nums">{count}</span>
-      {music.source === id && music.playing && <span className="size-1.5 rounded-full bg-primary" aria-label="Playing" />}
-    </button>
-  );
+  const row = (id: string, label: string, count: number, icon: React.ReactNode) => {
+    const on = view === id;
+    const live = music.source === id && music.playing;
+    return (
+      <button
+        key={id}
+        type="button"
+        onClick={() => setView(id)}
+        className={cn("flex w-full items-center gap-3.5 rounded-xl p-2.5 text-left transition-colors duration-150", on ? "bg-primary/10" : "hover:bg-foreground/5")}
+      >
+        <span className={cn("grid size-11 shrink-0 place-items-center rounded-lg", on ? "bg-primary text-primary-foreground" : "bg-foreground/[0.07] text-muted-foreground")}>{icon}</span>
+        <span className="grid min-w-0 flex-1 gap-0.5">
+          <span className={cn("truncate text-[15px] font-medium", on && "text-primary")}>{label}</span>
+          <span className="text-sm text-muted-foreground">
+            {count} {count === 1 ? "song" : "songs"}
+            {live && <span className="text-primary"> · Playing</span>}
+          </span>
+        </span>
+      </button>
+    );
+  };
   return (
-    <nav aria-label="Your lists" className={`${groupClass} p-2`}>
-      {row("all", "All songs", music.songs.length, <MusicIcon className="size-4 shrink-0" />)}
-      {music.playlists.length > 0 && <p className="px-3 pt-4 pb-1 text-xs font-medium text-muted-foreground">Playlists</p>}
-      {music.playlists.map((p) => row(p.id, p.name, p.songIds.length, <ListMusicIcon className="size-4 shrink-0" />))}
+    <nav aria-label="Your lists" className={`${groupClass} p-3`}>
+      <p className="px-2.5 pt-1 pb-2 text-sm font-semibold">Library</p>
+      {row("all", "All songs", music.songs.length, <MusicIcon className="size-5" />)}
+      <p className="px-2.5 pt-5 pb-2 text-sm font-semibold">Playlists</p>
+      {music.playlists.length === 0 && <p className="px-2.5 pb-2 text-sm text-muted-foreground">Make one for each mood, like Rainy focus or Exam week.</p>}
+      {music.playlists.map((p) => row(p.id, p.name, p.songIds.length, <ListMusicIcon className="size-5" />))}
       <form
-        className="mt-2 flex gap-1.5 border-t border-glass-divider p-1 pt-3"
+        className="mt-3 flex gap-2 border-t border-glass-divider px-1 pt-4 pb-1"
         onSubmit={(e) => {
           e.preventDefault();
           if (!name.trim()) return;
@@ -218,8 +225,8 @@ function Lists({ view, setView }: { view: string; setView: (v: string) => void }
           setView(p.id);
         }}
       >
-        <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="New playlist" aria-label="New playlist name" maxLength={60} className="h-9 rounded-lg" />
-        <Button type="submit" size="icon" variant="outline" disabled={!name.trim()} aria-label="Create playlist" className="size-9 shrink-0">
+        <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="New playlist name" aria-label="New playlist name" maxLength={60} className="h-11 rounded-xl" />
+        <Button type="submit" size="icon" disabled={!name.trim()} aria-label="Create playlist" className="size-11 shrink-0 rounded-xl">
           <PlusIcon />
         </Button>
       </form>
@@ -262,6 +269,7 @@ function Tracks({ title, playlistId, songs }: { title: string; playlistId: strin
             </p>
           </div>
         )}
+        {playlistId && <AddSongs playlistId={playlistId} />}
         <Button disabled={!songs.length} onClick={playAll}>
           <PlayIcon />
           {playingHere && music.playing ? "Playing" : "Play all"}
@@ -288,9 +296,10 @@ function Tracks({ title, playlistId, songs }: { title: string; playlistId: strin
       </div>
 
       {songs.length === 0 ? (
-        <p className="p-8 text-center text-muted-foreground">
-          {playlistId ? "No songs here yet. Use a song's menu in All songs to add it to this playlist." : "No songs yet."}
-        </p>
+        <div className="grid justify-items-center gap-3 p-10 text-center">
+          <p className="text-muted-foreground">{playlistId ? "This playlist is empty." : "No songs yet."}</p>
+          {playlistId && <AddSongs playlistId={playlistId} variant="default" />}
+        </div>
       ) : (
         <ol className="p-2">
           {songs.map((s, i) => (
@@ -347,7 +356,7 @@ function TrackRow({ song, index, playlistId, onPlay }: { song: Song; index: numb
               <DropdownMenuSeparator />
               <DropdownMenuLabel className="flex items-center gap-2 text-xs text-muted-foreground">
                 <ListPlusIcon className="size-3.5" />
-                In playlists
+                Add to playlist
               </DropdownMenuLabel>
               {music.playlists.map((p) => (
                 <DropdownMenuCheckboxItem key={p.id} checked={p.songIds.includes(song.id)} onCheckedChange={() => music.toggleInPlaylist(p.id, song.id)} onSelect={(e) => e.preventDefault()}>
@@ -371,6 +380,35 @@ function TrackRow({ song, index, playlistId, onPlay }: { song: Song; index: numb
         </DropdownMenuContent>
       </DropdownMenu>
     </li>
+  );
+}
+
+/** Pick songs for a playlist: every song, ticked when it's in. Stays open to tick several. */
+function AddSongs({ playlistId, variant = "outline" }: { playlistId: string; variant?: "outline" | "default" }) {
+  const music = useMusic();
+  const playlist = music.playlists.find((p) => p.id === playlistId);
+  if (!playlist) return null;
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant={variant}>
+          <ListPlusIcon />
+          Add songs
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="max-h-80 w-64 overflow-y-auto">
+        <DropdownMenuLabel>Songs in {playlist.name}</DropdownMenuLabel>
+        {music.songs.length === 0 ? (
+          <p className="px-2 py-1.5 text-sm text-muted-foreground">Upload songs first.</p>
+        ) : (
+          music.songs.map((s) => (
+            <DropdownMenuCheckboxItem key={s.id} checked={playlist.songIds.includes(s.id)} onCheckedChange={() => music.toggleInPlaylist(playlistId, s.id)} onSelect={(e) => e.preventDefault()}>
+              <span className="truncate">{s.name}</span>
+            </DropdownMenuCheckboxItem>
+          ))
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 

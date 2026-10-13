@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, use, useEffect, useState } from "react";
+import { createContext, use, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -15,8 +15,9 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { ArrowDownIcon, ArrowUpIcon, FilePlusIcon, FileTextIcon, MoreHorizontalIcon, PencilIcon, RotateCcwIcon, SearchIcon, SparklesIcon, Trash2Icon } from "lucide-react";
+import { ArrowDownIcon, ArrowUpIcon, FilePlusIcon, FileTextIcon, LayersIcon, MoreHorizontalIcon, PencilIcon, RotateCcwIcon, SearchIcon, SparklesIcon, Trash2Icon } from "lucide-react";
 import { deleteDocument, retryDocument } from "@/app/actions/documents";
+import { saveSpace } from "@/app/actions/spaces";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,9 +31,13 @@ import {
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
@@ -41,7 +46,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { documentsQuery } from "@/lib/queries";
+import { queueCards, useCardQueue } from "@/lib/auto-cards";
+import { documentsQuery, spacesQuery, studyQuery } from "@/lib/queries";
 import type { DocumentItem } from "@/lib/types";
 import { useHydrated } from "@/lib/use-hydrated";
 import { cn } from "@/lib/utils";
@@ -84,31 +90,35 @@ const columns: ColumnDef<DocumentItem>[] = [
     meta: { className: "w-full max-w-0" },
   },
   {
+    // Filtered by type, from the type picker; shown under the name
     id: "type",
     accessorFn: (doc) => doc.mimeType,
-    header: "Type",
     filterFn: "equals",
-    cell: ({ row }) => kindOf(row.original).label,
-    meta: { className: "hidden xl:table-cell whitespace-nowrap" },
   },
   {
-    accessorKey: "sizeBytes",
-    header: ({ column }) => <SortHeader column={column}>Size</SortHeader>,
-    cell: ({ row }) => <span className="tabular-nums">{formatSize(row.original.sizeBytes)}</span>,
-    meta: { className: "hidden xl:table-cell whitespace-nowrap" },
+    // Filtered by subject: "none" for files outside every subject
+    id: "subject",
+    accessorFn: (doc) => doc.id,
+    filterFn: (row, _id, value: string) => {
+      const subjects = (row.original as DocumentItem & { subjectIds?: string[] }).subjectIds ?? [];
+      return value === "none" ? subjects.length === 0 : subjects.includes(value);
+    },
+    header: "Subjects",
+    cell: ({ row }) => <SubjectsCell doc={row.original} />,
+    meta: { className: "hidden md:table-cell" },
+  },
+  {
+    id: "cards",
+    header: "Flashcards",
+    cell: ({ row }) => <Status doc={row.original} />,
+    // On phones, status moves under the name to leave room for it
+    meta: { className: "hidden sm:table-cell whitespace-nowrap" },
   },
   {
     accessorKey: "createdAt",
     header: ({ column }) => <SortHeader column={column}>Added</SortHeader>,
     cell: ({ row }) => dateFormat.format(new Date(row.original.createdAt)),
     meta: { className: "hidden lg:table-cell whitespace-nowrap" },
-  },
-  {
-    id: "status",
-    header: "Status",
-    cell: ({ row }) => <Status doc={row.original} />,
-    // On phones, status moves under the name to leave room for it
-    meta: { className: "hidden sm:table-cell" },
   },
   {
     id: "actions",
@@ -130,8 +140,14 @@ const LeavingContext = createContext<Leaving>({ leave: () => {}, stay: () => {} 
 
 export function LibraryView() {
   const query = useQuery(documentsQuery);
+  const spacesData = useQuery(spacesQuery).data;
+  const spaces = useMemo(() => spacesData ?? [], [spacesData]);
   const hydrated = useHydrated();
-  const documents = hydrated ? query.data : undefined;
+  const rows = useMemo(
+    () => query.data?.map((d) => ({ ...d, subjectIds: spaces.filter((s) => s.documentIds.includes(d.id)).map((s) => s.id) })),
+    [query.data, spaces]
+  );
+  const documents = hydrated ? rows : undefined;
   const isPending = !hydrated || query.isPending;
   const error = hydrated ? query.error : null;
 
@@ -165,9 +181,12 @@ export function LibraryView() {
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
+    initialState: { columnVisibility: { type: false } },
   });
 
   const search = (table.getColumn("filename")?.getFilterValue() as string) ?? "";
+  const subject = (table.getColumn("subject")?.getFilterValue() as string) ?? ALL_TYPES;
+  const loose = documents?.filter((d) => d.subjectIds.length === 0).length ?? 0;
   const type = (table.getColumn("type")?.getFilterValue() as string) ?? ALL_TYPES;
   const filteredCount = table.getFilteredRowModel().rows.length;
   const { pageIndex, pageSize } = table.getState().pagination;
@@ -187,9 +206,32 @@ export function LibraryView() {
           <UploadForm />
         </div>
         <p className="mt-2 text-muted-foreground">
-          Your lecture notes, readings and handouts, as PDF, Word or Markdown. Drop a file anywhere on
-          this page to upload it, or write notes here.
+          {documents?.length
+            ? `${documents.length} ${documents.length === 1 ? "file" : "files"} across ${spaces.length} ${spaces.length === 1 ? "subject" : "subjects"}. Drop a file anywhere here to upload it.`
+            : "All your notes, from every subject: PDF, Word or Markdown."}
         </p>
+
+        {/* Files outside every subject can't be studied yet */}
+        {loose > 0 && subject !== "none" && (
+          <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-5 py-4">
+            <p className="text-sm">
+              <span className="font-medium">
+                {loose} {loose === 1 ? "file isn't" : "files aren't"} in a subject yet.
+              </span>{" "}
+              <span className="text-muted-foreground">Add them to one to study them and ask about them.</span>
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                table.getColumn("subject")?.setFilterValue("none");
+                table.setPageIndex(0);
+              }}
+            >
+              Show them
+            </Button>
+          </div>
+        )}
 
         <section aria-label="Your files" className="mt-10">
           {error && <p className="text-destructive">Couldn&apos;t load your files. Refresh to try again.</p>}
@@ -237,7 +279,7 @@ export function LibraryView() {
             <>
               {/* Search and filter */}
               <div className="mb-5 flex flex-wrap items-center gap-3">
-                <div className="relative min-w-0 flex-1 sm:max-w-xs">
+                <div className="relative min-w-0 flex-1 basis-full sm:max-w-xs sm:basis-auto">
                   {/* Above the glass input, which paints its own layer */}
                   <SearchIcon className="pointer-events-none absolute top-1/2 left-3 z-10 size-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
@@ -252,6 +294,26 @@ export function LibraryView() {
                     className="glass h-10 rounded-xl border-glass-border bg-glass pl-9 dark:bg-glass"
                   />
                 </div>
+                <Select
+                  value={subject}
+                  onValueChange={(v) => {
+                    table.getColumn("subject")?.setFilterValue(v === ALL_TYPES ? undefined : v);
+                    table.setPageIndex(0);
+                  }}
+                >
+                  <SelectTrigger aria-label="Filter by subject" className="glass h-10! rounded-xl border-glass-border bg-glass px-3.5">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="glass border border-glass-border bg-glass-strong">
+                    <SelectItem value={ALL_TYPES}>All subjects</SelectItem>
+                    {spaces.map((sp) => (
+                      <SelectItem key={sp.id} value={sp.id}>
+                        {sp.name}
+                      </SelectItem>
+                    ))}
+                    <SelectItem value="none">Not in a subject</SelectItem>
+                  </SelectContent>
+                </Select>
                 <Select
                   value={type}
                   onValueChange={(v) => {
@@ -291,7 +353,7 @@ export function LibraryView() {
                     {table.getRowModel().rows.length === 0 ? (
                       <TableRow className="hover:bg-transparent">
                         <TableCell colSpan={columns.length} className="py-10 text-center text-muted-foreground">
-                          No documents match.
+                          No files match.
                         </TableCell>
                       </TableRow>
                     ) : (
@@ -364,9 +426,9 @@ function NameCell({ doc }: { doc: DocumentItem }) {
             {doc.error}
           </p>
         ) : (
-          <p className="truncate text-sm xl:hidden">
+          <p className="truncate text-sm">
             {kind.label}, {formatSize(doc.sizeBytes)}
-            {doc.status !== "ready" && <span className="sm:hidden">, {doc.status === "pending" ? "waiting" : "indexing"}</span>}
+            {doc.status !== "ready" && <span className="sm:hidden">, {doc.status === "pending" ? "waiting" : "reading"}</span>}
           </p>
         )}
       </div>
@@ -379,6 +441,12 @@ const READY_FLASH_MS = 2000;
 
 function Status({ doc }: { doc: DocumentItem }) {
   const queryClient = useQueryClient();
+  const decks = useQuery(studyQuery).data?.decks ?? [];
+  const queue = useCardQueue();
+  const cards = decks.reduce((n, d) => {
+    const fromDoc = new Set((d.payload.sources ?? []).filter((s) => s.documentId === doc.id).map((s) => s.chunkId));
+    return n + d.payload.cards.filter((c) => (c.sourceId && fromDoc.has(c.sourceId)) || (d.documentId === doc.id && !c.sourceId)).length;
+  }, 0);
   const retry = useMutation({
     mutationFn: retryDocument,
     onSettled: () => queryClient.invalidateQueries({ queryKey: ["documents"] }),
@@ -404,16 +472,22 @@ function Status({ doc }: { doc: DocumentItem }) {
           {label === "indexing" && (
             <>
               <Spinner />
-              Indexing
+              Reading
             </>
           )}
           {label === "waiting" && "Waiting"}
-          {label === "just-ready" && <span className="font-medium text-success">Ready to ask ✓</span>}
-          {label === "ready" && (
-            <span className="tabular-nums">
-              {doc.chunkCount} {doc.chunkCount === 1 ? "section" : "sections"}
-            </span>
-          )}
+          {label === "just-ready" && <span className="font-medium text-success">Ready ✓</span>}
+          {label === "ready" &&
+            (cards ? (
+              <span className="tabular-nums">{cards} cards</span>
+            ) : queue.includes(doc.id) ? (
+              <span className="flex items-center gap-1.5">
+                <Spinner />
+                Making…
+              </span>
+            ) : (
+              <span className="text-muted-foreground/70">None yet</span>
+            ))}
       </span>
     );
   }
@@ -489,11 +563,13 @@ function RowActions({ doc }: { doc: DocumentItem }) {
             <>
               <DropdownMenuItem onSelect={() => makeDeck.mutate({ body: { documentId: doc.id }, name: doc.filename })}>
                 <SparklesIcon />
-                Make a reviewer
+                Make flashcards
               </DropdownMenuItem>
               <DropdownMenuSeparator />
             </>
           )}
+          <SubjectsMenu doc={doc} />
+          <DropdownMenuSeparator />
           {doc.status === "failed" && (
             <>
               <DropdownMenuItem onSelect={() => retry.mutate(doc.id)}>
@@ -531,5 +607,62 @@ function RowActions({ doc }: { doc: DocumentItem }) {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  );
+}
+
+/* ---------- which subjects a file is in ---------- */
+
+function SubjectsCell({ doc }: { doc: DocumentItem }) {
+  const spaces = (useQuery(spacesQuery).data ?? []).filter((s) => s.documentIds.includes(doc.id));
+  if (!spaces.length) return <span className="text-amber-600 dark:text-amber-400">Not in a subject</span>;
+  return (
+    <span className="flex flex-wrap gap-1.5">
+      {spaces.slice(0, 2).map((s) => (
+        <Link key={s.id} href={`/spaces/${s.id}`} className="inline-flex max-w-40 items-center gap-1 rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary hover:bg-primary/15">
+          <LayersIcon className="size-3 shrink-0" />
+          <span className="truncate">{s.name}</span>
+        </Link>
+      ))}
+      {spaces.length > 2 && <span className="text-xs">+{spaces.length - 2}</span>}
+    </span>
+  );
+}
+
+/** Add a file to subjects, or take it out, from its menu. New files in a subject get flashcards made. */
+function SubjectsMenu({ doc }: { doc: DocumentItem }) {
+  const queryClient = useQueryClient();
+  const spaces = useQuery(spacesQuery).data ?? [];
+  const decks = useQuery(studyQuery).data?.decks ?? [];
+  const toggle = useMutation({
+    mutationFn: async (spaceId: string) => {
+      const space = spaces.find((s) => s.id === spaceId)!;
+      const adding = !space.documentIds.includes(doc.id);
+      const documentIds = adding ? [...space.documentIds, doc.id] : space.documentIds.filter((id) => id !== doc.id);
+      const result = await saveSpace({ id: space.id, name: space.name, instructions: space.instructions, documentIds });
+      if (!result.ok) throw new Error(result.message ?? "Couldn't change that. Try again.");
+      return { adding, name: space.name };
+    },
+    onSuccess: ({ adding, name }) => {
+      if (adding && doc.status === "ready" && !decks.some((d) => d.documentId === doc.id)) queueCards([doc.id]);
+      toast.success(adding ? `Added to ${name}` : `Removed from ${name}`);
+      void queryClient.invalidateQueries({ queryKey: ["spaces"] });
+    },
+    onError: (e) => toast.error((e as Error).message),
+  });
+  if (!spaces.length) return null;
+  return (
+    <DropdownMenuSub>
+      <DropdownMenuSubTrigger>
+        <LayersIcon />
+        Subjects
+      </DropdownMenuSubTrigger>
+      <DropdownMenuSubContent className="min-w-48">
+        {spaces.map((s) => (
+          <DropdownMenuCheckboxItem key={s.id} checked={s.documentIds.includes(doc.id)} onCheckedChange={() => toggle.mutate(s.id)} onSelect={(e) => e.preventDefault()}>
+            <span className="truncate">{s.name}</span>
+          </DropdownMenuCheckboxItem>
+        ))}
+      </DropdownMenuSubContent>
+    </DropdownMenuSub>
   );
 }

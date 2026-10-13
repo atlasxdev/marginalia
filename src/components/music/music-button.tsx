@@ -169,17 +169,29 @@ export function MusicButton({ className, align = "end" }: { className?: string; 
   );
 }
 
-/** A slim now-playing row for the sidebar, shown once something has played. */
-export function NowPlaying() {
+/** A floating pill while a song is loaded: what's playing, play/pause, next, and the full menu. */
+export function FloatingPlayer() {
   const music = useMusic();
   if (!music.song) return null;
   return (
-    <div className="flex items-center gap-1 rounded-xl px-2 py-1">
-      <Button variant="ghost" size="icon" onClick={music.toggle} aria-label={music.playing ? "Pause music" : "Play music"} className="size-8 shrink-0">
+    <div
+      role="region"
+      aria-label="Now playing"
+      className="glass fixed right-4 bottom-4 z-30 flex max-w-[calc(100vw-2rem)] items-center gap-1 rounded-full border border-glass-border bg-glass-strong py-1.5 pr-1.5 pl-2 shadow-xl shadow-black/20 animate-in fade-in slide-in-from-bottom-2 duration-200 motion-reduce:animate-none"
+    >
+      <span className={cn("grid size-8 shrink-0 place-items-center rounded-full", music.playing ? "bg-primary text-primary-foreground" : "bg-foreground/10 text-muted-foreground")}>
+        <MusicIcon className={cn("size-4", music.playing && "animate-[spin_4s_linear_infinite] motion-reduce:animate-none")} />
+      </span>
+      <Link href="/playlists" className="min-w-0 max-w-48 truncate px-1.5 text-sm font-medium hover:underline">
+        {music.song.name}
+      </Link>
+      <Button variant="ghost" size="icon" onClick={music.toggle} aria-label={music.playing ? "Pause music" : "Play music"} className="size-8 shrink-0 rounded-full">
         {music.playing ? <PauseIcon /> : <PlayIcon />}
       </Button>
-      <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">{music.song.name}</span>
-      <MusicButton align="start" className="size-8 shrink-0" />
+      <Button variant="ghost" size="icon" disabled={music.queue.length < 2} onClick={() => music.step(1)} aria-label="Next song" className="size-8 shrink-0 rounded-full">
+        <SkipForwardIcon />
+      </Button>
+      <MusicButton className="size-8 shrink-0 rounded-full" />
     </div>
   );
 }

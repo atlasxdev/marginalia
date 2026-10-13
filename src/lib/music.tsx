@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useRef, useState } from "react";
+import { FloatingPlayer } from "@/components/music/music-button";
 import {
   addSong,
   deletePlaylist,
@@ -213,6 +214,7 @@ export function MusicProvider({ children }: { children: React.ReactNode }) {
     <MusicContext.Provider value={music}>
       {children}
       {music.element}
+      <FloatingPlayer />
     </MusicContext.Provider>
   );
 }
