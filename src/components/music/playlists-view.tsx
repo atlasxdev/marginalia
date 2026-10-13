@@ -34,6 +34,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 
 const groupClass = "glass rounded-2xl border border-glass-border bg-glass";
@@ -125,10 +126,12 @@ export function PlaylistsView() {
             </span>
           </button>
         ) : (
-          <div className="mt-8 grid items-start gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
+          <>
             <Lists view={view} setView={setView} />
-            <Tracks title={playlist ? playlist.name : "All songs"} playlistId={playlist?.id ?? null} songs={list} />
-          </div>
+            <div className="mt-8">
+              <Tracks title={playlist ? playlist.name : "All songs"} playlistId={playlist?.id ?? null} songs={list} />
+            </div>
+          </>
         )}
 
         <Storage />
@@ -182,55 +185,102 @@ function NowPlaying() {
   );
 }
 
-/* ---------- your lists ---------- */
+/* ---------- your lists, as a grid of cards ---------- */
+
+// Each playlist gets its own colour, picked from its id so it stays the same
+const TILE_COLORS = ["bg-[#0152cb]", "bg-[#7c3aed]", "bg-[#0891b2]", "bg-[#db2777]", "bg-[#16a34a]", "bg-[#ea580c]"];
+const tileColor = (id: string) => TILE_COLORS[[...id].reduce((n, c) => n + c.charCodeAt(0), 0) % TILE_COLORS.length];
 
 function Lists({ view, setView }: { view: string; setView: (v: string) => void }) {
   const music = useMusic();
+  const [creating, setCreating] = useState(false);
   const [name, setName] = useState("");
-  const row = (id: string, label: string, count: number, icon: React.ReactNode) => {
+
+  const card = (id: string, label: string, count: number, color: string, icon: React.ReactNode) => {
     const on = view === id;
     const live = music.source === id && music.playing;
+    const ids = id === "all" ? music.songs.map((s) => s.id) : (music.playlists.find((p) => p.id === id)?.songIds ?? []);
     return (
-      <button
-        key={id}
-        type="button"
-        onClick={() => setView(id)}
-        className={cn("flex w-full items-center gap-3.5 rounded-xl p-2.5 text-left transition-colors duration-150", on ? "bg-primary/10" : "hover:bg-foreground/5")}
-      >
-        <span className={cn("grid size-11 shrink-0 place-items-center rounded-lg", on ? "bg-primary text-primary-foreground" : "bg-foreground/[0.07] text-muted-foreground")}>{icon}</span>
-        <span className="grid min-w-0 flex-1 gap-0.5">
-          <span className={cn("truncate text-[15px] font-medium", on && "text-primary")}>{label}</span>
-          <span className="text-sm text-muted-foreground">
-            {count} {count === 1 ? "song" : "songs"}
-            {live && <span className="text-primary"> · Playing</span>}
-          </span>
-        </span>
-      </button>
+      <div key={id} className={cn("group relative rounded-2xl border p-3 transition-colors duration-150", on ? "border-primary bg-primary/10" : "border-glass-border bg-glass hover:bg-glass-strong")}>
+        <button type="button" onClick={() => setView(id)} className="absolute inset-0 rounded-2xl" aria-label={`Open ${label}`} aria-pressed={on} />
+        <div className={cn("relative grid aspect-[4/3] place-items-center rounded-xl text-white", color)}>
+          {icon}
+          <Button
+            size="icon"
+            disabled={!count}
+            onClick={() => {
+              music.setSource(id);
+              music.play(ids[0]);
+            }}
+            aria-label={`Play ${label}`}
+            className={cn(
+              "absolute right-2 bottom-2 size-10 rounded-full bg-white text-black shadow-lg transition-[opacity,transform] duration-150 hover:bg-white/90",
+              live ? "opacity-100" : "translate-y-1 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 focus-visible:opacity-100"
+            )}
+          >
+            {live ? <PauseIcon /> : <PlayIcon />}
+          </Button>
+        </div>
+        <p className={cn("mt-3 truncate font-semibold", on && "text-primary")}>{label}</p>
+        <p className="text-sm text-muted-foreground">
+          {count} {count === 1 ? "song" : "songs"}
+          {live && <span className="text-primary">, playing</span>}
+        </p>
+      </div>
     );
   };
+
   return (
-    <nav aria-label="Your lists" className={`${groupClass} p-3`}>
-      <p className="px-2.5 pt-1 pb-2 text-sm font-semibold">Library</p>
-      {row("all", "All songs", music.songs.length, <MusicIcon className="size-5" />)}
-      <p className="px-2.5 pt-5 pb-2 text-sm font-semibold">Playlists</p>
-      {music.playlists.length === 0 && <p className="px-2.5 pb-2 text-sm text-muted-foreground">Make one for each mood, like Rainy focus or Exam week.</p>}
-      {music.playlists.map((p) => row(p.id, p.name, p.songIds.length, <ListMusicIcon className="size-5" />))}
-      <form
-        className="mt-3 flex gap-2 border-t border-glass-divider px-1 pt-4 pb-1"
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (!name.trim()) return;
-          const p = music.createPlaylist(name);
-          setName("");
-          setView(p.id);
-        }}
-      >
-        <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="New playlist name" aria-label="New playlist name" maxLength={60} className="h-11 rounded-xl" />
-        <Button type="submit" size="icon" disabled={!name.trim()} aria-label="Create playlist" className="size-11 shrink-0 rounded-xl">
+    <section aria-labelledby="your-lists" className="mt-10">
+      <div className="flex items-center justify-between gap-3">
+        <h2 id="your-lists" className="text-xl font-semibold">
+          Your playlists
+        </h2>
+        <Button variant="glass" onClick={() => setCreating(true)}>
           <PlusIcon />
+          New playlist
         </Button>
-      </form>
-    </nav>
+      </div>
+      <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+        {card("all", "All songs", music.songs.length, "bg-gradient-to-br from-[#0152cb] to-[#4d9cff]", <MusicIcon className="size-8" />)}
+        {music.playlists.map((p) => card(p.id, p.name, p.songIds.length, tileColor(p.id), <ListMusicIcon className="size-8" />))}
+        <button
+          type="button"
+          onClick={() => setCreating(true)}
+          className="grid min-h-40 place-items-center rounded-2xl border-2 border-dashed border-glass-border text-muted-foreground transition-colors duration-150 hover:border-primary/50 hover:text-foreground"
+        >
+          <span className="grid justify-items-center gap-2 text-sm font-medium">
+            <PlusIcon className="size-5" />
+            New playlist
+          </span>
+        </button>
+      </div>
+
+      <Dialog open={creating} onOpenChange={setCreating}>
+        <DialogContent className="glass border border-glass-border bg-glass-strong sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>New playlist</DialogTitle>
+            <DialogDescription>A list for a mood, like Rainy focus or Exam week.</DialogDescription>
+          </DialogHeader>
+          <form
+            className="grid gap-4"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (!name.trim()) return;
+              const p = music.createPlaylist(name);
+              setName("");
+              setCreating(false);
+              setView(p.id);
+            }}
+          >
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Playlist name" aria-label="Playlist name" maxLength={60} autoFocus className="h-11 rounded-xl" />
+            <Button type="submit" disabled={!name.trim()}>
+              Create playlist
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </section>
   );
 }
 
