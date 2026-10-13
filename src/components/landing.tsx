@@ -1057,27 +1057,11 @@ const TOUR = [
 /* The feature story. Desktop: the section stays pinned while the page scrolls
    through a tall track. On the right the demos sit in a fanned stack, like the
    steps below: the current one upright in front, its neighbours tilted out
-   behind. On the left the current feature's words light up as you scroll
-   (the sticky text reveal). Phones: each feature with its demo. */
+   behind. On the left, the current feature's text. Phones: each feature with its demo. */
 
 // Scroll distance per feature on desktop
 const STEP_VH = 75;
 const STORY_FAN = { x: 30, rotate: 7, scale: 0.12 };
-
-/** Text whose words brighten one by one as `progress` goes from 0 to 1. */
-function RevealWords({ text, progress, className }: { text: string; progress: number; className?: string }) {
-  const words = text.split(" ");
-  const lit = progress * words.length;
-  return (
-    <span className={className}>
-      {words.map((w, i) => (
-        <span key={i} className="transition-[opacity] duration-150" style={{ opacity: 0.18 + Math.min(1, Math.max(0, lit - i)) * 0.82 }}>
-          {w}{" "}
-        </span>
-      ))}
-    </span>
-  );
-}
 
 export function FeatureTour() {
   const reduced = useReducedMotion();
@@ -1109,8 +1093,6 @@ export function FeatureTour() {
 
   const active = Math.min(TOUR.length - 1, Math.floor(pos));
   const within = Math.min(1, pos - active);
-  // A part of the current feature's scroll, as 0 to 1
-  const part = (start: number, end: number) => (reduced ? 1 : Math.min(1, Math.max(0, (within - start) / (end - start))));
 
   // Clicking a feature scrolls the page to it
   const jump = (i: number) => {
@@ -1131,13 +1113,13 @@ export function FeatureTour() {
           <div className="grid w-full grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] items-center gap-10 xl:gap-16">
             <div>
               <h2 className="text-4xl font-semibold tracking-tight text-balance min-[1800px]:text-5xl">Everything you need to study, in one place.</h2>
-              <div key={active} className="mt-10 min-h-[15rem]">
+              <div key={active} className="mt-10 min-h-[15rem] animate-in fade-in slide-in-from-bottom-2 duration-300 motion-reduce:animate-none">
                 <p className="text-sm font-semibold text-primary tabular-nums">
                   {String(active + 1).padStart(2, "0")} <span className="text-muted-foreground">/ {String(TOUR.length).padStart(2, "0")}</span>
                   <span className="ml-3">{f.label}</span>
                 </p>
-                <RevealWords text={f.title} progress={part(0, 0.3)} className="mt-3 block text-3xl leading-tight font-semibold tracking-tight text-balance min-[1800px]:text-4xl" />
-                <RevealWords text={f.body} progress={part(0.25, 0.75)} className="mt-4 block text-lg text-muted-foreground" />
+                <h3 className="mt-3 text-3xl leading-tight font-semibold tracking-tight text-balance min-[1800px]:text-4xl">{f.title}</h3>
+                <p className="mt-4 text-lg text-muted-foreground">{f.body}</p>
               </div>
               {/* Every feature, to jump to; the current one stretches with its progress */}
               <div className="mt-8 flex items-center gap-2" role="group" aria-label="Features">
