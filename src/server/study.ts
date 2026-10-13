@@ -96,7 +96,7 @@ export function isRepeat(front: string, known: string[]) {
 }
 
 export const DECK_FOCUS =
-  "Make a reviewer: flashcards on the most important ideas across all the excerpts, the ones a student would be tested on. Cover definitions, key facts, causes and effects, steps and comparisons. One idea per card. Make between 8 and 15 cards.";
+  "Make a reviewer: flashcards on the most important ideas across all the excerpts, the ones a student would be tested on. Cover definitions, key facts, causes and effects, steps and comparisons. One idea per card. Make between 8 and 15 cards. Where an idea has several correct parts (a list, steps, causes, features), also give the card a select-all version; most decks have a few.";
 
 // ---------------------------------------------------------------------------
 // The study overview: decks, weak topics and this week's numbers

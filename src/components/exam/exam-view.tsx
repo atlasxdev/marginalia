@@ -7,6 +7,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckIcon, ChevronLeftIcon, ChevronRightIcon, CircleDashedIcon, FlagIcon, PlayIcon, XIcon } from "lucide-react";
 import { addPetXp } from "@/app/actions/pet";
 import { rate as schedule } from "@/lib/leitner";
+import { makeClaim, makeSelectAll, pickedAllRight, shuffle, type Claim, type SelectAll } from "@/lib/questions";
 import { petQuery, spacesQuery, studyQuery } from "@/lib/queries";
 import { deckInSubject, sessionHref } from "@/lib/subjects";
 import type { AttemptResult, CardProgress, CheckResult, Pet, Space, StudyOverview } from "@/lib/types";
@@ -26,19 +27,35 @@ import { PetSprite } from "../pet/pet-sprite";
    until you hand it in. Then a score, how each topic went, and a session on
    the ones you missed. */
 
-type Question = { key: string; item: StudyItem; kind: "choice" | "typed"; choices: string[] };
+type Kind = "choice" | "typed" | "truefalse" | "multi";
+type Question = { key: string; item: StudyItem; kind: Kind; choices: string[]; claim?: Claim; selectAll?: SelectAll };
+
+const KIND_LABEL: Record<Kind, string> = { choice: "Choice", typed: "Typed", truefalse: "True or false", multi: "Select all" };
+// A select-all answer is the picked options, kept in one string like the others
+const SEP = "\u001f";
+const pickedOf = (answer: string) => (answer ? answer.split(SEP) : []);
 type Graded = { question: Question; answer: string; result: AttemptResult; feedback?: string };
 
 const SECONDS_PER_QUESTION = 90;
 const CARD = "rounded-[24px] border border-border/60 bg-card shadow-xl shadow-black/10 dark:shadow-black/30";
 
-function shuffle<T>(items: T[]) {
-  const a = [...items];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
+/* A mixed paper: a card with a select-all version is asked that way; the rest
+   take turns, and a card that can't be asked one way is asked the next way it can. */
+const ORDER: Kind[] = ["choice", "typed", "truefalse"];
+function makeQuestion(item: StudyItem, i: number): Question {
+  const key = `${item.deckId}:${item.index}`;
+  const selectAll = makeSelectAll(item.card);
+  if (selectAll) return { key, item, kind: "multi", choices: [], selectAll };
+  for (let k = 0; k < ORDER.length; k++) {
+    const kind = ORDER[(i + k) % ORDER.length];
+    if (kind === "choice" && item.card.wrong.length >= 2) return { key, item, kind, choices: shuffle([item.card.back, ...item.card.wrong]) };
+    if (kind === "truefalse") {
+      const claim = makeClaim(item.card);
+      if (claim) return { key, item, kind, choices: [], claim };
+    }
+    if (kind === "typed") return { key, item, kind, choices: [] };
   }
-  return a;
+  return { key, item, kind: "typed", choices: [] };
 }
 
 const clock = (seconds: number) => {
@@ -103,14 +120,8 @@ function Exam({ overview, space }: { overview: StudyOverview; space: Space }) {
   }, [phase]);
 
   const start = () => {
-    // A mixed paper: multiple choice where the card has choices (about half), typed answers for the rest
     const picked = shuffle(items).slice(0, length);
-    setQuestions(
-      picked.map((item, i) => {
-        const choice = item.card.wrong.length >= 2 && i % 2 === 0;
-        return { key: `${item.deckId}:${item.index}`, item, kind: choice ? "choice" : "typed", choices: choice ? shuffle([item.card.back, ...item.card.wrong]) : [] };
-      })
-    );
+    setQuestions(picked.map(makeQuestion));
     const t = Date.now();
     setStartedAt(t);
     setEndsAt(t + picked.length * SECONDS_PER_QUESTION * 1000);
@@ -140,13 +151,15 @@ function Exam({ overview, space }: { overview: StudyOverview; space: Space }) {
       const marked: Graded[] = questions.map((q) => {
         const answer = answers[q.key] ?? "";
         if (q.kind === "choice") return { question: q, answer, result: answer === q.item.card.back ? "right" : "wrong" };
+        if (q.kind === "truefalse") return { question: q, answer, result: answer && (answer === "True") === q.claim!.isTrue ? "right" : "wrong" };
+        if (q.kind === "multi") return { question: q, answer, result: pickedAllRight(pickedOf(answer), q.selectAll!.right) ? "right" : "wrong" };
         const c = checks.get(q.key);
         return { question: q, answer, result: c?.result ?? "wrong", feedback: c?.feedback };
       });
 
-      // Save it: multiple-choice attempts (typed ones are saved when they're checked), and each card's schedule
+      // Save it: the attempts that were picked, not typed (typed ones are saved when they're checked), and each card's schedule
       const choiceAttempts = marked
-        .filter((g) => g.question.kind === "choice")
+        .filter((g) => g.question.kind !== "typed")
         .map((g) => ({ deckId: g.question.item.deckId, index: g.question.item.index, result: g.result, mode: "quiz" as const }));
       const saves: Promise<unknown>[] = [];
       if (choiceAttempts.length) {
@@ -250,10 +263,57 @@ function Exam({ overview, space }: { overview: StudyOverview; space: Space }) {
                     {flagged.has(q.key) ? "Flagged" : "Flag for later"}
                   </button>
                 </div>
-                <p className="text-xl leading-snug font-semibold tracking-tight text-balance sm:text-2xl">{q.item.card.front}</p>
+                <p className="text-xl leading-snug font-semibold tracking-tight text-balance sm:text-2xl">{q.selectAll?.question ?? q.item.card.front}</p>
+                {q.claim && <p className="rounded-2xl bg-foreground/[0.04] px-5 py-4 text-lg">{q.claim.answer}</p>}
+                {q.selectAll && <p className="-mt-2 text-sm text-muted-foreground">Select all that apply</p>}
               </div>
 
-              {q.kind === "choice" ? (
+              {q.kind === "truefalse" ? (
+                <div className="grid grid-cols-2 gap-3" role="radiogroup" aria-label="True or false">
+                  {["True", "False"].map((value) => {
+                    const on = answers[q.key] === value;
+                    return (
+                      <Button
+                        key={value}
+                        variant="outline"
+                        role="radio"
+                        aria-checked={on}
+                        onClick={() => setAnswers((a) => ({ ...a, [q.key]: value }))}
+                        className={cn("h-14 rounded-2xl text-base", on && "border-primary bg-primary/10 text-foreground dark:border-primary dark:bg-primary/10")}
+                      >
+                        {value}
+                      </Button>
+                    );
+                  })}
+                </div>
+              ) : q.kind === "multi" ? (
+                <div className="grid gap-2" role="group" aria-label="Options">
+                  {q.selectAll!.options.map((option) => {
+                    const picked = pickedOf(answers[q.key] ?? "");
+                    const on = picked.includes(option);
+                    return (
+                      <Button
+                        key={option}
+                        variant="outline"
+                        role="checkbox"
+                        aria-checked={on}
+                        onClick={() =>
+                          setAnswers((a) => ({ ...a, [q.key]: (on ? picked.filter((o) => o !== option) : [...picked, option]).join(SEP) }))
+                        }
+                        className={cn(
+                          "h-auto min-h-14 justify-start gap-3 rounded-2xl px-5 py-3.5 text-left text-base font-normal whitespace-normal",
+                          on && "border-primary bg-primary/10 text-foreground dark:border-primary dark:bg-primary/10"
+                        )}
+                      >
+                        <span className={cn("grid size-5 shrink-0 place-items-center rounded-md border", on ? "border-primary bg-primary text-primary-foreground" : "border-input")}>
+                          {on && <CheckIcon className="size-3.5" />}
+                        </span>
+                        <span className="flex-1">{option}</span>
+                      </Button>
+                    );
+                  })}
+                </div>
+              ) : q.kind === "choice" ? (
                 <div className="grid gap-2" role="radiogroup" aria-label="Choices">
                   {q.choices.map((choice) => {
                     const on = answers[q.key] === choice;
@@ -266,7 +326,7 @@ function Exam({ overview, space }: { overview: StudyOverview; space: Space }) {
                         onClick={() => setAnswers((a) => ({ ...a, [q.key]: choice }))}
                         className={cn(
                           "h-auto min-h-14 justify-start gap-3 rounded-2xl px-5 py-3.5 text-left text-base font-normal whitespace-normal",
-                          on && "border-primary bg-primary/10 text-foreground"
+                          on && "border-primary bg-primary/10 text-foreground dark:border-primary dark:bg-primary/10"
                         )}
                       >
                         <span className={cn("grid size-5 shrink-0 place-items-center rounded-full border", on ? "border-primary bg-primary" : "border-input")}>
@@ -361,7 +421,7 @@ function Setup({ space, available, length, setLength, onStart }: { space: Space;
         ) : (
           <>
             <p className="mt-2 text-muted-foreground text-balance">
-              Mixed questions from across {space.name}, some multiple choice and some typed. It&apos;s timed, with no hints until you hand it in, like the real thing.
+              Mixed questions from across {space.name}: multiple choice, true or false, select all that apply, and typed. It&apos;s timed, with no hints until you hand it in, like the real thing.
             </p>
             <p className="mt-10 text-sm font-medium">Questions</p>
             <ToggleGroup type="single" value={String(length)} onValueChange={(v) => v && setLength(Number(v))} className="mt-2 grid w-full gap-2" style={{ gridTemplateColumns: `repeat(${lengths.length}, minmax(0, 1fr))` }} spacing={2}>
@@ -472,14 +532,23 @@ function Results({ space, graded, usedSeconds }: { space: Space; graded: Graded[
                 )}
                 <div className="grid min-w-0 gap-1">
                   <p className="font-medium">
-                    {i + 1}. {g.question.item.card.front}
+                    {i + 1}. {g.question.selectAll?.question ?? g.question.item.card.front}
                   </p>
-                  <p className="text-sm text-muted-foreground">You: {g.answer.trim() || "No answer"}</p>
-                  {g.result !== "right" && <p className="text-sm">Answer: {g.question.item.card.back}</p>}
+                  {g.question.claim && <p className="text-sm">&ldquo;{g.question.claim.answer}&rdquo;</p>}
+                  <p className="text-sm text-muted-foreground">You: {pickedOf(g.answer.trim()).join(", ") || "No answer"}</p>
+                  {g.result !== "right" && (
+                    <p className="text-sm">
+                      {g.question.claim
+                        ? g.question.claim.isTrue
+                          ? "It's true."
+                          : `It's false. Answer: ${g.question.item.card.back}`
+                        : `Answer: ${g.question.selectAll ? g.question.selectAll.right.join(", ") : g.question.item.card.back}`}
+                    </p>
+                  )}
                   {g.feedback && g.result !== "right" && <p className="text-sm text-muted-foreground">{g.feedback}</p>}
                 </div>
                 <Badge variant="outline" className="ml-auto shrink-0 rounded-full font-normal">
-                  {g.question.kind === "choice" ? "Choice" : "Typed"}
+                  {KIND_LABEL[g.question.kind]}
                 </Badge>
               </div>
             </div>

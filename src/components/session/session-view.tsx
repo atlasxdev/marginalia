@@ -198,7 +198,8 @@ function Session({ overview, space, scope }: { overview: StudyOverview; space?: 
     if (step.reason !== "followup") {
       study.rate(step.item, knew);
       // Typed answers are saved when they're checked
-      if (step.mode === "cards" || step.mode === "quiz") study.saveAttempt({ deckId: step.item.deckId, index: step.item.index, result, mode: step.mode });
+      if (step.mode === "cards") study.saveAttempt({ deckId: step.item.deckId, index: step.item.index, result, mode: "cards" });
+      else if (step.mode === "quiz" || step.mode === "truefalse" || step.mode === "multi") study.saveAttempt({ deckId: step.item.deckId, index: step.item.index, result, mode: "quiz" });
     }
     lastAnswer.current = { key: step.key, result, miss: detail?.miss, typed: detail?.typed };
     setAnsweredSeq(stepSeq);

@@ -7,11 +7,14 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
+import { pickedAllRight, shuffle } from "@/lib/questions";
 import type { Step } from "./plan";
 
 const MODE_HINT: Record<Step["mode"], string> = {
   cards: "Answer in your head, then flip. Space flips, 1 is Again, 2 is Got it.",
   quiz: "Pick the right answer.",
+  truefalse: "Is that the right answer? T is true, F is false.",
+  multi: "Pick every answer that's right, then check.",
   recall: "Answer in your own words. It's checked against your notes.",
   teach: "Explaining it back is how a muddled idea turns clear.",
   practice: "Using the idea again, a little differently, makes it stick.",
@@ -38,12 +41,14 @@ type Props = {
   onFlip?: () => void;
 };
 
-/** One step of a session: a flip card, a multiple-choice question, or a typed answer. */
+/** One step of a session: a flip card, a multiple-choice, true-or-false or select-all question, or a typed answer. */
 export function StepView({ step, onAnswer, onNext, spaceId, onFlip }: Props) {
   return (
     <div className="grid gap-5 animate-in fade-in slide-in-from-bottom-2 duration-200 motion-reduce:animate-none">
       {step.mode === "cards" && <FlipStep step={step} onAnswer={onAnswer} onNext={onNext} onFlip={onFlip} />}
       {step.mode === "quiz" && <QuizStep step={step} onAnswer={onAnswer} onNext={onNext} />}
+      {step.mode === "truefalse" && <TrueFalseStep step={step} onAnswer={onAnswer} onNext={onNext} />}
+      {step.mode === "multi" && <MultiStep step={step} onAnswer={onAnswer} onNext={onNext} />}
       {step.mode === "recall" && <RecallStep step={step} onAnswer={onAnswer} onNext={onNext} />}
       {step.mode === "teach" && <TeachStep step={step} spaceId={spaceId} onAnswer={onAnswer} onNext={onNext} />}
       {step.mode === "practice" && <PracticeStep step={step} onAnswer={onAnswer} onNext={onNext} />}
@@ -145,13 +150,25 @@ function Face({ back = false, head, source, children }: { back?: boolean; head: 
 
 /* ---------- multiple choice ---------- */
 
-function shuffle<T>(items: T[]) {
-  const a = [...items];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
+// The look of an option once it's been marked
+const CHOICE = "h-auto min-h-14 justify-start gap-3 rounded-2xl px-5 py-3.5 text-left text-base font-normal whitespace-normal transition-colors duration-150";
+const marked = (state: "idle" | "right" | "wrong" | "missed", done: boolean) =>
+  cn(
+    // The outline button sets its own dark-mode border and fill, so these name dark mode too
+    state === "right" && "border-success bg-success/10 text-foreground dark:border-success dark:bg-success/10",
+    state === "wrong" && "border-destructive bg-destructive/10 text-foreground dark:border-destructive dark:bg-destructive/10",
+    state === "missed" && "border-dashed border-success text-foreground dark:border-success",
+    done && state === "idle" && "opacity-60"
+  );
+
+// Enter moves on once it's answered
+function useNextOnEnter(done: boolean, onNext: () => void) {
+  useEffect(() => {
+    if (!done) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Enter" && !typing(e) && onNext();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [done, onNext]);
 }
 
 function QuizStep({ step, onAnswer, onNext }: Props) {
@@ -188,12 +205,7 @@ function QuizStep({ step, onAnswer, onNext }: Props) {
               variant="outline"
               onClick={() => choose(choice)}
               aria-disabled={!!picked}
-              className={cn(
-                "h-auto min-h-14 justify-start gap-3 rounded-2xl px-5 py-3.5 text-left text-base font-normal whitespace-normal transition-colors duration-150",
-                state === "right" && "border-success bg-success/10 text-foreground",
-                state === "wrong" && "border-destructive bg-destructive/10 text-foreground",
-                picked && state === "idle" && "opacity-60"
-              )}
+              className={cn(CHOICE, marked(state, !!picked))}
             >
               <span className="flex-1">{choice}</span>
               {state === "right" && <CheckIcon className="text-success" />}
@@ -203,6 +215,122 @@ function QuizStep({ step, onAnswer, onNext }: Props) {
         })}
       </div>
       {picked && <NextRow source={source} onNext={onNext} />}
+    </>
+  );
+}
+
+/* ---------- true or false ---------- */
+
+function TrueFalseStep({ step, onAnswer, onNext }: Props) {
+  const { card, source } = step.item;
+  const claim = step.claim ?? { answer: card.back, isTrue: true };
+  const [picked, setPicked] = useState<boolean | null>(null);
+  const done = picked !== null;
+
+  const choose = (value: boolean) => {
+    if (done) return;
+    setPicked(value);
+    onAnswer(value === claim.isTrue ? "right" : "wrong");
+  };
+
+  useEffect(() => {
+    if (done) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (typing(e)) return;
+      const k = e.key.toLowerCase();
+      if (k === "t") choose(true);
+      else if (k === "f") choose(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
+  useNextOnEnter(done, onNext);
+
+  return (
+    <>
+      <div className={cn("grid gap-6 p-6 sm:p-8", CARD)}>
+        <CardHead step={step} />
+        <p className="text-2xl leading-snug font-semibold tracking-tight text-balance sm:text-3xl">{card.front}</p>
+        <p className="rounded-2xl bg-foreground/[0.04] px-5 py-4 text-lg">{claim.answer}</p>
+      </div>
+      <div className="grid grid-cols-2 gap-3" role="group" aria-label="True or false">
+        {[true, false].map((value) => {
+          const state = !done ? "idle" : value === claim.isTrue ? "right" : value === picked ? "wrong" : "idle";
+          return (
+            <Button key={String(value)} variant="outline" size="lg" onClick={() => choose(value)} aria-disabled={done} className={cn("h-14 rounded-2xl text-base", marked(state, done))}>
+              {state === "right" && <CheckIcon className="text-success" />}
+              {state === "wrong" && <XIcon className="text-destructive" />}
+              {value ? "True" : "False"}
+            </Button>
+          );
+        })}
+      </div>
+      {done && !claim.isTrue && <p className="text-center text-sm animate-in fade-in duration-150">Answer: {card.back}</p>}
+      {done && <NextRow source={source} onNext={onNext} />}
+    </>
+  );
+}
+
+/* ---------- select all that apply ---------- */
+
+function MultiStep({ step, onAnswer, onNext }: Props) {
+  const { source } = step.item;
+  const q = step.selectAll!;
+  const [picked, setPicked] = useState<string[]>([]);
+  const [done, setDone] = useState(false);
+
+  const toggle = (option: string) => {
+    if (done) return;
+    setPicked((p) => (p.includes(option) ? p.filter((o) => o !== option) : [...p, option]));
+  };
+  const submit = () => {
+    setDone(true);
+    onAnswer(pickedAllRight(picked, q.right) ? "right" : "wrong");
+  };
+  useNextOnEnter(done, onNext);
+
+  return (
+    <>
+      <div className={cn("grid gap-6 p-6 sm:p-8", CARD)}>
+        <CardHead step={step} />
+        <div className="grid gap-2 pb-2">
+          <p className="text-2xl leading-snug font-semibold tracking-tight text-balance sm:text-3xl">{q.question}</p>
+          <p className="text-sm text-muted-foreground">Select all that apply</p>
+        </div>
+      </div>
+      <div className="grid gap-2" role="group" aria-label="Options">
+        {q.options.map((option) => {
+          const on = picked.includes(option);
+          const right = q.right.includes(option);
+          const state = !done ? "idle" : right && on ? "right" : on ? "wrong" : right ? "missed" : "idle";
+          return (
+            <Button
+              key={option}
+              variant="outline"
+              role="checkbox"
+              aria-checked={on}
+              aria-disabled={done}
+              onClick={() => toggle(option)}
+              className={cn(CHOICE, !done && on && "border-primary bg-primary/10 text-foreground dark:border-primary dark:bg-primary/10", marked(state, done))}
+            >
+              <span className={cn("grid size-5 shrink-0 place-items-center rounded-md border", on ? "border-primary bg-primary text-primary-foreground" : "border-input")}>
+                {on && <CheckIcon className="size-3.5" />}
+              </span>
+              <span className="flex-1">{option}</span>
+              {state === "right" && <CheckIcon className="text-success" />}
+              {state === "wrong" && <XIcon className="text-destructive" />}
+              {state === "missed" && <span className="text-xs text-success">Also right</span>}
+            </Button>
+          );
+        })}
+      </div>
+      {done ? (
+        <NextRow source={source} onNext={onNext} />
+      ) : (
+        <Button size="lg" className="h-12" disabled={!picked.length} onClick={submit}>
+          Check
+        </Button>
+      )}
     </>
   );
 }

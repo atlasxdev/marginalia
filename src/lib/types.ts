@@ -56,6 +56,8 @@ export type Flashcard = {
   topic?: string;
   /** Plausible wrong answers, for quiz mode. */
   wrong: string[];
+  /** A select-all-that-apply version, for ideas with several right answers. Older cards have none. */
+  multi?: { question: string; right: string[]; wrong: string[] };
   sourceId: string | null;
 };
 
@@ -121,7 +123,8 @@ export type StudyMethod = "recall" | "feynman" | "socratic" | "answer";
 export type FocusMethod = "pomodoro" | "52-17" | "flow";
 
 export type AttemptResult = "right" | "almost" | "wrong";
-export type StudyMode = "cards" | "quiz" | "recall";
+// How a card is asked. True or false and select-all are saved as quiz attempts.
+export type StudyMode = "cards" | "quiz" | "recall" | "truefalse" | "multi";
 
 export type ActionState = {
   ok: boolean;
