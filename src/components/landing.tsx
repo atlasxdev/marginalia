@@ -844,3 +844,171 @@ export function HandheldDemo() {
     </div>
   );
 }
+
+/* ---------- explain it, then explain it back ---------- */
+
+const EXPLAIN = {
+  q: "What does each turn of the Krebs cycle release?",
+  idea: "Each turn breaks down carbon compounds, so it gives off two carbon dioxide molecules, and loads NADH and FADH2 with electrons for the next stage.",
+  typed: "It breaks carbon down and gives off two CO2, plus NADH and FADH2.",
+};
+
+export function ExplainDemo() {
+  const reduced = useReducedMotion();
+  const [ref, inView] = useInView<HTMLDivElement>({ once: false, margin: "0px" });
+  const [round, setRound] = useState(0);
+  const ideaAt = 600;
+  const typeAt = 3200;
+  const checkAt = typeAt + EXPLAIN.typed.length * 40 + 500;
+  const t = useClock(inView && !reduced, round, checkAt + 4000, () => setRound((r) => r + 1));
+  const now = reduced ? checkAt + 500 : t;
+  const shown = Math.max(0, Math.floor((now - ideaAt) / 30));
+  const typed = EXPLAIN.typed.slice(0, Math.max(0, Math.floor((now - typeAt) / 40)));
+  const checked = now >= checkAt;
+  return (
+    <div ref={ref} className="rounded-2xl bg-card p-6 text-left shadow-xl ring-1 ring-foreground/10 dark:shadow-black/40">
+      <div className="flex items-center justify-between text-xs font-medium text-muted-foreground">
+        <span>Krebs cycle</span>
+        <span className="rounded-full bg-foreground/5 px-2.5 py-1">Follow-up</span>
+      </div>
+      <p className="mt-3 text-lg font-semibold">{EXPLAIN.q}</p>
+      <div className="mt-4 rounded-xl bg-primary/[0.07] p-4">
+        <p className="text-xs font-medium text-primary">Here&apos;s the idea</p>
+        <p className="mt-1 min-h-[4.5rem] text-sm leading-relaxed">{EXPLAIN.idea.slice(0, shown)}</p>
+      </div>
+      <p className="mt-4 text-sm font-medium">Now explain it back in your own words</p>
+      <div className={cn("mt-2 min-h-16 rounded-xl border bg-background p-3 text-sm transition-colors", checked ? "border-success/60" : "border-input")}>
+        {typed || <span className="text-muted-foreground">As if you were teaching a friend</span>}
+        {!checked && typed && <span className="ml-0.5 inline-block h-4 w-0.5 animate-pulse bg-primary align-middle" />}
+      </div>
+      <p className={cn("mt-3 flex items-start gap-2 text-sm transition-opacity duration-300", checked ? "opacity-100" : "opacity-0")}>
+        <span className="mt-0.5 grid size-4 shrink-0 place-items-center rounded-full bg-success text-[10px] text-white">✓</span>
+        You got the carbon dioxide and the electron carriers. That&apos;s the idea.
+      </p>
+    </div>
+  );
+}
+
+/* ---------- a practice exam, marked ---------- */
+
+const EXAM_TOPICS: [string, number, number][] = [
+  ["Glycolysis", 4, 4],
+  ["Krebs cycle", 3, 4],
+  ["Electron transport chain", 2, 3],
+  ["Fermentation", 1, 3],
+];
+
+export function ExamDemo() {
+  const reduced = useReducedMotion();
+  const [ref, inView] = useInView<HTMLDivElement>({ once: false, margin: "0px" });
+  const t = useClock(inView && !reduced, "exam", 2400);
+  const p = reduced ? 1 : Math.min(1, t / 1400);
+  const score = Math.round(71 * p);
+  return (
+    <div ref={ref} className="rounded-2xl bg-card p-6 text-left shadow-xl ring-1 ring-foreground/10 dark:shadow-black/40">
+      <p className="text-sm text-muted-foreground">Practice exam: Biology</p>
+      <div className="mt-1 flex items-end justify-between gap-4">
+        <p className="text-5xl font-bold tracking-tight tabular-nums">{score}%</p>
+        <p className="pb-1 text-sm text-muted-foreground">10 of 14 right in 12:40</p>
+      </div>
+      <div className="mt-6 grid gap-3.5">
+        {EXAM_TOPICS.map(([topic, right, total], i) => {
+          const share = right / total;
+          return (
+            <div key={topic} className="grid gap-1.5">
+              <div className="flex justify-between text-sm">
+                <span className="font-medium">{topic}</span>
+                <span className="text-muted-foreground tabular-nums">
+                  {right} of {total}
+                </span>
+              </div>
+              <div className="h-1.5 overflow-hidden rounded-full bg-foreground/10">
+                <div
+                  className={cn("h-full rounded-full transition-[width] duration-700 ease-out", share >= 0.7 ? "bg-success" : share >= 0.4 ? "bg-amber-500" : "bg-destructive")}
+                  style={{ width: `${Math.max(4, share * 100 * Math.min(1, Math.max(0, (p * 1.4 - i * 0.1))))}%` }}
+                />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <span className="raised mt-6 inline-flex h-10 items-center rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground">Study the 4 you missed</span>
+    </div>
+  );
+}
+
+/* ---------- your own study music ---------- */
+
+const TRACKS = ["Rain on a window", "Lo-fi for Biology", "Forest at dawn", "Late night piano"];
+
+export function MusicDemo() {
+  const reduced = useReducedMotion();
+  const [ref, inView] = useInView<HTMLDivElement>({ once: false, margin: "0px" });
+  const t = useClock(inView && !reduced, "music");
+  const playing = Math.floor((reduced ? 0 : t) / 3200) % TRACKS.length;
+  return (
+    <div ref={ref} className="relative rounded-2xl bg-card p-6 pb-20 text-left shadow-xl ring-1 ring-foreground/10 dark:shadow-black/40">
+      <div className="flex items-center justify-between">
+        <p className="font-semibold">Rainy focus</p>
+        <span className="text-sm text-muted-foreground">{TRACKS.length} songs</span>
+      </div>
+      <ol className="mt-4 grid gap-1">
+        {TRACKS.map((name, i) => (
+          <li key={name} className={cn("flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors duration-300", i === playing ? "bg-primary/10 font-medium text-primary" : "")}>
+            <span className="w-4 text-center text-muted-foreground tabular-nums">{i === playing ? "♪" : i + 1}</span>
+            <span className="flex-1">{name}</span>
+          </li>
+        ))}
+      </ol>
+      {/* The floating player, as it sits over every page */}
+      <div className="absolute right-4 bottom-4 left-4 flex items-center gap-3 rounded-full bg-background/90 py-2 pr-3 pl-2 shadow-lg ring-1 ring-foreground/10 sm:left-auto">
+        <span className="grid size-8 place-items-center rounded-full bg-primary text-primary-foreground">
+          <span className={cn("text-sm", !reduced && "animate-[spin_4s_linear_infinite]")}>♪</span>
+        </span>
+        <span className="min-w-0 flex-1 truncate text-sm font-medium">{TRACKS[playing]}</span>
+        <span className="text-xs text-muted-foreground">Keeps playing</span>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- today: what to study, and your goal ---------- */
+
+export function TodayDemo() {
+  const reduced = useReducedMotion();
+  const [ref, inView] = useInView<HTMLDivElement>({ once: false, margin: "0px" });
+  const t = useClock(inView && !reduced, "today", 2000);
+  const p = reduced ? 1 : Math.min(1, t / 1600);
+  const done = Math.round(14 * p);
+  return (
+    <div ref={ref} className="rounded-2xl bg-card p-6 text-left shadow-xl ring-1 ring-foreground/10 dark:shadow-black/40">
+      <div className="flex items-center gap-4">
+        <span className="grid h-16 w-[4.5rem] shrink-0 place-items-end justify-center overflow-hidden rounded-2xl bg-[#e7effc] pb-2 ring-1 ring-foreground/10 dark:bg-[#2b354a]">
+          <PetSprite look={DEFAULT_LOOK} face="side" book className="h-11 w-[42px]" />
+        </span>
+        <div className="min-w-0">
+          <p className="text-lg font-semibold">Good evening</p>
+          <p className="text-sm text-muted-foreground">Mochi suggests Biology: 12 to review, and Fermentation needs work.</p>
+        </div>
+      </div>
+      <span className="raised mt-5 inline-flex h-10 items-center rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground">Start with Biology</span>
+      <div className="mt-6 grid grid-cols-3 gap-3 border-t border-border pt-5 text-sm">
+        <div>
+          <p className="text-xs text-muted-foreground">Today&apos;s goal</p>
+          <p className="mt-0.5 font-semibold tabular-nums">{done} of 20 cards</p>
+          <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-foreground/10">
+            <div className="h-full rounded-full bg-primary" style={{ width: `${(done / 20) * 100}%` }} />
+          </div>
+        </div>
+        <div>
+          <p className="text-xs text-muted-foreground">Streak</p>
+          <p className="mt-0.5 font-semibold">5 days</p>
+        </div>
+        <div>
+          <p className="text-xs text-muted-foreground">Focus this week</p>
+          <p className="mt-0.5 font-semibold">2h 10m</p>
+        </div>
+      </div>
+    </div>
+  );
+}

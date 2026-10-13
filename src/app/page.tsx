@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, Brain, Check, GraduationCap, Lightbulb, Mail, MapPin, Timer } from "lucide-react";
 import {
-  DocChip, HandheldDemo, NavShell, NotesDemo, OpeningWordmark, RecallDemo, Reveal, SessionDemo, SpotlightCard, Steps, StreamedAnswer,
+  DocChip, ExamDemo, ExplainDemo, HandheldDemo, MusicDemo, NavShell, NotesDemo, OpeningWordmark, RecallDemo, Reveal, SessionDemo, SpotlightCard, Steps, StreamedAnswer, TodayDemo,
 } from "@/components/landing";
 import { Wordmark } from "@/components/logo";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -191,6 +191,66 @@ export default function Landing() {
             </Reveal>
             <Reveal delay={80}>
               <RecallDemo />
+            </Reveal>
+          </div>
+        </section>
+
+        {/* Stuck? It explains */}
+        <section className="mx-auto max-w-6xl px-5 py-20">
+          <div className="grid items-center gap-10 lg:grid-cols-[1fr_1.1fr]">
+            <Reveal>
+              <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">Get one wrong? It explains, then you explain it back.</h2>
+              <p className="mt-4 text-lg text-muted-foreground">
+                Miss a card because the idea&apos;s muddled, and your buddy explains it from your notes. Then you put it in your own words and it checks you. Got the idea but slipped on a detail? You get two fresh practice questions on that exact point.
+              </p>
+            </Reveal>
+            <Reveal delay={80}>
+              <ExplainDemo />
+            </Reveal>
+          </div>
+        </section>
+
+        {/* Practice exams */}
+        <section className="mx-auto max-w-6xl px-5 py-20">
+          <div className="grid items-center gap-10 lg:grid-cols-[1.1fr_1fr]">
+            <Reveal className="lg:order-last">
+              <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">Practice exams, before the real one.</h2>
+              <p className="mt-4 text-lg text-muted-foreground">
+                Mixed questions from across a subject, timed, with no hints until you hand it in. You get a score for every topic, weakest first, and one tap to study just the ones you missed.
+              </p>
+            </Reveal>
+            <Reveal delay={80}>
+              <ExamDemo />
+            </Reveal>
+          </div>
+        </section>
+
+        {/* Today */}
+        <section className="mx-auto max-w-6xl px-5 py-20">
+          <div className="grid items-center gap-10 lg:grid-cols-[1fr_1.1fr]">
+            <Reveal>
+              <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">It knows what to study today.</h2>
+              <p className="mt-4 text-lg text-muted-foreground">
+                Open Marginalia and your buddy has picked the subject that needs you most: reviews due first, then weak topics. Set a daily goal, keep your streak, and watch your focus time add up.
+              </p>
+            </Reveal>
+            <Reveal delay={80}>
+              <TodayDemo />
+            </Reveal>
+          </div>
+        </section>
+
+        {/* Music */}
+        <section className="mx-auto max-w-6xl px-5 py-20">
+          <div className="grid items-center gap-10 lg:grid-cols-[1.1fr_1fr]">
+            <Reveal className="lg:order-last">
+              <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">Your own study music.</h2>
+              <p className="mt-4 text-lg text-muted-foreground">
+                Upload your lo-fi, rain or piano tracks and make playlists for every mood. Music keeps playing as you move between subjects, sessions and notes, and can pause itself on breaks. Your songs stay on your device.
+              </p>
+            </Reveal>
+            <Reveal delay={80}>
+              <MusicDemo />
             </Reveal>
           </div>
         </section>
