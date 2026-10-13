@@ -1054,14 +1054,33 @@ const TOUR = [
   },
 ] as const;
 
-/* The feature story. Desktop: one pinned panel (the list on the left, the
-   demo on a stage on the right) while the page scrolls through a tall track;
-   scrolling moves from feature to feature. Phones: each feature with its demo. */
+/* The feature story. Desktop: the section stays pinned while the page scrolls
+   through a tall track. On the right the demos sit in a fanned stack, like the
+   steps below: the current one upright in front, its neighbours tilted out
+   behind. On the left the current feature's words light up as you scroll
+   (the sticky text reveal). Phones: each feature with its demo. */
 
 // Scroll distance per feature on desktop
-const STEP_VH = 60;
+const STEP_VH = 75;
+const STORY_FAN = { x: 30, rotate: 7, scale: 0.12 };
+
+/** Text whose words brighten one by one as `progress` goes from 0 to 1. */
+function RevealWords({ text, progress, className }: { text: string; progress: number; className?: string }) {
+  const words = text.split(" ");
+  const lit = progress * words.length;
+  return (
+    <span className={className}>
+      {words.map((w, i) => (
+        <span key={i} className="transition-[opacity] duration-150" style={{ opacity: 0.18 + Math.min(1, Math.max(0, lit - i)) * 0.82 }}>
+          {w}{" "}
+        </span>
+      ))}
+    </span>
+  );
+}
 
 export function FeatureTour() {
+  const reduced = useReducedMotion();
   const track = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState(0); // 0 to TOUR.length, through the track
 
@@ -1073,8 +1092,7 @@ export function FeatureTour() {
       if (!el) return;
       const r = el.getBoundingClientRect();
       const range = r.height - window.innerHeight;
-      const p = range > 0 ? Math.min(1, Math.max(0, -r.top / range)) : 0;
-      setPos(p * TOUR.length);
+      setPos(range > 0 ? Math.min(1, Math.max(0, -r.top / range)) * TOUR.length : 0);
     };
     const onScroll = () => {
       if (!frame) frame = requestAnimationFrame(measure);
@@ -1091,6 +1109,8 @@ export function FeatureTour() {
 
   const active = Math.min(TOUR.length - 1, Math.floor(pos));
   const within = Math.min(1, pos - active);
+  // A part of the current feature's scroll, as 0 to 1
+  const part = (start: number, end: number) => (reduced ? 1 : Math.min(1, Math.max(0, (within - start) / (end - start))));
 
   // Clicking a feature scrolls the page to it
   const jump = (i: number) => {
@@ -1098,79 +1118,78 @@ export function FeatureTour() {
     if (!el) return;
     const range = el.offsetHeight - window.innerHeight;
     const top = el.getBoundingClientRect().top + window.scrollY;
-    window.scrollTo({ top: top + (range * (i + 0.05)) / TOUR.length, behavior: "smooth" });
+    window.scrollTo({ top: top + (range * (i + 0.02)) / TOUR.length, behavior: "smooth" });
   };
 
-  const { Demo } = TOUR[active];
+  const f = TOUR[active];
 
   return (
     <>
       {/* Desktop */}
       <div ref={track} className="relative hidden lg:block" style={{ height: `calc(100vh + ${TOUR.length * STEP_VH}vh)` }}>
         <div className="sticky top-0 flex h-screen items-center">
-          <div className="grid max-h-[820px] w-full grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] items-center gap-12 xl:gap-16">
+          <div className="grid w-full grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] items-center gap-10 xl:gap-16">
             <div>
               <h2 className="text-4xl font-semibold tracking-tight text-balance min-[1800px]:text-5xl">Everything you need to study, in one place.</h2>
-              <ol className="mt-8 grid gap-1 min-[1800px]:mt-10 min-[1800px]:[zoom:1.15]">
-                {TOUR.map((f, i) => {
-                  const on = i === active;
-                  return (
-                    <li key={f.label}>
-                      <button type="button" onClick={() => jump(i)} aria-current={on ? "step" : undefined} className="group relative grid w-full grid-cols-[2.25rem_minmax(0,1fr)] gap-x-3 py-3 pl-4 text-left">
-                        {/* The rail: filled for done steps, filling for the current one */}
-                        <span className="absolute top-0 bottom-0 left-0 w-0.5 rounded-full bg-foreground/10" aria-hidden>
-                          <span className="block w-full rounded-full bg-primary transition-[height] duration-150" style={{ height: `${i < active ? 100 : on ? Math.max(6, within * 100) : 0}%` }} />
-                        </span>
-                        <span
-                          className={cn(
-                            "grid size-9 place-items-center rounded-full text-sm font-semibold tabular-nums transition-colors duration-300",
-                            on ? "bg-primary text-primary-foreground" : i < active ? "bg-primary/15 text-primary" : "bg-foreground/[0.06] text-muted-foreground group-hover:text-foreground"
-                          )}
-                        >
-                          {i + 1}
-                        </span>
-                        <span className="self-center">
-                          <span className={cn("block text-lg font-semibold transition-colors duration-300", on ? "text-foreground" : "text-muted-foreground group-hover:text-foreground")}>{f.label}</span>
-                        </span>
-                        <span className={cn("col-start-2 grid transition-[grid-template-rows,opacity] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]", on ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0")}>
-                          <span className="overflow-hidden">
-                            <span className="block pt-2 text-[1.35rem] leading-snug font-medium tracking-tight text-balance">{f.title}</span>
-                            <span className="mt-2 block pb-1 text-muted-foreground">{f.body}</span>
-                          </span>
-                        </span>
-                      </button>
-                    </li>
-                  );
-                })}
-              </ol>
+              <div key={active} className="mt-10 min-h-[15rem]">
+                <p className="text-sm font-semibold text-primary tabular-nums">
+                  {String(active + 1).padStart(2, "0")} <span className="text-muted-foreground">/ {String(TOUR.length).padStart(2, "0")}</span>
+                  <span className="ml-3">{f.label}</span>
+                </p>
+                <RevealWords text={f.title} progress={part(0, 0.3)} className="mt-3 block text-3xl leading-tight font-semibold tracking-tight text-balance min-[1800px]:text-4xl" />
+                <RevealWords text={f.body} progress={part(0.25, 0.75)} className="mt-4 block text-lg text-muted-foreground" />
+              </div>
+              {/* Every feature, to jump to; the current one stretches with its progress */}
+              <div className="mt-8 flex items-center gap-2" role="group" aria-label="Features">
+                {TOUR.map((t, i) => (
+                  <button
+                    key={t.label}
+                    type="button"
+                    onClick={() => jump(i)}
+                    aria-label={t.label}
+                    aria-current={i === active ? "step" : undefined}
+                    className={cn("relative h-2 overflow-hidden rounded-full transition-[width,background-color] duration-300", i === active ? "w-14 bg-foreground/10" : i < active ? "w-2 bg-primary" : "w-2 bg-foreground/15 hover:bg-foreground/30")}
+                  >
+                    {i === active && <span className="absolute inset-y-0 left-0 rounded-full bg-primary" style={{ width: `${Math.max(14, within * 100)}%` }} />}
+                  </button>
+                ))}
+              </div>
             </div>
 
-            {/* The stage */}
-            <div className="relative">
+            {/* The fanned stack of demos */}
+            <div className="relative flex h-[36rem] items-center justify-center">
               <div
                 aria-hidden
-                className="absolute -inset-8 -z-10 rounded-[3rem] opacity-80 blur-2xl"
-                style={{ background: "radial-gradient(60% 55% at 70% 30%, color-mix(in oklab, var(--primary) 28%, transparent), transparent 70%)" }}
+                className="absolute inset-0 -z-10 blur-3xl"
+                style={{ background: "radial-gradient(45% 45% at 50% 50%, color-mix(in oklab, var(--primary) 22%, transparent), transparent 70%)" }}
               />
-              <div className="relative overflow-hidden rounded-[2rem] border border-glass-border bg-glass p-8 shadow-2xl shadow-black/10 backdrop-blur-xl xl:p-12 dark:shadow-black/40">
-                {/* A faint dot grid, like ruled paper */}
-                <div
-                  aria-hidden
-                  className="absolute inset-0 opacity-60 [mask-image:radial-gradient(70%_70%_at_50%_45%,black,transparent)]"
-                  style={{ backgroundImage: "radial-gradient(color-mix(in oklab, var(--foreground) 14%, transparent) 1px, transparent 1px)", backgroundSize: "22px 22px" }}
-                />
-                <div className="relative mb-6 flex items-center justify-between text-sm">
-                  <span className="rounded-full bg-primary/10 px-3 py-1 font-medium text-primary">{TOUR[active].label}</span>
-                  <span className="text-muted-foreground tabular-nums">
-                    {active + 1} / {TOUR.length}
-                  </span>
-                </div>
-                <div className="relative grid min-h-[30rem] place-items-center">
-                  <div key={active} className="w-full max-w-xl min-[1800px]:[zoom:1.25] animate-in fade-in slide-in-from-bottom-4 duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:animate-none">
-                    <Demo />
-                  </div>
-                </div>
-              </div>
+              {TOUR.map((t, i) => {
+                const d = i - active;
+                const dist = Math.abs(d);
+                const sign = Math.sign(d);
+                const Demo = t.Demo;
+                return (
+                  <motion.div
+                    key={t.label}
+                    initial={false}
+                    animate={{
+                      x: `${sign * Math.min(dist, 1) * STORY_FAN.x}%`,
+                      rotate: sign * Math.min(dist, 1) * STORY_FAN.rotate,
+                      scale: 1 - Math.min(dist, 1) * STORY_FAN.scale,
+                      opacity: dist > 1 ? 0 : 1,
+                    }}
+                    transition={reduced ? { duration: 0 } : { type: "spring", stiffness: 260, damping: 28 }}
+                    style={{ zIndex: 10 - dist }}
+                    className={cn("absolute w-full max-w-[30rem] min-[1800px]:max-w-[36rem]", dist > 1 && "pointer-events-none")}
+                  >
+                    <div className={cn("transition-[filter] duration-300", d !== 0 && "brightness-[0.97] saturate-50 dark:brightness-75")}>
+                      {/* Only the front card plays */}
+                      {dist <= 1 && <Demo />}
+                    </div>
+                    {d !== 0 && dist <= 1 && <button type="button" onClick={() => jump(i)} aria-label={t.label} className="absolute inset-0 rounded-2xl" />}
+                  </motion.div>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -1179,17 +1198,16 @@ export function FeatureTour() {
       {/* Phones and tablets */}
       <div className="grid gap-16 lg:hidden">
         <h2 className="text-3xl font-semibold tracking-tight text-balance">Everything you need to study, in one place.</h2>
-        {TOUR.map((f, i) => {
-          const Inline = f.Demo;
+        {TOUR.map((t, i) => {
+          const Inline = t.Demo;
           return (
-            <div key={f.label}>
-              <p className="flex items-center gap-2.5 text-sm font-semibold text-primary">
-                <span className="grid size-7 place-items-center rounded-full bg-primary text-xs text-primary-foreground">{i + 1}</span>
-                {f.label}
+            <div key={t.label}>
+              <p className="text-sm font-semibold text-primary tabular-nums">
+                {String(i + 1).padStart(2, "0")} <span className="ml-2">{t.label}</span>
               </p>
-              <h3 className="mt-3 text-2xl font-semibold tracking-tight text-balance">{f.title}</h3>
-              <p className="mt-2 text-muted-foreground">{f.body}</p>
-              <div className="mt-6">
+              <h3 className="mt-3 text-2xl font-semibold tracking-tight text-balance">{t.title}</h3>
+              <p className="mt-2 text-muted-foreground">{t.body}</p>
+              <div className={cn("mt-6", i % 2 ? "rotate-1" : "-rotate-1")}>
                 <Inline />
               </div>
             </div>
@@ -1197,67 +1215,5 @@ export function FeatureTour() {
         })}
       </div>
     </>
-  );
-}
-
-/* ---------- a statement that lights up word by word as you scroll ---------- */
-
-const STATEMENT =
-  "Rereading your notes feels like studying. It isn't. What sticks is pulling the answer out of your own head, getting it wrong, finding out why, and trying again tomorrow. Marginalia does that with you, from your own notes.";
-
-/** The paragraph stays pinned while the page scrolls past; each word brightens in turn. */
-export function ScrollReveal() {
-  const reduced = useReducedMotion();
-  const track = useRef<HTMLDivElement>(null);
-  const [progress, setProgress] = useState(0);
-  const words = STATEMENT.split(" ");
-
-  useEffect(() => {
-    let frame = 0;
-    const measure = () => {
-      frame = 0;
-      const el = track.current;
-      if (!el) return;
-      const r = el.getBoundingClientRect();
-      const range = r.height - window.innerHeight;
-      setProgress(range > 0 ? Math.min(1, Math.max(0, -r.top / range)) : 1);
-    };
-    const onScroll = () => {
-      if (!frame) frame = requestAnimationFrame(measure);
-    };
-    measure();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onScroll);
-    return () => {
-      window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onScroll);
-      cancelAnimationFrame(frame);
-    };
-  }, []);
-
-  // The last fifth of the scroll holds the finished paragraph
-  const lit = reduced ? words.length : Math.min(words.length, progress * 1.25 * words.length);
-
-  return (
-    <div ref={track} className="relative" style={{ height: reduced ? "auto" : "220vh" }}>
-      <div className={cn("flex items-center", !reduced && "sticky top-0 h-screen")}>
-        <p className="max-w-5xl text-3xl leading-[1.25] font-semibold tracking-tight sm:text-5xl min-[1800px]:text-6xl">
-          {words.map((w, i) => {
-            const amount = Math.min(1, Math.max(0, lit - i));
-            const brand = w.startsWith("Marginalia");
-            return (
-              <span key={i}>
-                <span
-                  className={cn("transition-colors duration-150", brand && amount > 0.5 && "text-primary")}
-                  style={brand && amount > 0.5 ? undefined : { color: `color-mix(in oklab, var(--foreground) ${18 + amount * 82}%, transparent)` }}
-                >
-                  {w}
-                </span>{" "}
-              </span>
-            );
-          })}
-        </p>
-      </div>
-    </div>
   );
 }
