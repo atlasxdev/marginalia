@@ -202,19 +202,22 @@ function Lists({ view, setView }: { view: string; setView: (v: string) => void }
     const ids = id === "all" ? music.songs.map((s) => s.id) : (music.playlists.find((p) => p.id === id)?.songIds ?? []);
     return (
       <div key={id} className={cn("group relative rounded-2xl border p-3 transition-colors duration-150", on ? "border-primary bg-primary/10" : "border-glass-border bg-glass hover:bg-glass-strong")}>
-        <button type="button" onClick={() => setView(id)} className="absolute inset-0 rounded-2xl" aria-label={`Open ${label}`} aria-pressed={on} />
+        <button type="button" onClick={() => setView(id)} className="absolute inset-0 z-10 cursor-pointer rounded-2xl" aria-label={`Open ${label}`} aria-pressed={on} />
         <div className={cn("relative grid aspect-[4/3] place-items-center rounded-xl text-white", color)}>
           {icon}
           <Button
             size="icon"
             disabled={!count}
             onClick={() => {
+              // Playing this list: pause. Otherwise play it, resuming its song if one was going
+              if (live) return music.pause();
+              const resume = music.source === id && music.song && ids.includes(music.song.id) ? music.song.id : ids[0];
               music.setSource(id);
-              music.play(ids[0]);
+              music.play(resume);
             }}
-            aria-label={`Play ${label}`}
+            aria-label={live ? `Pause ${label}` : `Play ${label}`}
             className={cn(
-              "absolute right-2 bottom-2 size-10 rounded-full bg-white text-black shadow-lg transition-[opacity,transform] duration-150 hover:bg-white/90",
+              "absolute right-2 bottom-2 z-20 size-10 rounded-full bg-white text-black shadow-lg transition-[opacity,transform] duration-150 hover:bg-white/90",
               live ? "opacity-100" : "translate-y-1 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 focus-visible:opacity-100"
             )}
           >
@@ -319,7 +322,6 @@ function Tracks({ title, playlistId, songs }: { title: string; playlistId: strin
             </p>
           </div>
         )}
-        {playlistId && <AddSongs playlistId={playlistId} />}
         <Button disabled={!songs.length} onClick={playAll}>
           <PlayIcon />
           {playingHere && music.playing ? "Playing" : "Play all"}
@@ -331,7 +333,7 @@ function Tracks({ title, playlistId, songs }: { title: string; playlistId: strin
                 <MoreHorizontalIcon />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent align="end" className="min-w-52">
               <DropdownMenuItem onSelect={() => (setDraft(title), setRenaming(true))}>
                 <PencilIcon />
                 Rename playlist
@@ -346,10 +348,7 @@ function Tracks({ title, playlistId, songs }: { title: string; playlistId: strin
       </div>
 
       {songs.length === 0 ? (
-        <div className="grid justify-items-center gap-3 p-10 text-center">
-          <p className="text-muted-foreground">{playlistId ? "This playlist is empty." : "No songs yet."}</p>
-          {playlistId && <AddSongs playlistId={playlistId} variant="default" />}
-        </div>
+        <p className="p-8 text-center text-muted-foreground">{playlistId ? "This playlist is empty. Add songs below." : "No songs yet."}</p>
       ) : (
         <ol className="p-2">
           {songs.map((s, i) => (
@@ -357,6 +356,9 @@ function Tracks({ title, playlistId, songs }: { title: string; playlistId: strin
           ))}
         </ol>
       )}
+
+      {/* In a playlist: every other song, one click to add */}
+      {playlistId && <AddList playlistId={playlistId} />}
     </section>
   );
 }
@@ -433,32 +435,29 @@ function TrackRow({ song, index, playlistId, onPlay }: { song: Song; index: numb
   );
 }
 
-/** Pick songs for a playlist: every song, ticked when it's in. Stays open to tick several. */
-function AddSongs({ playlistId, variant = "outline" }: { playlistId: string; variant?: "outline" | "default" }) {
+/** The songs not in a playlist yet, each with an Add button. */
+function AddList({ playlistId }: { playlistId: string }) {
   const music = useMusic();
   const playlist = music.playlists.find((p) => p.id === playlistId);
   if (!playlist) return null;
+  const rest = music.songs.filter((s) => !playlist.songIds.includes(s.id));
+  if (!rest.length) return null;
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant={variant}>
-          <ListPlusIcon />
-          Add songs
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="max-h-80 w-64 overflow-y-auto">
-        <DropdownMenuLabel>Songs in {playlist.name}</DropdownMenuLabel>
-        {music.songs.length === 0 ? (
-          <p className="px-2 py-1.5 text-sm text-muted-foreground">Upload songs first.</p>
-        ) : (
-          music.songs.map((s) => (
-            <DropdownMenuCheckboxItem key={s.id} checked={playlist.songIds.includes(s.id)} onCheckedChange={() => music.toggleInPlaylist(playlistId, s.id)} onSelect={(e) => e.preventDefault()}>
-              <span className="truncate">{s.name}</span>
-            </DropdownMenuCheckboxItem>
-          ))
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <div className="border-t border-glass-divider p-2">
+      <p className="px-3 pt-3 pb-2 text-sm font-semibold">Add songs</p>
+      <ul>
+        {rest.map((s) => (
+          <li key={s.id} className="flex items-center gap-3 rounded-xl px-3 py-2 hover:bg-foreground/5">
+            <MusicIcon className="size-4 shrink-0 text-muted-foreground" />
+            <span className="min-w-0 flex-1 truncate">{s.name}</span>
+            <Button size="sm" variant="outline" onClick={() => music.toggleInPlaylist(playlistId, s.id)}>
+              <PlusIcon />
+              Add
+            </Button>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
