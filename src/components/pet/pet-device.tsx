@@ -29,12 +29,13 @@ const LCD = "#e7effc";
 const u = (n: number) => `calc(${n} * var(--u))`;
 const place = (x: number, y: number, w: number, h: number) => ({ left: u(x), top: u(y), width: u(w), height: u(h) });
 
-// Your buddy is a study partner: it studies with you, focuses with you, and
-// keeps score. Edit lives on the Stats screen.
+// Your buddy is a study partner: it starts your sessions, keeps score, and
+// can be restyled from Edit.
 const MENU = [
   { id: "study", label: "Study" },
   { id: "today", label: "Today" },
   { id: "stats", label: "Stats" },
+  { id: "edit", label: "Edit" },
 ] as const;
 type MenuId = (typeof MENU)[number]["id"];
 type Screen = "home" | "stats";
@@ -164,6 +165,8 @@ export function PetDevice({
       onToday();
     } else if (id === "stats") {
       setScreen("stats");
+    } else if (id === "edit") {
+      onEdit();
     }
   };
   const wake = () => {
@@ -177,8 +180,7 @@ export function PetDevice({
     later(() => setPressed((p) => (p === button ? null : p)), 120);
     if (asleep && (button === "a" || button === "b")) return wake();
     if (screen === "stats") {
-      if (button === "a") onEdit();
-      if (button === "b") setScreen("home");
+      if (button === "a" || button === "b") setScreen("home");
       return;
     }
     if (button === "left") setSelected((s) => (s + MENU.length - 1) % MENU.length);
@@ -297,7 +299,7 @@ export function PetDevice({
       </div>
 
       {/* Menu, on the bezel under the screen */}
-      <div className="absolute grid grid-cols-3" style={{ ...place(SCREEN.x, 62, RW, 6), gap: u(0.8) }}>
+      <div className="absolute grid grid-cols-4" style={{ ...place(SCREEN.x, 62, RW, 6), gap: u(0.8) }}>
         {MENU.map((m, i) => {
           const on = screen === "home" && i === selected;
           return (
@@ -414,6 +416,7 @@ const ICONS: Record<MenuId, string[]> = {
   study: ["XXX.XXX", "X.XXX.X", "X..X..X", "X..X..X", "X..X..X", "X.XXX.X", "XXX.XXX"],
   today: ["...X...", "..XXX..", ".XXXXX.", "XXXXXXX", ".X...X.", ".X.X.X.", ".X.X.X."],
   stats: [".....XX", ".....XX", "...XXXX", "...XXXX", ".XXXXXX", ".XXXXXX", "XXXXXXX"],
+  edit: [".....XX", "....XXX", "...XXX.", "..XXX..", ".XXX...", "XXX....", "XX....."],
 };
 
 function PixelIcon({ name, color }: { name: MenuId; color: string }) {
@@ -599,7 +602,7 @@ function Stats({ pet, status, level, progress, mood }: { pet: Pet; status: Study
         </div>
       </div>
       <p className="absolute inset-x-0 text-center opacity-70" style={{ bottom: u(1.6), fontSize: u(1.8) }}>
-        Earn XP by studying. A to edit, B to go back
+        Earn XP by studying. B to go back
       </p>
     </div>
   );

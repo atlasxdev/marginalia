@@ -9,6 +9,7 @@ import { addPetXp } from "@/app/actions/pet";
 import { petQuery, spacesQuery, studyQuery } from "@/lib/queries";
 import { deckInSubject, topicsIn } from "@/lib/subjects";
 import type { AttemptResult, Deck, FocusMethod, Pet, Space, StudyOverview } from "@/lib/types";
+import { readTimer, saveTimer } from "@/lib/timer-pref";
 import { useHydrated } from "@/lib/use-hydrated";
 import { useStudy, type StudyItem } from "@/lib/use-study";
 import { cn } from "@/lib/utils";
@@ -89,7 +90,7 @@ function Session({ overview, space, scope }: { overview: StudyOverview; space?: 
   });
 
   const [phase, setPhase] = useState<"setup" | "focus" | "break" | "summary">("setup");
-  const [method, setMethod] = useState<FocusMethod>("pomodoro");
+  const [method, setMethod] = useState<FocusMethod>(readTimer);
   const [queue, setQueue] = useState<Step[]>(plan);
   const [stepSeq, setStepSeq] = useState(0);
   // The step whose answer is showing, so the count doesn't move on until you do
@@ -215,7 +216,7 @@ function Session({ overview, space, scope }: { overview: StudyOverview; space?: 
   }, [phase, method, startedAt, space?.id, focus]);
 
   if (phase === "setup") {
-    return <Setup title={title} plan={plan} backHref={backHref} method={method} setMethod={setMethod} onStart={startBlock} />;
+    return <Setup title={title} plan={plan} backHref={backHref} method={method} setMethod={(m) => (setMethod(m), saveTimer(m))} onStart={startBlock} />;
   }
   if (phase === "summary") {
     return (

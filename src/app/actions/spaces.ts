@@ -26,7 +26,11 @@ export async function saveSpace(input: z.input<typeof spaceSchema>): Promise<Sav
       .select("id");
     if (error || !data?.length) return fail;
   } else {
-    const { data, error } = await supabase.from("spaces").insert({ name, instructions }).select("id").single();
+    // A new subject starts with your default answer style, if you've picked one
+    const { data: auth } = await supabase.auth.getUser();
+    const preferred = auth.user?.user_metadata?.study_method;
+    const study_method = ["recall", "feynman", "socratic", "answer"].includes(preferred) ? preferred : undefined;
+    const { data, error } = await supabase.from("spaces").insert({ name, instructions, ...(study_method && { study_method }) }).select("id").single();
     if (error) return { ok: false, message: "Couldn't create this subject. Try again." };
     spaceId = data.id as string;
   }

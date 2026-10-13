@@ -9,7 +9,7 @@ const methodSchema = z.object({
   spaceId: z.uuid().optional(),
 });
 
-// Sets how your buddy teaches: for one subject, or your default for everything else
+// Sets how your buddy teaches: for one subject, or your default (used by new subjects)
 export async function setStudyMethod(input: z.input<typeof methodSchema>): Promise<ActionState> {
   const parsed = methodSchema.safeParse(input);
   if (!parsed.success) return { ok: false, message: "Pick a study method." };
