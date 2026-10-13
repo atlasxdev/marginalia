@@ -1,11 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { ArrowUp, CircleDashed, FileText, FlaskConical, Landmark, Play, TrendingUp } from "lucide-react";
+import { CircleDashed, FileText } from "lucide-react";
 import { motion } from "motion/react";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { DEFAULT_LOOK } from "@/lib/pet-art";
 import { cn } from "@/lib/utils";
+import type { StudyStatus } from "@/lib/pet-care";
+import { useHydrated } from "@/lib/use-hydrated";
+import { PetDevice } from "./pet/pet-device";
 import { PetSprite } from "./pet/pet-sprite";
 
 /*
@@ -198,62 +201,6 @@ export function AnswerNote({
   );
 }
 
-/* ---------- the hero: ask, and the answer lands in the margin ---------- */
-
-const EXAMPLES = [
-  {
-    id: "biology",
-    label: "Biology",
-    meta: "Biology notes, lecture 3",
-    title: "Cellular respiration",
-    paras: [
-      "Cellular respiration turns glucose into ATP, the cell's energy, in three stages.",
-      "Glycolysis happens in the cytoplasm and splits one glucose into two pyruvate, for a net gain of 2 ATP.",
-      "The Krebs cycle runs in the mitochondrial matrix and releases carbon dioxide.",
-      "The electron transport chain makes most of the ATP, about 34 per glucose.",
-    ],
-    q: "Where does glycolysis happen?",
-    a: "In the **cytoplasm,** and it nets **2 ATP** per glucose.",
-    hand: "on the quiz ✓",
-  },
-  {
-    id: "history",
-    label: "History",
-    meta: "World history reading, chapter 9",
-    title: "The French Revolution",
-    paras: [
-      "By 1788 France was deep in debt after years of war, and bread prices had doubled.",
-      "The storming of the Bastille on 14 July 1789 marked the start of the Revolution.",
-      "The National Assembly abolished feudal privileges that August.",
-      "The Declaration of the Rights of Man followed later the same month.",
-    ],
-    q: "When did the French Revolution start?",
-    a: "On **14 July 1789,** with the storming of the Bastille.",
-    hand: "date to remember ✓",
-  },
-  {
-    id: "econ",
-    label: "Economics",
-    meta: "ECON 101, lecture 4",
-    title: "Why prices rise",
-    paras: [
-      "Prices rise when demand outpaces what an economy can produce.",
-      "Inflation is mostly too much money chasing too few goods.",
-      "Rising costs, like wages and energy, can push prices up too.",
-      "Central banks raise interest rates to slow it down.",
-    ],
-    q: "What causes inflation?",
-    a: "Mostly **too much money chasing too few goods.**",
-    hand: "exam answer ✓",
-  },
-] as const;
-const TARGET = 1;
-const EXAMPLE_ICONS: Record<string, React.ReactNode> = {
-  biology: <FlaskConical />,
-  history: <Landmark />,
-  econ: <TrendingUp />,
-};
-
 /**
  * A segmented control: a frosted track with a thumb that slides to the chosen
  * option. Built on the shadcn ToggleGroup, so it keeps its keyboard handling.
@@ -303,98 +250,6 @@ function Segmented({ id, label, value, onChange, items }: {
   );
 }
 
-export function LiveDemo() {
-  const reduced = useReducedMotion();
-  const [ref, inView] = useInView<HTMLDivElement>({ once: false, margin: "0px" });
-  const [i, setI] = useState(0);
-  const [round, setRound] = useState(0);
-  const [hoverCite, setHoverCite] = useState(false);
-  const ex = EXAMPLES[i];
-
-  const typeEnd = 250 + ex.q.length * 30;
-  const sendAt = typeEnd + 150;
-  const markAt = sendAt + 200;
-  const noteAt = sendAt + 380;
-  const nWords = words(ex.a).length;
-  const doneAt = noteAt + nWords * 45 + 100;
-  const endAt = doneAt + 3600;
-  const t = useClock(inView && !hoverCite, `${i}-${round}`, endAt, () => {
-    setI((x) => (x + 1) % EXAMPLES.length);
-    setRound((r) => r + 1);
-  });
-  const now = reduced ? doneAt + 1 : t;
-
-  const typed = ex.q.slice(0, Math.max(0, Math.floor((now - 250) / 30)));
-  const sent = now >= sendAt;
-  const pressed = now >= sendAt - 90 && now < sendAt + 60;
-  const marked = now >= markAt;
-  const noteIn = now >= noteAt;
-  const shown = Math.max(0, Math.floor((now - noteAt) / 45));
-  const done = now >= doneAt;
-
-  return (
-    <div ref={ref}>
-      <div className="mb-5 flex justify-center">
-        <Segmented
-          id="example"
-          label="Example notes"
-          value={ex.id}
-          onChange={(v) => {
-            const n = EXAMPLES.findIndex((e) => e.id === v);
-            if (n >= 0) { setI(n); setRound((r) => r + 1); }
-          }}
-          items={EXAMPLES.map((e) => ({ value: e.id, label: e.label, icon: EXAMPLE_ICONS[e.id] }))}
-        />
-      </div>
-
-      <div className="glass rounded-2xl border border-glass-border bg-glass p-2 sm:p-3">
-        <div key={ex.id} className="relative overflow-hidden rounded-xl bg-card p-6 pb-28 text-left ring-1 ring-foreground/10 animate-in fade-in duration-200 sm:p-10 sm:pb-32 lg:min-h-[27rem]">
-          <div className="lg:max-w-[60%]">
-            <p className="text-xs text-muted-foreground sm:text-sm">{ex.meta}</p>
-            <h3 className="mt-3 text-xl font-semibold tracking-tight sm:text-2xl">{ex.title}</h3>
-            {ex.paras.map((p, n) =>
-              n === TARGET ? (
-                <p key={n} className={cn("relative mt-4 ml-5 leading-relaxed transition-transform duration-150 sm:ml-0", hoverCite && "scale-[1.02]")}>
-                  <MarginBracket drawn={marked} />
-                  <Marked on={marked} bright={hoverCite}>{p}</Marked>
-                </p>
-              ) : (
-                <p key={n} className={cn("mt-4 leading-relaxed text-muted-foreground transition-opacity duration-300", n === 3 && "hidden sm:block", marked && "opacity-60")}>{p}</p>
-              ),
-            )}
-          </div>
-
-          {noteIn && (
-            <div className="mt-6 animate-in fade-in zoom-in-90 slide-in-from-right-6 duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] lg:absolute lg:top-[8.5rem] lg:right-8 lg:mt-0 lg:w-[22rem]">
-              <AnswerNote question={ex.q} answer={ex.a} shown={shown} cited={done} source={ex.meta} onCite={setHoverCite} />
-              {done && (
-                <p
-                  className="mt-4 -rotate-3 font-hand text-2xl text-primary [clip-path:inset(-20%_0_-20%_0)] animate-in fade-in slide-in-from-left-3 duration-300"
-                >
-                  {ex.hand}
-                </p>
-              )}
-            </div>
-          )}
-
-          {/* The composer */}
-          <div className="glass absolute inset-x-4 bottom-4 flex h-14 items-center gap-3 rounded-xl border border-glass-border bg-glass pr-2 pl-4 sm:inset-x-8 sm:bottom-6">
-            <span className={cn("flex-1 truncate", !sent && typed ? "text-foreground" : "text-muted-foreground")}>
-              {!sent && typed ? typed : "Ask about your notes"}
-              {!sent && typed && <span className="ml-0.5 inline-block h-5 w-0.5 translate-y-1 animate-pulse bg-primary" />}
-            </span>
-            <span className={cn("raised grid size-10 place-items-center rounded-lg bg-primary text-primary-foreground transition-transform duration-150", pressed && "scale-90")}>
-              <ArrowUp className="size-5" />
-            </span>
-          </div>
-        </div>
-      </div>
-      {done && !reduced && <p className="mt-3 text-center text-sm text-muted-foreground animate-in fade-in duration-300">Hover the <span className="cite" data-active>1</span> to see where it came from.</p>}
-    </div>
-  );
-}
-
-/** Marginalia's side: the answer streams in when it scrolls into view. */
 export function StreamedAnswer({ question, answer, source, delay = 0 }: { question: string; answer: string; source?: string; delay?: number }) {
   const reduced = useReducedMotion();
   const [ref, inView] = useInView<HTMLDivElement>();
@@ -637,43 +492,7 @@ export function Steps({ steps }: { steps: { title: string; body: string }[] }) {
   );
 }
 
-/* ---------- the tour video, with a glass play button ---------- */
-
-export function Tour() {
-  const ref = useRef<HTMLVideoElement>(null);
-  const [playing, setPlaying] = useState(false);
-  return (
-    <div className="glass relative rounded-2xl border border-glass-border bg-glass p-2 sm:p-3">
-      <video
-        ref={ref}
-        src="/marginalia-promo.mp4"
-        poster="/marginalia-promo.jpg"
-        controls={playing}
-        playsInline
-        preload="none"
-        onPlay={() => setPlaying(true)}
-        className="aspect-video w-full rounded-xl bg-card"
-      />
-      {!playing && (
-        <button
-          type="button"
-          onClick={() => ref.current?.play()}
-          className="group/play absolute inset-0 grid place-items-center rounded-2xl"
-          aria-label="Play the tour"
-        >
-          <span className="glass flex items-center gap-3 rounded-full border border-glass-border bg-glass-strong py-3 pr-6 pl-3 font-medium transition-transform duration-150 group-hover/play:scale-105 group-active/play:scale-95">
-            <span className="raised grid size-11 place-items-center rounded-full bg-primary text-primary-foreground">
-              <Play className="size-5 translate-x-px fill-current" />
-            </span>
-            Play the tour
-          </span>
-        </button>
-      )}
-    </div>
-  );
-}
-
-/* ---------- the wordmark, its brackets opening as it comes into view ---------- */
+/* ---------- the wordmark, drawn in for the closing call to action ---------- */
 
 export function OpeningWordmark() {
   const [ref, inView] = useInView<HTMLDivElement>();
@@ -811,29 +630,217 @@ export function RecallDemo() {
   );
 }
 
-/* ---------- focus: your buddy reads beside the timer ---------- */
 
-export function FocusDemo() {
+/* ---------- a study session: the card, the timer, and your buddy on top ---------- */
+
+// One loop: flip a card and get it right, then type an answer and miss
+const SESSION_TYPED = "oxygen";
+const S = { flip: 1400, gotIt: 2700, next: 4400, typeEnd: 4900 + SESSION_TYPED.length * 90, check: 0, miss: 0, end: 0 };
+S.check = S.typeEnd + 400;
+S.miss = S.check + 900;
+S.end = S.miss + 3600;
+
+export function SessionDemo() {
   const reduced = useReducedMotion();
   const [ref, inView] = useInView<HTMLDivElement>({ once: false, margin: "0px" });
-  const t = useClock(inView && !reduced, "focus");
-  const left = 25 * 60 - 3 - Math.floor(t / 1000);
-  const mm = Math.floor(left / 60);
-  const ss = String(left % 60).padStart(2, "0");
+  const [round, setRound] = useState(0);
+  const t = useClock(inView && !reduced, round, S.end, () => setRound((r) => r + 1));
+  const now = reduced ? S.gotIt + 300 : t;
+  const second = now >= S.next;
+  const flipped = now >= S.flip && !second;
+  const typed = SESSION_TYPED.slice(0, Math.max(0, Math.floor((now - 4900) / 90)));
+  const checking = now >= S.check && now < S.miss;
+  const missed = now >= S.miss;
+  const reaction: { face: "happy" | "flat" | "side"; line: string | null } =
+    missed ? { face: "flat", line: "Not quite. Want me to explain it?" } : now >= S.gotIt && !second ? { face: "happy", line: "You got it." } : { face: "side", line: null };
+  const seconds = 18 * 60 + 42 - Math.floor(now / 1000);
+  const ringC = 2 * Math.PI * 13;
+
   return (
-    <div ref={ref} className="rounded-2xl bg-card p-6 text-left shadow-xl ring-1 ring-foreground/10 dark:shadow-black/40">
-      <p className="font-semibold">Focus with Mochi</p>
-      <p className="text-sm text-muted-foreground">Studying with you. Phone down, one thing at a time.</p>
-      <div className="mt-5 grid justify-items-center gap-2 rounded-2xl bg-[#e7effc] px-6 pt-7 pb-5 dark:bg-[#2b354a]">
-        <PetSprite look={DEFAULT_LOOK} face="side" book className={cn("h-16 w-[60px]", !reduced && "animate-[pet-read_2.4s_ease-in-out_infinite]")} />
-        <p className="text-4xl font-semibold tracking-tight tabular-nums">
-          {mm}:{ss}
-        </p>
-        <p className="text-sm text-muted-foreground">Pomodoro, round 2</p>
-        <div className="h-1.5 w-full max-w-52 overflow-hidden rounded-full bg-foreground/10" aria-hidden>
-          <div className="h-full rounded-full bg-primary transition-[width] duration-1000 ease-linear" style={{ width: `${((25 * 60 - left) / (25 * 60)) * 100}%` }} />
+    <div ref={ref} className="overflow-hidden rounded-2xl bg-card text-left shadow-2xl ring-1 ring-foreground/10 dark:shadow-black/40">
+      {/* Top bar */}
+      <div className="flex items-center gap-3 border-b border-border px-4 py-3 sm:px-5">
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold">Biology</p>
+          <p className="text-xs text-muted-foreground">Pomodoro, block 1</p>
+        </div>
+        <div className="hidden w-40 gap-1.5 sm:grid">
+          <p className="text-center text-xs text-muted-foreground tabular-nums">{second ? 2 : 1} of 12</p>
+          <div className="h-1 overflow-hidden rounded-full bg-foreground/10">
+            <div className="h-full rounded-full bg-primary transition-[width] duration-300" style={{ width: second ? "9%" : "0%" }} />
+          </div>
+        </div>
+        <div className="flex flex-1 items-center justify-end gap-2">
+          <svg width={32} height={32} className="-rotate-90" aria-hidden>
+            <circle cx={16} cy={16} r={13} fill="none" strokeWidth={3} className="stroke-foreground/10" />
+            <circle cx={16} cy={16} r={13} fill="none" strokeWidth={3} strokeLinecap="round" strokeDasharray={ringC} strokeDashoffset={ringC * (1 - seconds / 1500)} className="stroke-primary" />
+          </svg>
+          <span className="text-lg font-semibold tabular-nums">
+            {Math.floor(seconds / 60)}:{String(seconds % 60).padStart(2, "0")}
+          </span>
         </div>
       </div>
+
+      {/* The card, with your buddy perched on top */}
+      <div className="px-5 pt-8 pb-8 sm:px-14">
+        <div className="relative mx-auto max-w-xl pt-[52px]">
+          <div className="absolute top-0 right-6 z-10 flex items-end gap-2">
+            <p
+              className={cn(
+                "mb-6 flex items-center gap-2 rounded-2xl rounded-br-sm bg-card px-3 py-2 text-sm font-medium shadow-lg ring-1 ring-border transition-[opacity,transform] duration-200",
+                reaction.line ? "opacity-100" : "translate-y-1 opacity-0"
+              )}
+            >
+              {reaction.line ?? "You got it."}
+              {missed && <span className="rounded-full bg-primary px-2.5 py-0.5 text-xs text-primary-foreground">Explain it</span>}
+            </p>
+            <PetSprite
+              key={reaction.face + (missed ? "m" : "")}
+              look={DEFAULT_LOOK}
+              face={reaction.face}
+              book={reaction.face === "side"}
+              className={cn(
+                "-mb-px h-14 w-[52px] origin-bottom",
+                reaction.face === "happy" && "animate-[pet-hop_400ms_ease-out]",
+                reaction.face === "flat" && "animate-[pet-squash_400ms_ease-out]",
+                reaction.face === "side" && !reduced && "animate-[pet-read_2.4s_ease-in-out_infinite]"
+              )}
+            />
+          </div>
+
+          {!second ? (
+            <div className="perspective-[1200px]">
+              <div className={cn("relative grid min-h-56 grid-cols-[minmax(0,1fr)] transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] transform-3d motion-reduce:transition-none", flipped && "rotate-y-180")}>
+                <DemoFace label="Glycolysis" badge="Review">Where does glycolysis happen?</DemoFace>
+                <DemoFace label="Answer" back source="Biology notes, lecture 3">
+                  In the cytoplasm
+                </DemoFace>
+              </div>
+            </div>
+          ) : (
+            <div className="grid gap-5 rounded-[24px] border border-border/60 bg-card p-6 shadow-xl shadow-black/10 animate-in fade-in slide-in-from-bottom-2 duration-200">
+              <div className="flex items-center justify-between text-xs font-medium text-muted-foreground">
+                <span>Krebs cycle</span>
+                <span className="rounded-full bg-foreground/5 px-2.5 py-1">Weak topic</span>
+              </div>
+              <p className="text-xl font-semibold tracking-tight sm:text-2xl">What does each turn of the Krebs cycle release?</p>
+            </div>
+          )}
+
+          <div className="mt-5 min-h-12">
+            {!second ? (
+              flipped ? (
+                <div className="grid grid-cols-2 gap-3 text-sm font-medium">
+                  <span className="grid h-11 place-items-center rounded-lg border border-input bg-background">Again</span>
+                  <span className={cn("raised grid h-11 place-items-center rounded-lg bg-primary text-primary-foreground transition-transform duration-150", now >= S.gotIt - 150 && now < S.gotIt + 100 && "scale-95")}>Got it</span>
+                </div>
+              ) : (
+                <span className="grid h-11 place-items-center rounded-lg border border-input bg-background text-sm font-medium">Show answer</span>
+              )
+            ) : (
+              <div className={cn("flex h-12 items-center rounded-xl border bg-background px-4 transition-colors", missed ? "border-destructive/60" : "border-input")}>
+                <span className={cn("flex-1 truncate", !typed && "text-muted-foreground")}>{typed || "Your answer"}</span>
+                {!missed && typed && !checking && <span className="ml-0.5 inline-block h-5 w-0.5 animate-pulse bg-primary" />}
+                <span className="ml-3 shrink-0 text-xs text-muted-foreground">{checking ? "Checking against your notes…" : missed ? "Two CO₂ molecules" : ""}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DemoFace({ label, badge, back = false, source, children }: { label: string; badge?: string; back?: boolean; source?: string; children: React.ReactNode }) {
+  return (
+    <div className={cn("col-start-1 row-start-1 flex flex-col rounded-[24px] border border-border/60 p-6 shadow-xl shadow-black/10 backface-hidden", back ? "rotate-y-180 bg-primary/[0.06]" : "bg-card")}>
+      <div className="flex items-center justify-between text-xs font-medium text-muted-foreground">
+        <span>{label}</span>
+        {badge && <span className="rounded-full bg-foreground/5 px-2.5 py-1">{badge}</span>}
+      </div>
+      <p className="my-auto py-6 text-center text-xl font-semibold tracking-tight text-balance sm:text-2xl">{children}</p>
+      {source && <span className="text-xs text-muted-foreground">From {source}</span>}
+    </div>
+  );
+}
+
+/* ---------- notes in, flashcards out ---------- */
+
+const NOTE_CARDS = ["Where does glycolysis happen?", "What does the Krebs cycle release?", "What makes most of the ATP?", "What happens without oxygen?"];
+
+export function NotesDemo() {
+  const reduced = useReducedMotion();
+  const [ref, inView] = useInView<HTMLDivElement>({ once: false, margin: "0px" });
+  const [round, setRound] = useState(0);
+  const t = useClock(inView && !reduced, round, 7200, () => setRound((r) => r + 1));
+  const now = reduced ? 6000 : t;
+  const added = now >= 400;
+  const reading = now >= 900 && now < 2600;
+  const shown = Math.max(0, Math.min(NOTE_CARDS.length, Math.floor((now - 2600) / 350) + 1));
+
+  return (
+    <div ref={ref} className="rounded-2xl bg-card p-6 text-left shadow-xl ring-1 ring-foreground/10 dark:shadow-black/40">
+      <p className="font-semibold">Biology</p>
+      <p className="text-sm text-muted-foreground">Notes</p>
+      <div className={cn("mt-4 flex items-center gap-3 rounded-xl border border-border px-4 py-3 transition-all duration-300", added ? "translate-y-0 opacity-100" : "-translate-y-2 opacity-0")}>
+        <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-destructive text-[10px] font-bold text-white">PDF</span>
+        <span className="min-w-0 flex-1 truncate font-medium">Lecture 3, respiration.pdf</span>
+        <span className="shrink-0 text-xs text-muted-foreground">{reading ? "Reading…" : shown ? `${NOTE_CARDS.length * 3} flashcards` : ""}</span>
+      </div>
+      <div className="mt-5 grid gap-2">
+        {NOTE_CARDS.map((q, i) => (
+          <div
+            key={q}
+            className={cn(
+              "flex items-center gap-3 rounded-xl bg-foreground/[0.04] px-4 py-3 text-sm transition-all duration-300",
+              i < shown ? "translate-x-0 opacity-100" : "translate-x-3 opacity-0"
+            )}
+          >
+            <span className="size-1.5 shrink-0 rounded-full bg-primary" />
+            {q}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ---------- the handheld, to try ---------- */
+
+const DEMO_STATUS: StudyStatus = {
+  streak: 4,
+  due: 12,
+  studiedToday: false,
+  studiedBefore: true,
+  week: { reviewed: 86, accuracy: 0.78, focusMinutes: 95, sessions: 4 },
+  weekDays: [true, true, false, true, true, true, false],
+};
+
+/** Mochi's handheld, playable: the arrows and A choose, B pets it. */
+export function HandheldDemo() {
+  // It reads the clock for its window, so it renders in the browser only
+  const hydrated = useHydrated();
+  const [note, setNote] = useState<string | null>(null);
+  const tell = (text: string) => {
+    setNote(text);
+    setTimeout(() => setNote((n) => (n === text ? null : n)), 2200);
+  };
+  return (
+    <div className="grid justify-items-center gap-3">
+      {!hydrated ? (
+        <div className="aspect-[72/100] w-full max-w-[468px]" aria-hidden />
+      ) : (
+      <PetDevice
+        pet={{ ...DEFAULT_LOOK, species: "cat", name: "Mochi", xp: 150 }}
+        status={DEMO_STATUS}
+        studyLabel="Biology"
+        autoFocus={false}
+        onEdit={() => tell("In the app, Edit lets you pick its look and name.")}
+        onStudy={() => tell("In the app, this starts a Biology session.")}
+        onToday={() => tell("In the app, this opens your plan for today.")}
+      />
+      )}
+      <p className={cn("min-h-5 text-sm text-muted-foreground transition-opacity duration-200", note ? "opacity-100" : "opacity-0")}>{note ?? " "}</p>
     </div>
   );
 }

@@ -1,17 +1,16 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, Brain, CalendarClock, GalleryVerticalEnd, Mail, MapPin, Quote } from "lucide-react";
+import { ArrowRight, Brain, CalendarClock, Mail, MapPin, MessageCircleQuestion, Quote } from "lucide-react";
 import {
-  DocChip, FocusDemo, LiveDemo, NavShell, OpeningWordmark, RecallDemo, Reveal, SpotlightCard, Steps, StreamedAnswer, Tour,
+  DocChip, HandheldDemo, NavShell, NotesDemo, OpeningWordmark, RecallDemo, Reveal, SessionDemo, SpotlightCard, Steps, StreamedAnswer,
 } from "@/components/landing";
 import { Wordmark } from "@/components/logo";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { SITE_URL } from "@/lib/site";
-import { STUDY_METHODS } from "@/lib/study-methods";
 
 const DESCRIPTION =
-  "Turn your lecture notes into flashcards and quizzes, each cited to the line it came from. Your pixel study buddy checks your answers, runs your focus sessions and tells you what to review next.";
+  "Add your lecture notes and they turn into flashcards on their own. Study in focus sessions with a pixel buddy that checks your answers against your notes, explains what you miss, and tells you what to review next.";
 
 export const metadata: Metadata = {
   title: { absolute: "Marginalia · Your study buddy for your own notes" },
@@ -49,14 +48,14 @@ const JSON_LD = {
 
 const FEATURES = [
   {
-    icon: GalleryVerticalEnd,
-    title: "A reviewer in one tap",
-    body: "Pick a subject or a file and get flashcards on what you'd be tested on. No more writing reviewers by hand.",
-  },
-  {
     icon: Brain,
     title: "Answers checked against your notes",
     body: "Type what you remember in your own words. Your buddy marks it right, almost or wrong, and shows the line.",
+  },
+  {
+    icon: MessageCircleQuestion,
+    title: "Stuck? It explains",
+    body: "Miss a card and your buddy offers to explain it, from your notes. Or ask anything about the card you're on.",
   },
   {
     icon: CalendarClock,
@@ -66,7 +65,7 @@ const FEATURES = [
   {
     icon: Quote,
     title: "Every answer shows its source",
-    body: "Tap a citation and the page opens with the passage highlighted. If your notes don't say, it tells you.",
+    body: "Ask a subject anything. Tap a citation and the page opens with the passage highlighted. If your notes don't say, it tells you.",
   },
 ];
 
@@ -77,9 +76,9 @@ const USES = [
 ];
 
 const STEPS = [
-  { title: "Sign up", body: "Just an email and a password." },
-  { title: "Add your notes", body: "Lecture notes, readings and handouts, grouped by subject." },
-  { title: "Study with your buddy", body: "Make a reviewer, test yourself, and focus together." },
+  { title: "Add a subject", body: "One for each class, like Biology or World History." },
+  { title: "Add your notes", body: "Lecture notes, readings and handouts. The flashcards make themselves." },
+  { title: "Press Study", body: "A focus session with your buddy: cards, quick quizzes and typed answers, with breaks." },
 ];
 
 const ME = {
@@ -146,25 +145,40 @@ export default function Landing() {
             <span className="block animate-in fade-in slide-in-from-bottom-4 fill-mode-both delay-75 duration-500">With a buddy that keeps you going.</span>
           </h1>
           <p className="mx-auto mt-5 max-w-xl text-lg text-pretty text-muted-foreground animate-in fade-in fill-mode-both delay-150 duration-500">
-            Upload your lecture notes and readings. Marginalia turns them into flashcards and quizzes, checks your answers against your notes, and runs your focus sessions with you.
+            Add your lecture notes and they turn into flashcards on their own. Then study in focus sessions with a buddy that checks your answers against your notes and explains what you miss.
           </p>
           <div className="mt-8 flex flex-col justify-center gap-3 animate-in fade-in slide-in-from-bottom-2 fill-mode-both delay-200 duration-500 sm:flex-row">
             <Button asChild size="lg" className="group/cta h-11 px-5 text-base">
               <Link href="/sign-up">Start studying<ArrowRight data-icon="inline-end" className="transition-transform group-hover/cta:translate-x-0.5" /></Link>
             </Button>
             <Button asChild variant="glass" size="lg" className="h-11 px-5 text-base">
-              <a href="#watch">Watch the 30-second tour</a>
+              <a href="#how">See how it works</a>
             </Button>
           </div>
-          <div className="mx-auto mt-14 max-w-5xl animate-in fade-in slide-in-from-bottom-8 fill-mode-both delay-300 duration-700">
-            <LiveDemo />
+          <div className="mx-auto mt-14 max-w-4xl animate-in fade-in slide-in-from-bottom-8 fill-mode-both delay-300 duration-700">
+            <SessionDemo />
+          </div>
+        </section>
+
+        {/* Notes become flashcards */}
+        <section className="mx-auto max-w-6xl px-5 py-20">
+          <div className="grid items-center gap-10 lg:grid-cols-[1fr_1.1fr]">
+            <Reveal>
+              <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">Add your notes. The flashcards make themselves.</h2>
+              <p className="mt-4 text-lg text-muted-foreground">
+                Make a subject for each class and drop in its notes. Your buddy reads them and writes flashcards on what you&apos;d be tested on, each linked to the line it came from. No more writing reviewers by hand.
+              </p>
+            </Reveal>
+            <Reveal delay={80}>
+              <NotesDemo />
+            </Reveal>
           </div>
         </section>
 
         {/* Test me */}
         <section className="mx-auto max-w-6xl px-5 py-20">
-          <div className="grid items-center gap-10 lg:grid-cols-[1fr_1.1fr]">
-            <Reveal>
+          <div className="grid items-center gap-10 lg:grid-cols-[1.1fr_1fr]">
+            <Reveal className="lg:order-last">
               <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">Say it in your own words. Your buddy checks it.</h2>
               <p className="mt-4 text-lg text-muted-foreground">
                 Rereading feels like studying. Recalling is what sticks. Type what you remember, and Marginalia marks it right, almost or wrong against your notes, with the line that has the full answer.
@@ -180,7 +194,7 @@ export default function Landing() {
         <section id="features" className="mx-auto max-w-6xl scroll-mt-24 px-5 py-20">
           <Reveal>
             <h2 className="max-w-2xl text-3xl font-semibold tracking-tight sm:text-4xl">Built for how studying actually works.</h2>
-            <p className="mt-4 max-w-2xl text-lg text-muted-foreground">From a pile of notes to knowing it, without writing a single flashcard yourself.</p>
+            <p className="mt-4 max-w-2xl text-lg text-muted-foreground">From a pile of notes to knowing it for the exam.</p>
           </Reveal>
           <div className="mt-10 grid gap-4 sm:grid-cols-2">
             {FEATURES.map(({ icon: Icon, title, body }, i) => (
@@ -199,45 +213,27 @@ export default function Landing() {
 
         {/* Your buddy */}
         <section id="buddy" className="mx-auto max-w-6xl scroll-mt-24 px-5 py-20">
-          <div className="grid items-center gap-10 lg:grid-cols-[1.1fr_1fr]">
-            <Reveal delay={80} className="lg:order-last">
+          <div className="grid items-center gap-10 lg:grid-cols-[1fr_1.1fr]">
+            <Reveal>
               <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">A study buddy that studies with you.</h2>
               <p className="mt-4 text-lg text-muted-foreground">
-                Hatch a pixel buddy and it joins every session. It reads beside your Pomodoro timer, rests with you on breaks, hops when you get one right, and reminds you what&apos;s due. The more you study, the more it grows.
+                Hatch a pixel buddy and it sits on your cards in every session: it hops when you get one right and offers to explain when you don&apos;t. It&apos;s proud when you show up, worried when cards pile up, and naps if you skip days.
               </p>
-              <p className="mt-4 text-muted-foreground">Pomodoro, 52 / 17, or a flow timer that runs as long as your focus does.</p>
+              <p className="mt-4 text-muted-foreground">
+                As you study it levels up, and its room fills with books, then a lamp, a trophy and a diploma. Try its handheld: the arrows and A to choose, B to pet it.
+              </p>
             </Reveal>
-            <Reveal>
-              <FocusDemo />
+            <Reveal delay={80}>
+              <HandheldDemo />
             </Reveal>
-          </div>
-        </section>
-
-        {/* Study methods */}
-        <section className="mx-auto max-w-6xl px-5 py-20">
-          <Reveal>
-            <h2 className="max-w-2xl text-3xl font-semibold tracking-tight sm:text-4xl">Study your way.</h2>
-            <p className="mt-4 max-w-2xl text-lg text-muted-foreground">
-              Choose how your buddy teaches, for each subject. Every method still answers only from your notes.
-            </p>
-          </Reveal>
-          <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {Object.values(STUDY_METHODS).map((m, i) => (
-              <Reveal key={m.name} delay={i * 60} className="h-full">
-                <SpotlightCard className="p-5">
-                  <h3 className="font-semibold">{m.name}</h3>
-                  <p className="mt-2 text-sm text-muted-foreground">{m.detail}</p>
-                </SpotlightCard>
-              </Reveal>
-            ))}
           </div>
         </section>
 
         {/* Use cases */}
         <section id="uses" className="mx-auto max-w-6xl scroll-mt-24 px-5 py-20">
           <Reveal>
-            <h2 className="max-w-2xl text-3xl font-semibold tracking-tight sm:text-4xl">For every class.</h2>
-            <p className="mt-4 max-w-2xl text-lg text-muted-foreground">Ask your notes like you&apos;d ask a classmate who actually took them. Hover a card to ask again.</p>
+            <h2 className="max-w-2xl text-3xl font-semibold tracking-tight sm:text-4xl">Ask any class.</h2>
+            <p className="mt-4 max-w-2xl text-lg text-muted-foreground">Each subject answers only from its own notes, like a classmate who actually took them. Hover a card to ask again.</p>
           </Reveal>
           <div className="mt-10 grid gap-4 md:grid-cols-3">
             {USES.map((u, i) => (
@@ -260,15 +256,9 @@ export default function Landing() {
         <section id="how" className="mx-auto max-w-6xl scroll-mt-24 px-5 py-20">
           <Reveal>
             <h2 className="max-w-2xl text-3xl font-semibold tracking-tight sm:text-4xl">Start in under a minute.</h2>
-            <p className="mt-4 max-w-2xl text-lg text-muted-foreground">Three steps from sign-up to your first reviewer.</p>
+            <p className="mt-4 max-w-2xl text-lg text-muted-foreground">Three steps from your notes to your first session.</p>
           </Reveal>
           <Steps steps={STEPS} />
-        </section>
-
-        {/* Video */}
-        <section id="watch" className="mx-auto max-w-6xl scroll-mt-24 px-5 py-20">
-          <Reveal><h2 className="max-w-2xl text-3xl font-semibold tracking-tight sm:text-4xl">See it in 30 seconds.</h2></Reveal>
-          <Reveal delay={80} className="mt-10"><Tour /></Reveal>
         </section>
 
         {/* Call to action */}

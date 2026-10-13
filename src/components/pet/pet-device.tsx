@@ -46,6 +46,7 @@ export function PetDevice({
   status,
   onEdit,
   studyLabel,
+  autoFocus = true,
   onStudy,
   onToday,
 }: {
@@ -54,6 +55,8 @@ export function PetDevice({
   status: StudyStatus;
   /** The subject Study starts a session on, for the greeting. */
   studyLabel?: string;
+  /** Focus the screen when it opens, so the keys work straight away. */
+  autoFocus?: boolean;
   onEdit: () => void;
   onStudy: () => void;
   onToday: () => void;
@@ -241,7 +244,7 @@ export function PetDevice({
         aria-label={`${pet.name}'s screen. ${mood}. Use the arrow keys to choose, Enter for A, X for B.`}
         className="absolute overflow-hidden outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
         style={{ ...place(SCREEN.x, SCREEN.y, RW, RH), background: LCD, boxShadow: `0 0 0 ${u(0.4)} #0f1520` }}
-        autoFocus
+        autoFocus={autoFocus}
       >
         {screen === "stats" ? (
           <Stats pet={pet} status={status} level={level} progress={progress} mood={mood} />
