@@ -179,12 +179,7 @@ export default function Landing() {
 
         {/* Everything it does, one at a time */}
         <section id="tour" className="mx-auto max-w-6xl scroll-mt-24 px-5 py-20">
-          <Reveal>
-            <h2 className="max-w-2xl text-3xl font-semibold tracking-tight sm:text-4xl">From a pile of notes to ready for the exam.</h2>
-          </Reveal>
-          <Reveal delay={80} className="mt-10">
-            <FeatureTour />
-          </Reveal>
+          <FeatureTour />
         </section>
 
         {/* Four ways it helps */}

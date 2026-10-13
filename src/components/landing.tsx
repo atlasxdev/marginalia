@@ -1054,48 +1054,68 @@ const TOUR = [
   },
 ] as const;
 
-const TOUR_MS = 8000;
-
+/* The story: the text scrolls on the left, and the demo pinned on the right
+   swaps to whichever feature is in the middle of the screen. On phones each
+   feature shows its own demo under its text. */
 export function FeatureTour() {
-  const reduced = useReducedMotion();
-  const [ref, inView] = useInView<HTMLDivElement>({ once: false, margin: "0px" });
   const [active, setActive] = useState(0);
-  const [hovering, setHovering] = useState(false);
-  const running = inView && !hovering && !reduced;
-  // Moves on by itself while it's on screen and you're not pointing at it
-  const t = useClock(running, active, TOUR_MS, () => setActive((a) => (a + 1) % TOUR.length));
+  const steps = useRef<(HTMLDivElement | null)[]>([]);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) if (e.isIntersecting) setActive(Number((e.target as HTMLElement).dataset.step));
+      },
+      // A feature counts as current when it crosses the middle of the screen
+      { rootMargin: "-50% 0px -50% 0px" }
+    );
+    steps.current.forEach((el) => el && observer.observe(el));
+    return () => observer.disconnect();
+  }, []);
+
   const { Demo } = TOUR[active];
 
   return (
-    <div ref={ref} onPointerEnter={() => setHovering(true)} onPointerLeave={() => setHovering(false)} className="grid grid-cols-[minmax(0,1fr)] items-center gap-8 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-14">
-      {/* The list: every feature, the active one opened with its progress */}
-      <div role="tablist" aria-label="Features" className="grid gap-1.5">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-10 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:gap-16">
+      <div>
         {TOUR.map((f, i) => {
-          const on = i === active;
+          const Inline = f.Demo;
           return (
-            <button
+            <div
               key={f.label}
-              type="button"
-              role="tab"
-              aria-selected={on}
-              onClick={() => setActive(i)}
-              className={cn("relative overflow-hidden rounded-2xl px-5 py-4 text-left transition-colors duration-200", on ? "glass border border-glass-border bg-glass" : "hover:bg-foreground/5")}
+              ref={(el) => {
+                steps.current[i] = el;
+              }}
+              data-step={i}
+              className="flex flex-col justify-center py-10 lg:min-h-screen lg:py-0"
             >
-              <span className={cn("block text-lg font-semibold transition-colors", on ? "text-foreground" : "text-muted-foreground")}>{on ? f.title : f.label}</span>
-              {on && <span className="mt-1.5 block text-muted-foreground animate-in fade-in duration-300 motion-reduce:animate-none">{f.body}</span>}
-              {on && (
-                <span className="absolute inset-x-0 bottom-0 h-0.5 bg-foreground/5" aria-hidden>
-                  <span className="block h-full bg-primary" style={{ width: `${reduced ? 100 : Math.min(100, (t / TOUR_MS) * 100)}%` }} />
-                </span>
-              )}
-            </button>
+              <p className={cn("text-sm font-semibold transition-colors duration-300", i === active ? "text-primary" : "text-muted-foreground")}>
+                {String(i + 1).padStart(2, "0")} {f.label}
+              </p>
+              <h3 className={cn("mt-2 text-2xl font-semibold tracking-tight text-balance transition-opacity duration-300 sm:text-3xl", i === active ? "opacity-100" : "lg:opacity-35")}>{f.title}</h3>
+              <p className={cn("mt-3 text-lg text-muted-foreground transition-opacity duration-300", i === active ? "opacity-100" : "lg:opacity-35")}>{f.body}</p>
+              {/* Phones: the demo sits with its feature */}
+              <div className="mt-6 lg:hidden">
+                <Inline />
+              </div>
+            </div>
           );
         })}
       </div>
-      {/* The demo for the active feature */}
-      <div role="tabpanel" aria-label={TOUR[active].label} className="grid min-h-[28rem] items-center">
-        <div key={active} className="animate-in fade-in slide-in-from-bottom-3 duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:animate-none">
-          <Demo />
+
+      {/* Desktop: one demo, pinned while the text scrolls past */}
+      <div className="hidden lg:block">
+        <div className="sticky top-0 flex h-screen items-center">
+          <div className="w-full">
+            <div className="mb-5 flex gap-1.5" aria-hidden>
+              {TOUR.map((f, i) => (
+                <span key={f.label} className={cn("h-1 flex-1 rounded-full transition-colors duration-300", i <= active ? "bg-primary" : "bg-foreground/10")} />
+              ))}
+            </div>
+            <div key={active} className="animate-in fade-in zoom-in-[0.98] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:animate-none">
+              <Demo />
+            </div>
+          </div>
         </div>
       </div>
     </div>
