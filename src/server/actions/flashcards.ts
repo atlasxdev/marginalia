@@ -10,6 +10,9 @@ const schema = z.object({
       z.object({
         front: z.string().describe("A question that tests one fact or idea."),
         back: z.string().describe("The answer, in under 20 words."),
+        topic: z
+          .string()
+          .describe('The concept it tests, in 1 to 4 words, like "Krebs cycle". Use the same wording for cards on the same concept.'),
         wrong: z
           .array(z.string())
           .describe("Three plausible but wrong answers, about as long as the right one, for a multiple-choice quiz."),
@@ -28,6 +31,7 @@ export const flashcards: ActionBuilder<typeof schema, { title: string; cards: Fl
       .map((c) => ({
         front: c.front.trim().slice(0, 300),
         back: c.back.trim().slice(0, 300),
+        topic: c.topic.trim().slice(0, 80),
         wrong: [...new Set(c.wrong.map((w) => w.trim().slice(0, 300)))]
           .filter((w) => w && w.toLowerCase() !== c.back.trim().toLowerCase())
           .slice(0, 3),

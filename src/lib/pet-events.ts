@@ -7,7 +7,11 @@ export type PetSignal =
   | { kind: "reading" }
   | { kind: "found"; count: number }
   | { kind: "shrug" }
-  | { kind: "eat"; label: string };
+  | { kind: "eat"; label: string }
+  /** A study session ended: how many cards, and how many you got right. */
+  | { kind: "studied"; count: number; right: number }
+  /** A focus session ended. */
+  | { kind: "focused"; minutes: number };
 
 const SIGNAL = "marginalia:pet";
 const OPEN = "marginalia:open-pet";

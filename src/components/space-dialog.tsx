@@ -81,7 +81,7 @@ function SpaceForm({ space, onDone }: { space?: Space; onDone: (id: string) => v
         queryClient.invalidateQueries({ queryKey: ["conversations"] });
       }
       if (result.ok && result.id) {
-        toast.success(space ? "Space saved" : `“${name.trim()}” created`);
+        toast.success(space ? "Subject saved" : `“${name.trim()}” created`);
         onDone(result.id);
       }
     },
@@ -108,8 +108,8 @@ function SpaceForm({ space, onDone }: { space?: Space; onDone: (id: string) => v
       }}
     >
       <DialogHeader className="border-b border-glass-divider p-6">
-        <DialogTitle>{space ? "Edit space" : "New space"}</DialogTitle>
-        <DialogDescription>Chats in a space answer only from the documents you pick.</DialogDescription>
+        <DialogTitle>{space ? "Edit subject" : "New subject"}</DialogTitle>
+        <DialogDescription>Group the notes for one class. Answers and reviewers come only from these files.</DialogDescription>
       </DialogHeader>
 
       <div className="min-h-0 flex-1 overflow-y-auto p-6">
@@ -249,7 +249,7 @@ function SpaceForm({ space, onDone }: { space?: Space; onDone: (id: string) => v
               placeholder="For example: Explain like a patient tutor and end with a quick quiz question."
               className="min-h-24 rounded-xl bg-popover px-3 py-2.5"
             />
-            <FieldDescription>How answers in this space should read. They still come only from its documents.</FieldDescription>
+            <FieldDescription>Anything your buddy should know, like your exam format. Answers still come only from these files.</FieldDescription>
           </Field>
         </FieldGroup>
       </div>
@@ -259,7 +259,7 @@ function SpaceForm({ space, onDone }: { space?: Space; onDone: (id: string) => v
           {error}
         </span>
         <Button type="submit" disabled={!name.trim() || save.isPending || upload.isPending}>
-          {save.isPending ? "Saving…" : space ? "Save" : "Create space"}
+          {save.isPending ? "Saving…" : space ? "Save" : "Create subject"}
         </Button>
       </DialogFooter>
     </form>

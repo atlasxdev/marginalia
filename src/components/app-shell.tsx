@@ -6,6 +6,7 @@ import { Suspense, useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   ChevronsUpDownIcon,
+  GraduationCapIcon,
   LayersIcon,
   LibraryIcon,
   LogOutIcon,
@@ -44,7 +45,8 @@ import {
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { conversationsQuery, documentsQuery, meQuery, spacesQuery } from "@/lib/queries";
+import { isDue } from "@/lib/leitner";
+import { conversationsQuery, documentsQuery, meQuery, spacesQuery, studyQuery } from "@/lib/queries";
 import type { ConversationSummary } from "@/lib/types";
 import { getBrowserClient } from "@/lib/supabase/client";
 import { useHydrated } from "@/lib/use-hydrated";
@@ -99,6 +101,10 @@ function AppSidebar() {
   const spaces = hydrated ? spacesResult.data : undefined;
   const isPending = !hydrated || conversationsResult.isPending;
   const readyCount = documents?.filter((d) => d.status === "ready").length;
+  const studyResult = useQuery(studyQuery);
+  const dueCount = hydrated
+    ? studyResult.data?.decks.reduce((n, d) => n + d.payload.cards.filter((_, i) => isDue(d.state.cards?.[i])).length, 0)
+    : undefined;
   const meResult = useQuery(meQuery);
   const me = meResult.data;
   const email = me?.email;
@@ -138,7 +144,7 @@ function AppSidebar() {
       className="*:data-[slot=sidebar-inner]:glass *:data-[slot=sidebar-inner]:rounded-2xl *:data-[slot=sidebar-inner]:ring-glass-border"
     >
       <SidebarHeader className="flex-row items-center justify-between pt-4 pr-3 pb-3 pl-5">
-        <Link href="/chat" aria-label="Marginalia home" onClick={close}>
+        <Link href="/study" aria-label="Marginalia home" onClick={close}>
           <Wordmark className="text-[22px]" />
         </Link>
       </SidebarHeader>
@@ -147,10 +153,23 @@ function AppSidebar() {
         <SidebarGroup className="py-0">
           <SidebarMenu>
             <SidebarMenuItem>
+              <SidebarMenuButton asChild isActive={pathname === "/study"}>
+                <Link href="/study" onClick={close}>
+                  <GraduationCapIcon className="text-primary" />
+                  <span>Study</span>
+                </Link>
+              </SidebarMenuButton>
+              {!!dueCount && (
+                <SidebarMenuBadge className="tabular-nums" aria-label={`${dueCount} cards due`}>
+                  {dueCount}
+                </SidebarMenuBadge>
+              )}
+            </SidebarMenuItem>
+            <SidebarMenuItem>
               <SidebarMenuButton asChild isActive={pathname === "/chat"}>
                 <Link href="/chat" onClick={close}>
                   <SquarePenIcon className="text-primary" />
-                  <span>New chat</span>
+                  <span>Ask your notes</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -174,14 +193,14 @@ function AppSidebar() {
         </SidebarGroup>
 
         <SidebarGroup>
-          <SidebarGroupLabel>Spaces</SidebarGroupLabel>
-          <SidebarGroupAction aria-label="New space" title="New space" onClick={() => setCreating(true)}>
+          <SidebarGroupLabel>Subjects</SidebarGroupLabel>
+          <SidebarGroupAction aria-label="New subject" title="New subject" onClick={() => setCreating(true)}>
             <PlusIcon />
           </SidebarGroupAction>
           <SidebarGroupContent>
             <SidebarMenu>
               {spaces?.length === 0 && (
-                <p className="px-2 py-1.5 text-sm text-muted-foreground">Group documents for focused answers</p>
+                <p className="px-2 py-1.5 text-sm text-muted-foreground">Group your notes by class</p>
               )}
               {spaces?.map((s) => {
                 const href = `/spaces/${s.id}`;
@@ -237,7 +256,7 @@ function AppSidebar() {
                 </DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => { close(); openPet(); }}>
                   <PawPrintIcon />
-                  Your pet
+                  Your study buddy
                 </DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}>
                   {resolvedTheme === "dark" ? <SunIcon /> : <MoonIcon />}

@@ -15,7 +15,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { ArrowDownIcon, ArrowUpIcon, FilePlusIcon, FileTextIcon, MoreHorizontalIcon, PencilIcon, RotateCcwIcon, SearchIcon, Trash2Icon } from "lucide-react";
+import { ArrowDownIcon, ArrowUpIcon, FilePlusIcon, FileTextIcon, MoreHorizontalIcon, PencilIcon, RotateCcwIcon, SearchIcon, SparklesIcon, Trash2Icon } from "lucide-react";
 import { deleteDocument, retryDocument } from "@/app/actions/documents";
 import {
   AlertDialog,
@@ -45,6 +45,7 @@ import { documentsQuery } from "@/lib/queries";
 import type { DocumentItem } from "@/lib/types";
 import { useHydrated } from "@/lib/use-hydrated";
 import { cn } from "@/lib/utils";
+import { useMakeDeck } from "./deck";
 import { UploadForm } from "./upload-form";
 
 export const KIND: Record<string, { label: string; color: string }> = {
@@ -434,6 +435,7 @@ function RowActions({ doc }: { doc: DocumentItem }) {
   const queryClient = useQueryClient();
   const leaving = use(LeavingContext);
   const [confirming, setConfirming] = useState(false);
+  const makeDeck = useMakeDeck();
   const retry = useMutation({
     mutationFn: retryDocument,
     onSuccess: (result) => (result.ok ? toast.success(`Reading “${doc.filename}” again`) : toast.error(result.message ?? "Couldn't retry. Try again.")),
@@ -483,6 +485,15 @@ function RowActions({ doc }: { doc: DocumentItem }) {
               <DropdownMenuSeparator />
             </>
           )}
+          {doc.status === "ready" && (
+            <>
+              <DropdownMenuItem onSelect={() => makeDeck.mutate({ body: { documentId: doc.id }, name: doc.filename })}>
+                <SparklesIcon />
+                Make a reviewer
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+            </>
+          )}
           {doc.status === "failed" && (
             <>
               <DropdownMenuItem onSelect={() => retry.mutate(doc.id)}>
@@ -502,7 +513,7 @@ function RowActions({ doc }: { doc: DocumentItem }) {
         <AlertDialogContent className="glass border border-glass-border bg-glass-strong">
           <AlertDialogHeader>
             <AlertDialogTitle>Delete “{doc.filename}”?</AlertDialogTitle>
-            <AlertDialogDescription>It will be removed from your library, its spaces, and search.</AlertDialogDescription>
+            <AlertDialogDescription>It will be removed from your library, its subjects, and search.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>

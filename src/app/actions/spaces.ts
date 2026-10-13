@@ -15,7 +15,7 @@ export async function saveSpace(input: z.input<typeof spaceSchema>): Promise<Sav
   if (!parsed.success) return { ok: false, fieldErrors: z.flattenError(parsed.error).fieldErrors };
   const { id, name, instructions, documentIds } = parsed.data;
   const supabase = await createClient();
-  const fail = { ok: false, message: "Couldn't save this space. Try again." } as const;
+  const fail = { ok: false, message: "Couldn't save this subject. Try again." } as const;
 
   let spaceId = id;
   if (spaceId) {
@@ -27,7 +27,7 @@ export async function saveSpace(input: z.input<typeof spaceSchema>): Promise<Sav
     if (error || !data?.length) return fail;
   } else {
     const { data, error } = await supabase.from("spaces").insert({ name, instructions }).select("id").single();
-    if (error) return { ok: false, message: "Couldn't create this space. Try again." };
+    if (error) return { ok: false, message: "Couldn't create this subject. Try again." };
     spaceId = data.id as string;
   }
 
@@ -59,6 +59,6 @@ export async function saveSpace(input: z.input<typeof spaceSchema>): Promise<Sav
 export async function deleteSpace(id: string): Promise<ActionState> {
   const supabase = await createClient();
   const { error } = await supabase.from("spaces").delete().eq("id", z.uuid().parse(id));
-  if (error) return { ok: false, message: "Couldn't delete this space. Try again." };
+  if (error) return { ok: false, message: "Couldn't delete this subject. Try again." };
   return { ok: true };
 }

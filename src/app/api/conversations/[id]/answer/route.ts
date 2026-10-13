@@ -43,7 +43,7 @@ export async function POST(_req: Request, ctx: RouteContext<"/api/conversations/
   // A conversation in a space searches only its documents and follows its instructions
   const space = conversation.space ? await getSpace(supabase, conversation.space.id) : null;
   if (space && space.documentIds.length === 0) {
-    return Response.json({ error: "This space has no documents yet. Add some on the space's page." }, { status: 409 });
+    return Response.json({ error: "This subject has no files yet. Add some on its page." }, { status: 409 });
   }
 
   const history = conversation.messages.slice(0, -1);

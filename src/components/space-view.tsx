@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ChevronRightIcon, FileTextIcon, LayersIcon, MessageSquareIcon, MoreHorizontalIcon, PencilIcon, Trash2Icon } from "lucide-react";
+import { ChevronRightIcon, FileTextIcon, LayersIcon, MessageSquareIcon, MoreHorizontalIcon, PencilIcon, SparklesIcon, Trash2Icon } from "lucide-react";
 import { deleteSpace } from "@/app/actions/spaces";
 import {
   AlertDialog,
@@ -23,10 +23,11 @@ import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTi
 import { Item, ItemActions, ItemContent, ItemGroup, ItemMedia, ItemSeparator, ItemTitle } from "@/components/ui/item";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
-import { conversationsQuery, documentsQuery, spaceQuery } from "@/lib/queries";
+import { conversationsQuery, documentsQuery, spaceQuery, studyQuery } from "@/lib/queries";
 import type { DocumentItem, Space } from "@/lib/types";
 import { useHydrated } from "@/lib/use-hydrated";
 import { Composer } from "./composer";
+import { DeckList, useMakeDeck } from "./deck";
 import { KindIcon, SpaceDialog } from "./space-dialog";
 
 const groupClass = "glass rounded-xl border border-glass-border bg-glass";
@@ -44,7 +45,7 @@ export function SpaceView({ id }: { id: string }) {
           <EmptyMedia variant="icon">
             <LayersIcon />
           </EmptyMedia>
-          <EmptyTitle>This space isn&apos;t available</EmptyTitle>
+          <EmptyTitle>This subject isn&apos;t available</EmptyTitle>
           <EmptyDescription>It may have been deleted.</EmptyDescription>
         </EmptyHeader>
         <EmptyContent>
@@ -62,7 +63,7 @@ export function SpaceView({ id }: { id: string }) {
         {space ? (
           <SpaceDetail key={space.id} space={space} />
         ) : (
-          <div className="space-y-4" aria-label="Loading space">
+          <div className="space-y-4" aria-label="Loading subject">
             <Skeleton className="h-9 w-1/2" />
             <Skeleton className="h-12 w-full rounded-3xl" />
             <Skeleton className="h-24 w-full rounded-xl" />
@@ -84,12 +85,19 @@ function SpaceDetail({ space }: { space: Space }) {
   const chats = (hydrated ? allConversations : undefined)?.filter((c) => c.spaceId === space.id) ?? [];
   const [editing, setEditing] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  const makeDeck = useMakeDeck();
+  // Reviewers made from this subject or from one of its files
+  const study = useQuery(studyQuery).data;
+  const decks =
+    (hydrated ? study : undefined)?.decks.filter(
+      (d) => d.spaceId === space.id || (d.documentId && space.documentIds.includes(d.documentId))
+    ) ?? [];
 
   const remove = useMutation({
     mutationFn: () => deleteSpace(space.id),
     onSuccess: (result) => {
       if (!result.ok) {
-        toast.error(result.message ?? "Couldn't delete this space. Try again.");
+        toast.error(result.message ?? "Couldn't delete this subject. Try again.");
         return;
       }
       toast.success(`“${space.name}” deleted`);
@@ -104,38 +112,58 @@ function SpaceDetail({ space }: { space: Space }) {
     <>
       <div className="flex items-start gap-2">
         <h1 className="min-w-0 flex-1 text-3xl font-bold tracking-tight wrap-anywhere">{space.name}</h1>
+        {inSpace.some((d) => d.status === "ready") && (
+          <Button
+            disabled={makeDeck.isPending}
+            onClick={() => makeDeck.mutate({ body: { spaceId: space.id }, name: space.name })}
+          >
+            <SparklesIcon />
+            Make a reviewer
+          </Button>
+        )}
         <Button variant="glass" onClick={() => setEditing(true)}>
           <PencilIcon />
           Edit
         </Button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" aria-label="More options for this space" className="text-muted-foreground">
+            <Button variant="ghost" size="icon" aria-label="More options for this subject" className="text-muted-foreground">
               <MoreHorizontalIcon />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-auto min-w-48">
             <DropdownMenuItem variant="destructive" className="gap-2.5 px-2.5 py-2" onSelect={() => setConfirming(true)}>
               <Trash2Icon />
-              Delete space
+              Delete subject
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
       <p className="mt-2 text-muted-foreground">
         {inSpace.length === 0
-          ? "Add documents, then ask questions that are answered only from them."
-          : `Answers come only from ${inSpace.length === 1 ? "this document" : `these ${inSpace.length} documents`}.`}
+          ? "Add your notes for this class, then ask questions or make a reviewer from them."
+          : `Answers and reviewers come only from ${inSpace.length === 1 ? "this file" : `these ${inSpace.length} files`}.`}
       </p>
 
       <div className="mt-8">
         <Composer spaceId={space.id} placeholder={`Ask ${space.name}`} busy={space.documentIds.length === 0} className="max-w-none" />
       </div>
 
+      {decks.length > 0 && (
+        <section aria-labelledby="space-decks" className="mt-14">
+          <h2 id="space-decks" className="text-xl font-semibold">
+            Reviewers
+          </h2>
+          <div className="mt-4">
+            <DeckList decks={decks} />
+          </div>
+        </section>
+      )}
+
       {/* Documents */}
       <section aria-labelledby="space-documents" className="mt-14">
         <h2 id="space-documents" className="text-xl font-semibold">
-          Documents
+          Files
         </h2>
         <div className="mt-4">
           {inSpace.length === 0 ? (
@@ -144,11 +172,11 @@ function SpaceDetail({ space }: { space: Space }) {
                 <EmptyMedia variant="icon">
                   <FileTextIcon />
                 </EmptyMedia>
-                <EmptyTitle>No documents yet</EmptyTitle>
-                <EmptyDescription>Pick documents from your library, or upload new ones.</EmptyDescription>
+                <EmptyTitle>No files yet</EmptyTitle>
+                <EmptyDescription>Pick notes from your library, or upload new ones.</EmptyDescription>
               </EmptyHeader>
               <EmptyContent>
-                <Button onClick={() => setEditing(true)}>Add documents</Button>
+                <Button onClick={() => setEditing(true)}>Add files</Button>
               </EmptyContent>
             </Empty>
           ) : (
@@ -225,7 +253,7 @@ function SpaceDetail({ space }: { space: Space }) {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete “{space.name}”?</AlertDialogTitle>
             <AlertDialogDescription>
-              Its documents stay in your library. Its chats stay in your history and will search all your documents.
+              Its files stay in your library, and its reviewers are deleted. Its chats stay in your history and will search all your files.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

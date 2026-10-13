@@ -31,7 +31,7 @@ export async function signIn(_prev: ActionState, formData: FormData): Promise<Ac
           : "Email or password is incorrect.",
     };
   }
-  redirect("/chat");
+  redirect("/study");
 }
 
 export async function signUp(_prev: ActionState, formData: FormData): Promise<ActionState> {
@@ -63,7 +63,7 @@ export async function signUp(_prev: ActionState, formData: FormData): Promise<Ac
   if (!data.session) {
     return { ok: true, message: `Check ${email} for a link to confirm your account.` };
   }
-  redirect("/chat");
+  redirect("/study");
 }
 
 export async function signOut() {
@@ -99,7 +99,7 @@ export async function resetPassword(_prev: ActionState, formData: FormData): Pro
   const supabase = await createClient();
   const { error } = await supabase.auth.updateUser({ password: parsed.data.password });
   if (error) return { ok: false, message: passwordError(error.code) };
-  redirect("/chat");
+  redirect("/study");
 }
 
 export async function updateProfile(_prev: ActionState, formData: FormData): Promise<ActionState> {

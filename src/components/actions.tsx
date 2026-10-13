@@ -13,7 +13,8 @@ import {
 } from "lucide-react";
 import { isDue } from "@/lib/leitner";
 import { conversationQuery } from "@/lib/queries";
-import type { Action, ActionKind, CardProgress, Conversation, Source } from "@/lib/types";
+import type { Action, ActionKind, Conversation, Source } from "@/lib/types";
+import { sourceName } from "@/lib/use-study";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,7 +28,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Spinner } from "@/components/ui/spinner";
 import { useSources } from "./sources";
-import { StudyDialog, type StudyMode } from "./study";
+import { StudyButtons, deckStatus } from "./deck";
+import { useStudySession } from "./study";
 
 // The actions that can be made from an answer so far
 const ACTIONS: { kind: ActionKind; label: string; pending: string; icon: LucideIcon }[] = [
@@ -36,7 +38,7 @@ const ACTIONS: { kind: ActionKind; label: string; pending: string; icon: LucideI
 ];
 
 // Applies a change to one answer's actions in the cached conversation
-function useUpdateActions(conversationId: string, messageId: string) {
+function useUpdateActions(conversationId: string, messageId: string | null) {
   const queryClient = useQueryClient();
   return (update: (actions: Action[]) => Action[]) =>
     queryClient.setQueryData<Conversation>(conversationQuery(conversationId).queryKey, (c) =>
@@ -98,34 +100,11 @@ export function ActionCard({ action, ...props }: CardProps) {
   }
 }
 
-const sourceName = (source: Source) => [source.documentTitle, source.headingPath].filter(Boolean).join(" › ");
-
 function FlashcardsCard({ conversationId, action, sources }: CardProps<"flashcards">) {
-  const updateActions = useUpdateActions(conversationId, action.messageId);
   const { cards, title } = action.payload;
-  const [progress, setProgress] = useState<Record<string, CardProgress>>(() => action.state.cards ?? {});
-  const [mode, setMode] = useState<StudyMode | null>(null);
-
-  const save = useMutation({
-    mutationFn: (next: Record<string, CardProgress>) =>
-      send(`/api/actions/${action.id}`, { method: "PATCH", body: JSON.stringify({ cards: next }) }),
-    onSuccess: (_, next) =>
-      updateActions((actions) => actions.map((a) => (a.id === action.id ? ({ ...a, state: { cards: next } } as Action) : a))),
-    onError: (error) => toast.error(error.message),
-  });
-
-  const onRate = (index: number, card: CardProgress) =>
-    setProgress((p) => {
-      const next = { ...p, [index]: card };
-      save.mutate(next);
-      return next;
-    });
-
-  // Recounted when a session ends, so the footer reflects what you just studied
-  const due = mode ? null : cards.filter((_, i) => isDue(progress[i])).length;
-  const nextDue = Object.values(progress)
-    .map((p) => p.due)
-    .sort()[0];
+  const session = useStudySession([action], sources);
+  const progress = session.progressOf(action);
+  const due = cards.filter((_, i) => isDue(progress[i])).length;
 
   return (
     <ActionShell
@@ -134,13 +113,7 @@ function FlashcardsCard({ conversationId, action, sources }: CardProps<"flashcar
       action={action}
       conversationId={conversationId}
       copyText={() => [title, ...cards.map((c) => `Q: ${c.front}\nA: ${c.back}`)].join("\n\n")}
-      footer={
-        due
-          ? `${cards.length} cards, ${due} to review now`
-          : nextDue
-            ? `All caught up. Next review ${new Date(nextDue).toLocaleDateString(undefined, { weekday: "long" })}`
-            : `${cards.length} cards`
-      }
+      footer={deckStatus(cards.length, due, progress)}
     >
       <ul className="grid gap-1 px-2 pb-1 text-muted-foreground">
         {cards.slice(0, 3).map((c, i) => (
@@ -151,23 +124,9 @@ function FlashcardsCard({ conversationId, action, sources }: CardProps<"flashcar
         {cards.length > 3 && <li className="text-xs">and {cards.length - 3} more</li>}
       </ul>
       <div className="mt-3 flex flex-wrap gap-2 px-2">
-        <Button onClick={() => setMode("cards")}>{due === cards.length ? "Study" : due ? `Review ${due}` : "Study again"}</Button>
-        <Button variant="outline" onClick={() => setMode("quiz")}>
-          Quiz me
-        </Button>
+        <StudyButtons due={due} total={cards.length} onStart={(mode) => session.start(mode, title)} />
       </div>
-      <StudyDialog
-        mode={mode}
-        onClose={() => setMode(null)}
-        title={title}
-        cards={cards}
-        progress={progress}
-        onRate={onRate}
-        sourceLabel={(card) => {
-          const source = sources.find((s) => s.chunkId === card.sourceId);
-          return source ? sourceName(source) : null;
-        }}
-      />
+      {session.dialog}
     </ActionShell>
   );
 }

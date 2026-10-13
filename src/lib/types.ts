@@ -51,6 +51,8 @@ export type ChecklistItem = {
 export type Flashcard = {
   front: string;
   back: string;
+  /** The concept it tests, like "Krebs cycle", for finding weak topics. Older cards have none. */
+  topic?: string;
   /** Plausible wrong answers, for quiz mode. */
   wrong: string[];
   sourceId: string | null;
@@ -61,7 +63,10 @@ export type CardProgress = { box: number; due: string };
 
 export type Action = {
   id: string;
-  messageId: string;
+  /** Where it was made from: an answer, a document or a subject. */
+  messageId: string | null;
+  documentId: string | null;
+  spaceId: string | null;
   createdAt: string;
 } & (
   | {
@@ -72,7 +77,8 @@ export type Action = {
     }
   | {
       kind: "flashcards";
-      payload: { title: string; cards: Flashcard[] };
+      /** `sources` holds the passages the cards cite, so a deck works on its own. */
+      payload: { title: string; cards: Flashcard[]; sources?: Source[] };
       /** Progress by card index; cards not in here are new. */
       state: { cards?: Record<string, CardProgress> };
     }
@@ -104,7 +110,17 @@ export type Space = {
   instructions: string;
   documentIds: string[];
   updatedAt: string;
+  studyMethod: StudyMethod;
 };
+
+/** How answers teach: quiz you, have you explain it, guide you with questions, or just answer. */
+export type StudyMethod = "recall" | "feynman" | "socratic" | "answer";
+
+/** The timer your buddy runs with you. */
+export type FocusMethod = "pomodoro" | "52-17" | "flow";
+
+export type AttemptResult = "right" | "almost" | "wrong";
+export type StudyMode = "cards" | "quiz" | "recall";
 
 export type ActionState = {
   ok: boolean;
@@ -120,3 +136,30 @@ export type Pet = import("./pet-art").PetLook & {
   sleptAt: string;
   xp: number;
 };
+
+export type FlashcardsAction = Extract<Action, { kind: "flashcards" }>;
+
+/** A flashcard deck, with where it came from. */
+export type Deck = FlashcardsAction & {
+  origin: { kind: "chat" | "document" | "subject"; label: string; href: string | null };
+};
+
+/** A concept the student keeps missing, and the cards that test it. */
+export type WeakTopic = {
+  topic: string;
+  /** 0 to 1, from recent attempts: right counts 1, almost a half. */
+  score: number;
+  attempts: number;
+  cards: { deckId: string; index: number }[];
+};
+
+export type StudyOverview = {
+  decks: Deck[];
+  weakTopics: WeakTopic[];
+  week: { reviewed: number; accuracy: number | null; focusMinutes: number; sessions: number };
+  /** When you studied recently, by the hour, for working out your streak in your own time zone. */
+  activity: string[];
+};
+
+/** How a typed answer was marked. */
+export type CheckResult = { deckId: string; index: number; result: AttemptResult; feedback: string };

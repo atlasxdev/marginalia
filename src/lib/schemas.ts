@@ -91,7 +91,7 @@ export const MAX_SPACE_INSTRUCTIONS = 1000;
 // Without an id, a new space is created
 export const spaceSchema = z.object({
   id: z.uuid().optional(),
-  name: z.string().trim().min(1, "Give the space a name.").max(80, "Keep names under 80 characters."),
+  name: z.string().trim().min(1, "Give the subject a name.").max(80, "Keep names under 80 characters."),
   instructions: z
     .string()
     .trim()

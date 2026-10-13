@@ -19,7 +19,9 @@ import { PetSprite, type Face } from "./pet-sprite";
  * Your pet in the sidebar: a little screen with it, its mood and its needs.
  * Tap it to pick up its handheld (a dialog on desktop, a sheet on phones).
  * Before you have a pet, it offers to hatch one. It also hands out XP as you
- * use Marginalia: +5 for an answered question, +3 for an upload.
+ * use Marginalia: +5 for an answered question, +3 for an upload, and more for
+ * studying: a point per card reviewed and per card right, and one per two
+ * minutes of focus.
  */
 export function PetWidget({ onOpen }: { onOpen?: () => void }) {
   const pet = useQuery(petQuery);
@@ -36,12 +38,22 @@ export function PetWidget({ onOpen }: { onOpen?: () => void }) {
   useEffect(
     () =>
       onPetSignal((s) => {
-        const gain = s.kind === "found" ? 5 : s.kind === "eat" ? 3 : 0;
+        const gain =
+          s.kind === "found" ? 5
+          : s.kind === "eat" ? 3
+          : s.kind === "studied" ? Math.min(s.count, 10) + Math.min(s.right, 10)
+          : s.kind === "focused" ? Math.min(Math.round(s.minutes / 2), 30)
+          : 0;
         if (gain && queryClient.getQueryData(["pet"])) {
           queryClient.setQueryData<Pet | null>(["pet"], (p) => (p ? { ...p, xp: p.xp + gain } : p));
           void addPetXp(gain);
         }
-        const show: Face | null = s.kind === "found" ? "happy" : s.kind === "shrug" ? "flat" : s.kind === "eat" ? "chomp" : s.kind === "reading" ? "side" : null;
+        const show: Face | null =
+          s.kind === "found" || s.kind === "studied" || s.kind === "focused" ? "happy"
+          : s.kind === "shrug" ? "flat"
+          : s.kind === "eat" ? "chomp"
+          : s.kind === "reading" ? "side"
+          : null;
         setFace(show);
         if (s.kind !== "reading") setTimeout(() => setFace(null), 1600);
       }),

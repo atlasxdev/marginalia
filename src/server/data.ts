@@ -149,12 +149,23 @@ export async function getConversation(supabase: Supabase, id: string): Promise<C
   };
 }
 
-type ActionRow = { id: string; message_id: string; kind: string; payload: unknown; state: unknown; created_at: string };
+export type ActionRow = {
+  id: string;
+  message_id: string | null;
+  document_id?: string | null;
+  space_id?: string | null;
+  kind: string;
+  payload: unknown;
+  state: unknown;
+  created_at: string;
+};
 
 export const toAction = (a: ActionRow): Action =>
   ({
     id: a.id,
     messageId: a.message_id,
+    documentId: a.document_id ?? null,
+    spaceId: a.space_id ?? null,
     kind: a.kind,
     payload: a.payload,
     state: a.state ?? {},
@@ -178,6 +189,7 @@ const toSpace = (s: {
   name: string;
   instructions: string;
   updated_at: string;
+  study_method?: Space["studyMethod"];
   space_documents: { document_id: string }[];
 }): Space => ({
   id: s.id,
@@ -185,12 +197,14 @@ const toSpace = (s: {
   instructions: s.instructions,
   documentIds: s.space_documents.map((d) => d.document_id),
   updatedAt: s.updated_at,
+  studyMethod: s.study_method ?? "recall",
 });
 
 export async function listSpaces(supabase: Supabase): Promise<Space[]> {
   const { data, error } = await supabase
     .from("spaces")
-    .select("id, name, instructions, updated_at, space_documents(document_id)")
+    // All columns, so this works before the study migration adds study_method
+    .select("*, space_documents(document_id)")
     .order("updated_at", { ascending: false });
   if (error) throw error;
   return data.map(toSpace);
@@ -199,7 +213,8 @@ export async function listSpaces(supabase: Supabase): Promise<Space[]> {
 export async function getSpace(supabase: Supabase, id: string): Promise<Space | null> {
   const { data, error } = await supabase
     .from("spaces")
-    .select("id, name, instructions, updated_at, space_documents(document_id)")
+    // All columns, so this works before the study migration adds study_method
+    .select("*, space_documents(document_id)")
     .eq("id", id)
     .maybeSingle();
   if (error || !data) return null;
