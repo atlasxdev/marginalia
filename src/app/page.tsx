@@ -1,16 +1,19 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, Brain, Check, GraduationCap, Lightbulb, Mail, MapPin, Timer } from "lucide-react";
+import { ArrowRight, Brain, Check, GraduationCap, Lightbulb, Mail, Play, Timer } from "lucide-react";
 import {
-  DocChip, FeatureTour, HandheldDemo, NavShell, OpeningWordmark, Reveal, SessionDemo, SpotlightCard, Steps, StreamedAnswer,
+  DocChip, FeatureTour, HandheldDemo, HeroBadge, HeroStage, NavShell, OpeningWordmark, Reveal, SpotlightCard, Steps, StreamedAnswer, Tour,
 } from "@/components/landing";
-import { Wordmark } from "@/components/logo";
-import { ProductShot } from "@/components/product-shot";
+import { MarginNote, Wordmark } from "@/components/logo";
+import { DeviceDuo } from "@/components/product-shot";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { SITE_URL } from "@/lib/site";
 
+// Kept under ~155 characters so search results show it whole
 const DESCRIPTION =
+  "Turn your lecture notes into flashcards and study with a pixel buddy that checks your answers, explains what you miss and runs practice exams.";
+const LONG_DESCRIPTION =
   "Add your lecture notes and they turn into flashcards on their own. Study in focus sessions with a pixel buddy that checks your answers against your notes, explains what you miss, runs practice exams and plays your own study music.";
 
 export const metadata: Metadata = {
@@ -39,12 +42,34 @@ const JSON_LD = {
   "@type": "WebApplication",
   name: "Marginalia",
   url: SITE_URL,
-  description: DESCRIPTION,
+  description: LONG_DESCRIPTION,
   applicationCategory: "EducationalApplication",
   operatingSystem: "Web",
   image: `${SITE_URL}/product/og.png`,
   offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
   author: { "@type": "Person", name: "Ace Guevarra", url: "https://www.aceguevarra.xyz" },
+  featureList: [
+    "Flashcards made from your own notes",
+    "Typed answers checked against your notes",
+    "Explanations when you miss a card",
+    "Spaced review",
+    "Timed practice exams with a score for every topic",
+    "Focus sessions with Pomodoro timers and breaks",
+    "Your own study music",
+    "A pixel study buddy that levels up",
+  ],
+  screenshot: `${SITE_URL}/product/today-light.webp`,
+};
+
+const VIDEO_LD = {
+  "@context": "https://schema.org",
+  "@type": "VideoObject",
+  name: "Marginalia in 30 seconds",
+  description: "Your notes become flashcards, Mochi studies with you and explains what you miss, and practice exams show your weak topics.",
+  thumbnailUrl: `${SITE_URL}/marginalia-promo.jpg`,
+  contentUrl: `${SITE_URL}/marginalia-promo.mp4`,
+  uploadDate: "2026-10-13",
+  duration: "PT28S",
 };
 
 /* The four ways Marginalia helps. Each is a set of real features, not a separate mode. */
@@ -93,7 +118,6 @@ const ME = {
   email: "aceguevarra.dev@gmail.com",
   github: "https://github.com/atlasxdev",
   linkedin: "https://www.linkedin.com/in/devace-guevarra/",
-  location: "Calamba City, Laguna",
 };
 
 const GitHubIcon = () => (
@@ -107,6 +131,7 @@ export default function Landing() {
   return (
     <div className="min-h-dvh overflow-x-clip">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(VIDEO_LD) }} />
       {/* Drifting colour behind the glass */}
       <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
         <div className="absolute -top-40 -left-40 size-[38rem] rounded-full bg-primary/20 blur-3xl animate-[drift_22s_ease-in-out_infinite_alternate] motion-reduce:animate-none" />
@@ -138,14 +163,8 @@ export default function Landing() {
 
       <main>
         {/* Hero */}
-        <section className="mx-auto max-w-6xl px-5 pt-16 pb-20 text-center sm:pt-24">
-          <span className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-sm font-medium text-primary animate-in fade-in zoom-in-95 duration-300">
-            <span className="relative flex size-2">
-              <span className="absolute inline-flex size-full animate-ping rounded-full bg-primary opacity-60 motion-reduce:animate-none" />
-              <span className="relative inline-flex size-2 rounded-full bg-primary" />
-            </span>
-            Your study buddy
-          </span>
+        <section className="mx-auto max-w-6xl px-5 pt-16 pb-16 text-center sm:pt-24 sm:pb-24">
+          <HeroBadge />
           <h1 className="mx-auto mt-6 max-w-3xl text-4xl font-semibold tracking-tight text-balance sm:text-6xl">
             <span className="block animate-in fade-in slide-in-from-bottom-4 fill-mode-both duration-500">Study from your own notes.</span>
             <span className="block animate-in fade-in slide-in-from-bottom-4 fill-mode-both delay-75 duration-500">With a buddy that keeps you going.</span>
@@ -158,22 +177,22 @@ export default function Landing() {
               <Link href="/sign-up">Start studying<ArrowRight data-icon="inline-end" className="transition-transform group-hover/cta:translate-x-0.5" /></Link>
             </Button>
             <Button asChild variant="glass" size="lg" className="h-11 px-5 text-base">
-              <a href="#how">See how it works</a>
+              <a href="#watch"><Play data-icon="inline-start" className="fill-current" />Watch the film</a>
             </Button>
           </div>
           <div className="mx-auto mt-14 max-w-4xl animate-in fade-in slide-in-from-bottom-8 fill-mode-both delay-300 duration-700">
-            <SessionDemo />
+            <HeroStage />
           </div>
         </section>
 
         {/* On devices */}
-        <section className="mx-auto max-w-6xl px-5 pb-12">
+        <section className="mx-auto max-w-6xl px-5 pt-16 pb-12 sm:pt-28">
           <Reveal className="text-center">
             <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">On your laptop and your phone.</h2>
             <p className="mx-auto mt-4 max-w-xl text-lg text-muted-foreground">Study at your desk, review on the bus. Your subjects, cards and buddy, wherever you are.</p>
           </Reveal>
           <Reveal delay={80} className="mt-10">
-            <ProductShot name="devices" alt="A Marginalia study session on a laptop, and Today on a phone" />
+            <DeviceDuo />
           </Reveal>
         </section>
 
@@ -263,6 +282,16 @@ export default function Landing() {
           <Steps steps={STEPS} />
         </section>
 
+        {/* The film */}
+        <section id="watch" className="mx-auto max-w-6xl scroll-mt-24 px-5 py-20">
+          <Reveal>
+            <h2 className="max-w-2xl text-3xl font-semibold tracking-tight sm:text-4xl">See it in 30 seconds.</h2>
+          </Reveal>
+          <Reveal delay={80} className="mt-10">
+            <Tour />
+          </Reveal>
+        </section>
+
         {/* Call to action */}
         <section className="mx-auto max-w-6xl px-5 pt-10 pb-24">
           <Reveal>
@@ -285,7 +314,10 @@ export default function Landing() {
       <footer className="border-t border-border">
         <div className="mx-auto grid max-w-6xl gap-8 px-5 py-12 md:grid-cols-[1.4fr_1fr_1fr]">
           <div>
-            <Wordmark className="text-2xl" />
+            <div className="inline-grid justify-items-end">
+              <Wordmark className="text-3xl" />
+              <MarginNote className="mr-3 text-lg">notes in the margin</MarginNote>
+            </div>
             <p className="mt-3 max-w-xs text-sm text-muted-foreground">Your study buddy for your own notes. Every answer shows the line it came from.</p>
           </div>
           <div className="text-sm">
@@ -303,7 +335,6 @@ export default function Landing() {
             <ul className="mt-3 space-y-2 text-muted-foreground">
               <li><a href={ME.site} className="transition-colors hover:text-foreground">aceguevarra.xyz</a></li>
               <li><a href={`mailto:${ME.email}`} className="inline-flex items-center gap-2 transition-colors hover:text-foreground"><Mail className="size-4" />{ME.email}</a></li>
-              <li className="inline-flex items-center gap-2"><MapPin className="size-4" />{ME.location}</li>
             </ul>
             <div className="mt-4 flex gap-2">
               <Button asChild variant="glass" size="icon-lg" aria-label="GitHub"><a href={ME.github}><GitHubIcon /></a></Button>

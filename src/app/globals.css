@@ -351,6 +351,7 @@
 }
 
 /* Landing page: the colour drifting behind the glass, and a find bar that shakes on no results */
+@keyframes eq { from { transform: scaleY(0.3); } to { transform: scaleY(1); } }
 @keyframes drift {
   from { transform: translate(0, 0) scale(1); }
   to { transform: translate(6rem, 4rem) scale(1.15); }
@@ -399,6 +400,12 @@
 }
 
 /* Your buddy reacting to an answer: a hop for right, a squash for wrong */
+/* Mochi on the hero badge: still, then a hop every few seconds */
+@keyframes pet-hop-idle {
+  0%, 84%, 100% { transform: translateY(0) scale(1, 1); }
+  88% { transform: translateY(1px) scale(1.12, 0.88); }
+  93% { transform: translateY(-4px) scale(0.92, 1.1); }
+}
 @keyframes pet-hop {
   0%, 100% { transform: translateY(0) scale(1, 1); }
   30% { transform: translateY(1px) scale(1.12, 0.88); }

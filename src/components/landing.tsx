@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { CircleDashed, FileText } from "lucide-react";
-import { motion } from "motion/react";
+import { ChevronRight, CircleDashed, FileText, Play } from "lucide-react";
+import { motion, useScroll, useTransform } from "motion/react";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { DEFAULT_LOOK } from "@/lib/pet-art";
 import { cn } from "@/lib/utils";
@@ -1197,5 +1197,114 @@ export function FeatureTour() {
         })}
       </div>
     </>
+  );
+}
+
+/* ---------- the hero: the session, with the rest of the app floating around it ---------- */
+
+/** The session demo, with a flashcard, an exam score and the music player tilted around it; they drift apart as you scroll. */
+export function HeroStage() {
+  const ref = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({ target: ref, offset: ["start end", "end start"] });
+  const reduced = useReducedMotion();
+  const up = useTransform(scrollYProgress, [0, 1], reduced ? [0, 0] : [60, -60]);
+  const down = useTransform(scrollYProgress, [0, 1], reduced ? [0, 0] : [-30, 50]);
+  const float = "absolute z-10 hidden rounded-2xl bg-card text-left shadow-2xl ring-1 ring-foreground/10 xl:block dark:shadow-black/40";
+  return (
+    <div ref={ref} className="relative">
+      <div aria-hidden className="absolute inset-x-10 -inset-y-10 -z-10 blur-3xl" style={{ background: "radial-gradient(50% 50% at 50% 50%, color-mix(in oklab, var(--primary) 22%, transparent), transparent 70%)" }} />
+      {/* A flashcard made from your notes */}
+      <motion.div aria-hidden style={{ y: up }} className={cn(float, "top-24 -left-40 w-64 -rotate-[8deg] p-5 min-[1500px]:-left-56")}>
+        <div className="flex items-center justify-between text-xs font-medium text-muted-foreground">
+          <span>Biology</span>
+          <span className="rounded-full bg-foreground/5 px-2 py-0.5">Card 2</span>
+        </div>
+        <p className="mt-6 mb-5 text-center text-lg leading-snug font-semibold tracking-tight">What does the Krebs cycle release?</p>
+        <p className="text-[11px] text-muted-foreground">From Lecture 3, respiration.pdf</p>
+      </motion.div>
+      {/* A practice exam, marked */}
+      <motion.div aria-hidden style={{ y: down }} className={cn(float, "top-6 -right-36 w-60 rotate-[7deg] p-5 min-[1500px]:-right-52")}>
+        <p className="text-xs text-muted-foreground">Practice exam: Biology</p>
+        <p className="mt-1 text-4xl font-bold tracking-tight tabular-nums">71%</p>
+        <div className="mt-3 grid gap-2">
+          {[["Glycolysis", 100, "bg-success"], ["Krebs cycle", 75, "bg-success"], ["Fermentation", 33, "bg-destructive"]].map(([t, w, c]) => (
+            <div key={t as string}>
+              <p className="text-xs font-medium">{t}</p>
+              <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-foreground/10">
+                <div className={cn("h-full rounded-full", c as string)} style={{ width: `${w}%` }} />
+              </div>
+            </div>
+          ))}
+        </div>
+      </motion.div>
+      {/* Your own music, playing */}
+      <motion.div aria-hidden style={{ y: up }} className={cn(float, "-right-28 bottom-16 w-64 rotate-[-4deg] rounded-full min-[1500px]:-right-44")}>
+        <div className="flex items-center gap-3 py-2.5 pr-5 pl-2.5">
+        <span className="grid size-9 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground">
+          <span className="flex h-3.5 items-end gap-0.5">
+            {[0, 1, 2].map((b) => (
+              <span key={b} className="w-0.5 origin-bottom rounded-full bg-current animate-[eq_900ms_ease-in-out_infinite_alternate] motion-reduce:animate-none" style={{ height: "100%", animationDelay: `${b * 160}ms` }} />
+            ))}
+          </span>
+        </span>
+        <span className="min-w-0">
+          <span className="block truncate text-sm font-semibold">Lofi for Biology</span>
+          <span className="block text-xs text-muted-foreground">Rainy focus</span>
+        </span>
+        </div>
+      </motion.div>
+      <SessionDemo />
+    </div>
+  );
+}
+
+/* ---------- the film ---------- */
+
+export function Tour() {
+  const ref = useRef<HTMLVideoElement>(null);
+  const [playing, setPlaying] = useState(false);
+  return (
+    <div className="glass relative rounded-2xl border border-glass-border bg-glass p-2 sm:p-3">
+      <video
+        ref={ref}
+        src="/marginalia-promo.mp4"
+        poster="/marginalia-promo.jpg"
+        controls={playing}
+        playsInline
+        preload="none"
+        onPlay={() => setPlaying(true)}
+        className="aspect-video w-full rounded-xl bg-card"
+      />
+      {!playing && (
+        <button type="button" onClick={() => ref.current?.play()} className="group/play absolute inset-0 grid place-items-center rounded-2xl" aria-label="Play the film">
+          <span className="glass flex items-center gap-3 rounded-full border border-glass-border bg-glass-strong py-3 pr-6 pl-3 font-medium transition-transform duration-150 group-hover/play:scale-105 group-active/play:scale-95">
+            <span className="raised grid size-11 place-items-center rounded-full bg-primary text-primary-foreground">
+              <Play className="size-5 translate-x-px fill-current" />
+            </span>
+            Play the film
+          </span>
+        </button>
+      )}
+    </div>
+  );
+}
+
+/* ---------- the hero's badge: Mochi says hi ---------- */
+
+/** A glass pill with Mochi, hopping now and then; it jumps to the buddy section. */
+export function HeroBadge() {
+  return (
+    <a
+      href="#buddy"
+      className="group/badge glass inline-flex items-center gap-2.5 rounded-full border border-glass-border bg-glass py-1 pr-3 pl-1.5 text-sm font-medium shadow-sm transition-transform duration-150 animate-in fade-in zoom-in-95 hover:scale-[1.03] active:scale-[0.98]"
+    >
+      <span className="grid size-8 place-items-center rounded-full bg-primary/10">
+        <PetSprite look={DEFAULT_LOOK} face="happy" className="h-6 w-[22px] origin-bottom animate-[pet-hop-idle_3.2s_ease-out_infinite] group-hover/badge:animate-[pet-hop_400ms_ease-out] motion-reduce:animate-none" />
+      </span>
+      <span>
+        Meet Mochi, <span className="text-primary">your study buddy</span>
+      </span>
+      <ChevronRight className="size-4 text-muted-foreground transition-transform duration-150 group-hover/badge:translate-x-0.5" />
+    </a>
   );
 }
