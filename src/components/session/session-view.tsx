@@ -114,6 +114,8 @@ function Session({ overview, space, scope }: { overview: StudyOverview; space?: 
   const [focus, setFocus] = useState({ ms: 0, since: 0 });
   const paused = pausedLeft !== null;
   const timer = TIMERS[method];
+  // Without a timer, a break you take yourself is 5 minutes
+  const restSeconds = timer.rest || 5 * 60;
 
   useEffect(() => {
     const tick = () => setNow(Date.now());
@@ -146,9 +148,9 @@ function Session({ overview, space, scope }: { overview: StudyOverview; space?: 
     closeSegment();
     // Cards missed this block come first next block
     setQueue((q) => [...q.filter((s) => s.reason === "again"), ...q.filter((s) => s.reason !== "again")]);
-    setBreakEndsAt(Date.now() + timer.rest * 1000);
+    setBreakEndsAt(Date.now() + restSeconds * 1000);
     setPhase("break");
-  }, [closeSegment, timer.rest]);
+  }, [closeSegment, restSeconds]);
 
   // The block ends when its time is up
   useEffect(() => {
@@ -232,7 +234,7 @@ function Session({ overview, space, scope }: { overview: StudyOverview; space?: 
 
   const timeLeft = phase === "break" ? ((breakEndsAt ?? now) - now) / 1000 : focusLeft;
   const timeFraction =
-    phase === "break" ? (timer.rest ? Math.max(0, timeLeft ?? 0) / timer.rest : 0) : timer.focus && focusLeft !== null ? Math.max(0, focusLeft) / timer.focus : null;
+    phase === "break" ? Math.max(0, timeLeft ?? 0) / restSeconds : timer.focus && focusLeft !== null ? Math.max(0, focusLeft) / timer.focus : null;
 
   return (
     <div className="flex min-h-dvh flex-col">
@@ -309,17 +311,15 @@ function Session({ overview, space, scope }: { overview: StudyOverview; space?: 
                 <Perch pet={pet} reaction={reaction} onExplain={(step) => setAsking({ step, question: "Explain why this is the answer, simply." })} />
                 <StepView key={`${current.key}-${stepSeq}`} step={current} onAnswer={(r) => answer(current, r)} onNext={next} />
               </div>
-              <div className="mt-6 flex flex-wrap justify-center gap-2">
-                <Button variant="ghost" size="sm" onClick={() => current && setAsking({ step: current })} className="text-muted-foreground">
+              <div className="mt-8 flex flex-wrap justify-center gap-3">
+                <Button variant="glass" onClick={() => current && setAsking({ step: current })}>
                   <MessageCircleQuestionIcon />
                   Ask {pet?.name ?? "your buddy"}
                 </Button>
-                {timer.focus && (
-                  <Button variant="ghost" size="sm" onClick={takeBreak} className="text-muted-foreground">
-                    <CoffeeIcon />
-                    Take a break
-                  </Button>
-                )}
+                <Button variant="glass" onClick={takeBreak}>
+                  <CoffeeIcon />
+                  Take a break
+                </Button>
               </div>
             </>
           ) : null}

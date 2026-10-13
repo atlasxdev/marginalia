@@ -50,99 +50,124 @@ function Today({ overview, spaces, documents }: { overview: StudyOverview; space
   const router = useRouter();
   const pet = useQuery(petQuery).data;
   const name = useQuery(meQuery).data?.user_metadata?.name as string | undefined;
-  const chats = useQuery(conversationsQuery).data?.filter((c) => !c.spaceId).slice(0, 5) ?? [];
+  const chats = useQuery(conversationsQuery).data?.filter((c) => !c.spaceId).slice(0, 4) ?? [];
   const [creating, setCreating] = useState(false);
+  const [hour] = useState(() => new Date().getHours());
   const { decks, weakTopics, week, activity } = overview;
   const due = dueCount(decks);
   const streak = streakFrom(activity);
-  // Reviewers that aren't in any subject yet, like ones from a general chat
+  // Flashcards that aren't in any subject yet, like ones from a general chat
   const loose = decks.filter((d) => !spaces.some((s) => subjectDecks([d], s).length));
 
-  const greeting =
-    spaces.length === 0 || (decks.length === 0 && activity.length === 0)
-      ? "Let's get you set up. Three steps and we're studying."
-      : due
-        ? `${waitingLine(cardCounts(decks))} today. Let's get through them together.`
-        : weakTopics[0]
-          ? `You're all caught up. ${weakTopics[0].topic} could use another go.`
-          : "You're all caught up. Nice work.";
+  // Today's pick: the subject with reviews due first, then weak topics, then new cards
+  const ranked = spaces
+    .map((s) => {
+      const sd = subjectDecks(decks, s);
+      const counts = cardCounts(sd);
+      const weak = topicsIn(weakTopics, sd);
+      return { space: s, counts, weak, score: counts.review * 3 + weak.length * 2 + (counts.fresh ? 1 : 0) };
+    })
+    .filter((r) => r.score > 0)
+    .sort((a, b) => b.score - a.score);
+  const pick = ranked[0];
+  const first = name?.split(" ")[0];
+  const hello = `${hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening"}${first ? `, ${first}` : ""}`;
+  const plan = pick
+    ? [waitingLine(pick.counts), pick.weak[0] && `${pick.weak[0].topic} needs work`].filter(Boolean).join(", and ")
+    : null;
 
   return (
     <>
-      <div className="flex items-center gap-4">
-        {pet && (
-          <span className="grid size-16 shrink-0 place-items-end justify-center overflow-hidden rounded-2xl bg-[#e7effc] pb-1.5 ring-1 ring-foreground/10 dark:bg-[#2b354a]">
-            <PetSprite look={pet} face={due ? "side" : "happy"} book={!!due} className="h-[50px] w-12" />
-          </span>
-        )}
-        <div className="min-w-0">
-          <h1 className="text-3xl font-bold tracking-tight">{name ? `Hi, ${name.split(" ")[0]}` : "Today"}</h1>
-          <p className="mt-1 text-muted-foreground">
-            {pet && <span className="font-medium text-foreground">{pet.name}: </span>}
-            {greeting}
-          </p>
+      {/* Hero: your buddy, today's pick, your week */}
+      <section aria-labelledby="today-title" className={`${groupClass} rounded-2xl p-6 sm:p-8`}>
+        <div className="flex flex-col gap-6 sm:flex-row sm:items-center">
+          {pet && (
+            <span className="grid h-24 w-28 shrink-0 place-items-end justify-center overflow-hidden rounded-[22px] bg-[#e7effc] pb-3 ring-1 ring-foreground/10 dark:bg-[#2b354a]">
+              <PetSprite look={pet} face={due ? "side" : "happy"} book={!!due} className="h-16 w-[60px] animate-[pet-read_2.4s_ease-in-out_infinite] motion-reduce:animate-none" />
+            </span>
+          )}
+          <div className="min-w-0 flex-1">
+            <h1 id="today-title" className="text-3xl font-bold tracking-tight">
+              {hello}
+            </h1>
+            <p className="mt-1.5 text-lg text-muted-foreground text-balance">
+              {spaces.length === 0 || (decks.length === 0 && activity.length === 0)
+                ? "Let's get you set up. Three steps and we're studying."
+                : pick
+                  ? `${pet?.name ?? "Your buddy"} suggests ${pick.space.name}: ${plan}.`
+                  : "You're all caught up. Nice work."}
+            </p>
+          </div>
+          {pick && (
+            <div className="flex shrink-0 flex-col gap-2">
+              <Button size="lg" asChild className="h-12 px-6 text-base">
+                <Link href={sessionHref({ subject: pick.space.id })}>
+                  <PlayIcon />
+                  Start with {pick.space.name}
+                </Link>
+              </Button>
+              {ranked.length > 1 && due > 0 && (
+                <Button variant="ghost" size="sm" asChild className="text-muted-foreground">
+                  <Link href={sessionHref({})}>Or study everything ({due})</Link>
+                </Button>
+              )}
+            </div>
+          )}
         </div>
-      </div>
+
+        {decks.length > 0 && (
+          <dl className="mt-6 grid grid-cols-2 gap-y-4 border-t border-glass-divider pt-5 sm:grid-cols-4">
+            {[
+              ["Streak", streak ? `${streak} ${streak === 1 ? "day" : "days"}` : "Start today"],
+              ["Cards this week", String(week.reviewed)],
+              ["Right this week", week.accuracy === null ? "None yet" : `${Math.round(week.accuracy * 100)}%`],
+              ["Focus this week", week.focusMinutes ? minutes(week.focusMinutes) : "None yet"],
+            ].map(([label, value]) => (
+              <div key={label}>
+                <dt className="text-xs text-muted-foreground">{label}</dt>
+                <dd className="mt-0.5 text-lg font-semibold tracking-tight tabular-nums">{value}</dd>
+              </div>
+            ))}
+          </dl>
+        )}
+      </section>
 
       {/* Until the first session, three steps show the way */}
       {activity.length === 0 && <GettingStarted spaces={spaces} decks={decks} documents={documents} pet={pet} onCreate={() => setCreating(true)} />}
 
       {spaces.length > 0 && (
-        <>
-          {due > 0 && (
-            <div className="mt-6">
-              <Button size="lg" asChild>
-                <Link href={sessionHref({})}>
-                  <PlayIcon />
-                  Study all subjects ({due} cards)
-                </Link>
-              </Button>
-            </div>
-          )}
-
-          <section aria-labelledby="subjects" className="mt-10">
-            <div className="flex items-center justify-between gap-3">
-              <h2 id="subjects" className="text-xl font-semibold">
-                Your subjects
-              </h2>
-              <Button variant="ghost" size="sm" onClick={() => setCreating(true)}>
-                <PlusIcon />
-                New subject
-              </Button>
-            </div>
-            <ItemGroup className={`${groupClass} mt-4 gap-0`}>
-              {spaces.map((s, i) => (
-                <Fragment key={s.id}>
-                  {i > 0 && <ItemSeparator className="my-0 bg-glass-divider" />}
-                  <SubjectRow space={s} overview={overview} documents={documents} />
-                </Fragment>
-              ))}
-            </ItemGroup>
-          </section>
-        </>
-      )}
-
-      {decks.length > 0 && (
-        <dl className="mt-10 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <Stat label="Streak" value={streak ? `${streak} ${streak === 1 ? "day" : "days"}` : "Start today"} />
-          <Stat label="Cards this week" value={String(week.reviewed)} />
-          <Stat label="Right this week" value={week.accuracy === null ? "None yet" : `${Math.round(week.accuracy * 100)}%`} />
-          <Stat label="Focus this week" value={week.focusMinutes ? minutes(week.focusMinutes) : "None yet"} />
-        </dl>
+        <section aria-labelledby="subjects" className="mt-12">
+          <div className="flex items-center justify-between gap-3">
+            <h2 id="subjects" className="text-xl font-semibold">
+              Your subjects
+            </h2>
+            <Button variant="glass" size="sm" onClick={() => setCreating(true)}>
+              <PlusIcon />
+              New subject
+            </Button>
+          </div>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {spaces.map((s) => (
+              <SubjectCard key={s.id} space={s} overview={overview} documents={documents} />
+            ))}
+          </div>
+        </section>
       )}
 
       {weakTopics.length > 0 && (
-        <section aria-labelledby="weak-topics" className="mt-14">
+        <section aria-labelledby="weak-topics" className="mt-12">
           <h2 id="weak-topics" className="text-xl font-semibold">
             Needs work
           </h2>
-          <p className="mt-1 text-sm text-muted-foreground">Topics you&apos;ve been missing lately, weakest first.</p>
-          <WeakTopicList topics={weakTopics} />
+          <WeakTopicList
+            topics={weakTopics.slice(0, 3)}
+            subjectOf={(t) => spaces.find((s) => topicsIn([t], subjectDecks(decks, s)).length)}
+          />
         </section>
       )}
 
       {documents.length > 0 && (
-        <section aria-labelledby="ask-all" className="mt-14">
+        <section aria-labelledby="ask-all" className="mt-12">
           <h2 id="ask-all" className="text-xl font-semibold">
             Ask all your notes
           </h2>
@@ -155,11 +180,11 @@ function Today({ overview, spaces, documents }: { overview: StudyOverview; space
       )}
 
       {loose.length > 0 && (
-        <section aria-labelledby="loose-decks" className="mt-14">
+        <section aria-labelledby="loose-decks" className="mt-12">
           <h2 id="loose-decks" className="text-xl font-semibold">
-            Other flashcards
+            Not in a subject
           </h2>
-          <p className="mt-1 text-sm text-muted-foreground">Made outside a subject.</p>
+          <p className="mt-1 text-sm text-muted-foreground">Flashcards from files or chats outside your subjects.</p>
           <div className="mt-4">
             <DeckList decks={loose} />
           </div>
@@ -171,77 +196,76 @@ function Today({ overview, spaces, documents }: { overview: StudyOverview; space
   );
 }
 
-/** A subject and the one thing it needs next. */
-function SubjectRow({ space, overview, documents }: { space: Space; overview: StudyOverview; documents: DocumentItem[] }) {
+/** A subject as a card: its progress, and the one thing it needs next. */
+function SubjectCard({ space, overview, documents }: { space: Space; overview: StudyOverview; documents: DocumentItem[] }) {
   const makeDeck = useMakeDeck();
+  const queue = useCardQueue();
   const decks = subjectDecks(overview.decks, space);
-  const due = dueCount(decks);
+  const counts = cardCounts(decks);
   const weak = topicsIn(overview.weakTopics, decks)[0];
   const files = documents.filter((d) => space.documentIds.includes(d.id));
   const readyFiles = files.filter((d) => d.status === "ready").length;
   const cards = decks.reduce((n, d) => n + d.payload.cards.length, 0);
-  const queue = useCardQueue();
+  const learned = Math.max(0, cards - counts.review - counts.fresh);
   const preparing = files.some((d) => queue.includes(d.id) || d.status === "pending" || d.status === "processing");
 
   const status =
     files.length === 0
       ? "No notes yet"
       : decks.length === 0
-        ? `${files.length} ${files.length === 1 ? "file" : "files"}, no flashcards yet`
-        : [due ? waitingLine(cardCounts(decks)) : "All caught up", weak && `${weak.topic} is weak`].filter(Boolean).join(", ");
+        ? preparing
+          ? "Making flashcards…"
+          : "No flashcards yet"
+        : counts.review || counts.fresh
+          ? waitingLine(counts)
+          : "All caught up";
 
   return (
-    <Item className="flex-wrap gap-y-3 px-5 py-4">
-      <ItemContent className="min-w-40">
-        <ItemTitle className="text-[15px]">
-          <Link href={`/spaces/${space.id}`} className="hover:underline">
-            {space.name}
-          </Link>
-        </ItemTitle>
-        <ItemDescription>
-          {status}
-          {cards > 0 && <span className="text-muted-foreground/70">{` (${cards} cards)`}</span>}
-        </ItemDescription>
-      </ItemContent>
-      <ItemActions>
+    <div className={`${groupClass} group/card relative flex min-h-44 flex-col rounded-2xl p-5 transition-colors duration-150 hover:bg-glass-strong`}>
+      <Link href={`/spaces/${space.id}`} className="absolute inset-0 rounded-2xl" aria-label={`Open ${space.name}`} />
+      <p className="truncate text-lg font-semibold">{space.name}</p>
+      <p className="mt-0.5 text-sm text-muted-foreground">
+        {files.length} {files.length === 1 ? "file" : "files"}
+        {cards > 0 && `, ${cards} cards`}
+      </p>
+      {cards > 0 && (
+        <div className="mt-4 flex h-1.5 overflow-hidden rounded-full bg-foreground/10" aria-label={`${learned} of ${cards} learned`}>
+          <div className="bg-success" style={{ width: `${(learned / cards) * 100}%` }} />
+          <div className="bg-primary" style={{ width: `${(counts.review / cards) * 100}%` }} />
+        </div>
+      )}
+      <p className="mt-3 text-sm">
+        {status}
+        {weak && <span className="text-muted-foreground">. {weak.topic} is weak</span>}
+      </p>
+      <div className="relative mt-auto pt-4">
         {files.length === 0 ? (
-          <Button variant="outline" asChild>
+          <Button variant="outline" size="sm" asChild>
             <Link href={`/spaces/${space.id}`}>
               <PlusIcon />
               Add notes
             </Link>
           </Button>
         ) : decks.length === 0 ? (
-          preparing ? (
-            <Button variant="outline" disabled>
-              <Spinner />
-              Making flashcards…
-            </Button>
-          ) : (
-            <Button
-              variant="outline"
-              disabled={readyFiles === 0 || makeDeck.isPending}
-              onClick={() => makeDeck.mutate({ body: { spaceId: space.id }, name: space.name })}
-            >
-              <SparklesIcon />
-              Make flashcards
-            </Button>
-          )
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={preparing || readyFiles === 0 || makeDeck.isPending}
+            onClick={() => makeDeck.mutate({ body: { spaceId: space.id }, name: space.name })}
+          >
+            {preparing ? <Spinner /> : <SparklesIcon />}
+            {preparing ? "Making flashcards…" : "Make flashcards"}
+          </Button>
         ) : (
-          <Button variant={due ? "default" : "outline"} asChild>
+          <Button variant={counts.review ? "default" : "outline"} size="sm" asChild>
             <Link href={sessionHref({ subject: space.id })}>
               <PlayIcon />
-              {due ? "Study" : "Practice"}
+              {counts.review || counts.fresh ? "Study" : "Practice"}
             </Link>
           </Button>
         )}
-        <Button variant="ghost" size="icon" asChild aria-label={`Open ${space.name}`} className="text-muted-foreground">
-          <Link href={`/spaces/${space.id}`}>
-            <ChevronRightIcon />
-          </Link>
-        </Button>
-      </ItemActions>
-    </Item>
+      </div>
+    </div>
   );
 }
 
@@ -375,17 +399,8 @@ function RecentChats({ chats }: { chats: ConversationSummary[] }) {
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className={`${groupClass} px-4 py-3`}>
-      <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd className="mt-1 text-xl font-semibold tracking-tight tabular-nums">{value}</dd>
-    </div>
-  );
-}
-
 /** Weak topics, each with a session on just that topic. */
-export function WeakTopicList({ topics, subjectId }: { topics: WeakTopic[]; subjectId?: string }) {
+export function WeakTopicList({ topics, subjectId, subjectOf }: { topics: WeakTopic[]; subjectId?: string; subjectOf?: (t: WeakTopic) => Space | undefined }) {
   return (
     <ItemGroup className={`${groupClass} mt-4 gap-0`}>
       {topics.map((t, i) => (
@@ -395,6 +410,7 @@ export function WeakTopicList({ topics, subjectId }: { topics: WeakTopic[]; subj
             <ItemContent className="min-w-40">
               <ItemTitle className="text-[15px]">{t.topic}</ItemTitle>
               <ItemDescription>
+                {subjectOf?.(t) && <span className="font-medium text-foreground/80">{subjectOf(t)!.name}: </span>}
                 {Math.round(t.score * 100)}% right in your last {t.attempts} tries
               </ItemDescription>
               <div className="mt-1 h-1.5 w-40 overflow-hidden rounded-full bg-foreground/10" aria-hidden>
@@ -403,7 +419,7 @@ export function WeakTopicList({ topics, subjectId }: { topics: WeakTopic[]; subj
             </ItemContent>
             <ItemActions>
               <Button variant="outline" asChild>
-                <Link href={sessionHref({ topic: t.topic, subject: subjectId })}>
+                <Link href={sessionHref({ topic: t.topic, subject: subjectId ?? subjectOf?.(t)?.id })}>
                   <TargetIcon />
                   Practice
                 </Link>
