@@ -1,19 +1,20 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, Mail, MapPin, NotebookPen, Quote, SearchX } from "lucide-react";
+import { ArrowRight, Brain, CalendarClock, GalleryVerticalEnd, Mail, MapPin, Quote } from "lucide-react";
 import {
-  DocChip, FindPlayground, LiveDemo, NavShell, OpeningWordmark, Reveal, SpotlightCard, Steps, StreamedAnswer, Tour,
+  DocChip, FocusDemo, LiveDemo, NavShell, OpeningWordmark, RecallDemo, Reveal, SpotlightCard, Steps, StreamedAnswer, Tour,
 } from "@/components/landing";
 import { Wordmark } from "@/components/logo";
-import { ProductShot } from "@/components/product-shot";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { SITE_URL } from "@/lib/site";
+import { STUDY_METHODS } from "@/lib/study-methods";
 
-const DESCRIPTION = "Upload PDFs, Word docs and notes, then ask in plain words. Every answer shows the line it came from.";
+const DESCRIPTION =
+  "Turn your lecture notes into flashcards and quizzes, each cited to the line it came from. Your pixel study buddy checks your answers, runs your focus sessions and tells you what to review next.";
 
 export const metadata: Metadata = {
-  title: { absolute: "Marginalia · Ask your documents" },
+  title: { absolute: "Marginalia · Your study buddy for your own notes" },
   description: DESCRIPTION,
   alternates: { canonical: "/" },
   openGraph: {
@@ -21,11 +22,16 @@ export const metadata: Metadata = {
     siteName: "Marginalia",
     locale: "en_US",
     url: "/",
-    title: "Marginalia: ask your documents",
+    title: "Marginalia: your study buddy for your own notes",
     description: DESCRIPTION,
     images: [{ url: "/product/og.png", width: 1200, height: 630, alt: "Marginalia on a laptop and a phone" }],
   },
-  twitter: { card: "summary_large_image", title: "Marginalia: ask your documents", description: DESCRIPTION, images: ["/product/og.png"] },
+  twitter: {
+    card: "summary_large_image",
+    title: "Marginalia: your study buddy for your own notes",
+    description: DESCRIPTION,
+    images: ["/product/og.png"],
+  },
 };
 
 const JSON_LD = {
@@ -34,7 +40,7 @@ const JSON_LD = {
   name: "Marginalia",
   url: SITE_URL,
   description: DESCRIPTION,
-  applicationCategory: "ProductivityApplication",
+  applicationCategory: "EducationalApplication",
   operatingSystem: "Web",
   image: `${SITE_URL}/product/og.png`,
   offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
@@ -42,21 +48,38 @@ const JSON_LD = {
 };
 
 const FEATURES = [
-  { icon: Quote, title: "Every answer shows its source", body: "Tap a citation and the page opens with the passage highlighted, so you can check it yourself." },
-  { icon: SearchX, title: "No made-up answers", body: "If your files don't say, Marginalia tells you so instead of guessing." },
-  { icon: NotebookPen, title: "Write notes in it", body: "Draft in Markdown with a live preview. Save, and you can ask about it straight away." },
+  {
+    icon: GalleryVerticalEnd,
+    title: "A reviewer in one tap",
+    body: "Pick a subject or a file and get flashcards on what you'd be tested on. No more writing reviewers by hand.",
+  },
+  {
+    icon: Brain,
+    title: "Answers checked against your notes",
+    body: "Type what you remember in your own words. Your buddy marks it right, almost or wrong, and shows the line.",
+  },
+  {
+    icon: CalendarClock,
+    title: "Knows what to review next",
+    body: "Cards come back right before you'd forget them, and the topics you keep missing come up first.",
+  },
+  {
+    icon: Quote,
+    title: "Every answer shows its source",
+    body: "Tap a citation and the page opens with the passage highlighted. If your notes don't say, it tells you.",
+  },
 ];
 
 const USES = [
-  { who: "Lecture notes", file: "ECON 101, lecture 4.pdf", q: "What causes inflation?", a: "Mostly **too much money chasing too few goods.**" },
-  { who: "Your lease", file: "Lease agreement.pdf", q: "Can I have a cat?", a: "Yes, with the **landlord's written permission** and a $300 deposit." },
-  { who: "Work docs", file: "IT onboarding.docx", q: "Which VPN do I set up?", a: "**GlobalProtect,** from the Self Service app on day one." },
+  { who: "Biology", file: "Lecture 3, respiration.pdf", q: "What does the electron transport chain make?", a: "Most of the cell's **ATP,** about **34 per glucose.**" },
+  { who: "History", file: "Chapter 9 reading.docx", q: "Why was France in crisis by 1788?", a: "It was **deep in debt** from war, and **bread prices had doubled.**" },
+  { who: "Economics", file: "ECON 101, lecture 4.pdf", q: "How do central banks slow inflation?", a: "They **raise interest rates.**" },
 ];
 
 const STEPS = [
   { title: "Sign up", body: "Just an email and a password." },
-  { title: "Add your files", body: "PDFs, Word documents or your own notes." },
-  { title: "Ask anything", body: "In plain words. Every answer shows where it came from." },
+  { title: "Add your notes", body: "Lecture notes, readings and handouts, grouped by subject." },
+  { title: "Study with your buddy", body: "Make a reviewer, test yourself, and focus together." },
 ];
 
 const ME = {
@@ -93,7 +116,7 @@ export default function Landing() {
           </Link>
           <div className="hidden items-center gap-7 text-sm text-muted-foreground md:flex">
             <a href="#features" className="transition-colors hover:text-foreground">Features</a>
-            <a href="#uses" className="transition-colors hover:text-foreground">Use cases</a>
+            <a href="#buddy" className="transition-colors hover:text-foreground">Your buddy</a>
             <a href="#how" className="transition-colors hover:text-foreground">How it works</a>
           </div>
           <div className="flex items-center gap-1">
@@ -102,7 +125,7 @@ export default function Landing() {
               <Link href="/sign-in">Sign in</Link>
             </Button>
             <Button asChild size="lg">
-              <Link href="/sign-up">Get started</Link>
+              <Link href="/sign-up">Start studying</Link>
             </Button>
           </div>
         </NavShell>
@@ -116,18 +139,18 @@ export default function Landing() {
               <span className="absolute inline-flex size-full animate-ping rounded-full bg-primary opacity-60 motion-reduce:animate-none" />
               <span className="relative inline-flex size-2 rounded-full bg-primary" />
             </span>
-            Answers with sources
+            Your study buddy
           </span>
           <h1 className="mx-auto mt-6 max-w-3xl text-4xl font-semibold tracking-tight text-balance sm:text-6xl">
-            <span className="block animate-in fade-in slide-in-from-bottom-4 fill-mode-both duration-500">Ask your documents.</span>
-            <span className="block animate-in fade-in slide-in-from-bottom-4 fill-mode-both delay-75 duration-500">See where every answer came from.</span>
+            <span className="block animate-in fade-in slide-in-from-bottom-4 fill-mode-both duration-500">Study from your own notes.</span>
+            <span className="block animate-in fade-in slide-in-from-bottom-4 fill-mode-both delay-75 duration-500">With a buddy that keeps you going.</span>
           </h1>
           <p className="mx-auto mt-5 max-w-xl text-lg text-pretty text-muted-foreground animate-in fade-in fill-mode-both delay-150 duration-500">
-            Upload PDFs, Word docs and your own notes, then ask in plain words. Marginalia answers in the margin, next to the line it came from.
+            Upload your lecture notes and readings. Marginalia turns them into flashcards and quizzes, checks your answers against your notes, and runs your focus sessions with you.
           </p>
           <div className="mt-8 flex flex-col justify-center gap-3 animate-in fade-in slide-in-from-bottom-2 fill-mode-both delay-200 duration-500 sm:flex-row">
             <Button asChild size="lg" className="group/cta h-11 px-5 text-base">
-              <Link href="/sign-up">Get started<ArrowRight data-icon="inline-end" className="transition-transform group-hover/cta:translate-x-0.5" /></Link>
+              <Link href="/sign-up">Start studying<ArrowRight data-icon="inline-end" className="transition-transform group-hover/cta:translate-x-0.5" /></Link>
             </Button>
             <Button asChild variant="glass" size="lg" className="h-11 px-5 text-base">
               <a href="#watch">Watch the 30-second tour</a>
@@ -138,46 +161,28 @@ export default function Landing() {
           </div>
         </section>
 
-        {/* On devices */}
-        <section className="mx-auto max-w-6xl px-5 pb-12">
-          <Reveal className="text-center">
-            <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">On your laptop and your phone.</h2>
-            <p className="mx-auto mt-4 max-w-xl text-lg text-muted-foreground">The same library and the same chats, wherever you happen to be reading.</p>
-          </Reveal>
-          <Reveal delay={80} className="mt-10">
-            <ProductShot name="hero" alt="Marginalia answering a question with cited sources, on a laptop and a phone" />
-          </Reveal>
-        </section>
-
-        {/* The problem */}
+        {/* Test me */}
         <section className="mx-auto max-w-6xl px-5 py-20">
-          <Reveal className="max-w-2xl">
-            <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">Search finds words. Marginalia finds answers.</h2>
-            <p className="mt-4 text-lg text-muted-foreground">
-              The handbook says “roll over”. You searched “carry over”. Ctrl+F gives up. Marginalia understands what you meant.
-            </p>
-          </Reveal>
-          <div className="mt-10 grid gap-4 md:grid-cols-2">
-            <Reveal><FindPlayground /></Reveal>
-            <Reveal delay={80} className="h-full">
-              <div className="h-full rounded-xl bg-card p-6 ring-1 ring-foreground/10">
-                <p className="text-sm font-medium text-muted-foreground">Marginalia</p>
-                <div className="mt-4">
-                  <StreamedAnswer question="Does unused leave carry over?" answer="Yes. Up to **5 unused days** roll over to next year." source="Employee handbook, page 31" delay={700} />
-                </div>
-                <p className="mt-4 text-sm text-muted-foreground">Same handbook, asked the way you&apos;d ask a person.</p>
-              </div>
+          <div className="grid items-center gap-10 lg:grid-cols-[1fr_1.1fr]">
+            <Reveal>
+              <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">Say it in your own words. Your buddy checks it.</h2>
+              <p className="mt-4 text-lg text-muted-foreground">
+                Rereading feels like studying. Recalling is what sticks. Type what you remember, and Marginalia marks it right, almost or wrong against your notes, with the line that has the full answer.
+              </p>
+            </Reveal>
+            <Reveal delay={80}>
+              <RecallDemo />
             </Reveal>
           </div>
         </section>
 
         {/* Features */}
         <section id="features" className="mx-auto max-w-6xl scroll-mt-24 px-5 py-20">
-          <Reveal><h2 className="max-w-2xl text-3xl font-semibold tracking-tight sm:text-4xl">Answers you can check.</h2></Reveal>
-          <Reveal delay={80} className="mt-10">
-            <ProductShot name="laptop-sources" alt="The sources beside an answer, each cited passage highlighted" className="mx-auto max-w-4xl" />
+          <Reveal>
+            <h2 className="max-w-2xl text-3xl font-semibold tracking-tight sm:text-4xl">Built for how studying actually works.</h2>
+            <p className="mt-4 max-w-2xl text-lg text-muted-foreground">From a pile of notes to knowing it, without writing a single flashcard yourself.</p>
           </Reveal>
-          <div className="mt-10 grid gap-4 md:grid-cols-3">
+          <div className="mt-10 grid gap-4 sm:grid-cols-2">
             {FEATURES.map(({ icon: Icon, title, body }, i) => (
               <Reveal key={title} delay={i * 60} className="h-full">
                 <SpotlightCard className="p-6">
@@ -192,11 +197,47 @@ export default function Landing() {
           </div>
         </section>
 
+        {/* Your buddy */}
+        <section id="buddy" className="mx-auto max-w-6xl scroll-mt-24 px-5 py-20">
+          <div className="grid items-center gap-10 lg:grid-cols-[1.1fr_1fr]">
+            <Reveal delay={80} className="lg:order-last">
+              <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">A study buddy that studies with you.</h2>
+              <p className="mt-4 text-lg text-muted-foreground">
+                Hatch a pixel buddy and it joins every session. It reads beside your Pomodoro timer, rests with you on breaks, hops when you get one right, and reminds you what&apos;s due. The more you study, the more it grows.
+              </p>
+              <p className="mt-4 text-muted-foreground">Pomodoro, 52 / 17, or a flow timer that runs as long as your focus does.</p>
+            </Reveal>
+            <Reveal>
+              <FocusDemo />
+            </Reveal>
+          </div>
+        </section>
+
+        {/* Study methods */}
+        <section className="mx-auto max-w-6xl px-5 py-20">
+          <Reveal>
+            <h2 className="max-w-2xl text-3xl font-semibold tracking-tight sm:text-4xl">Study your way.</h2>
+            <p className="mt-4 max-w-2xl text-lg text-muted-foreground">
+              Choose how your buddy teaches, for each subject. Every method still answers only from your notes.
+            </p>
+          </Reveal>
+          <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {Object.values(STUDY_METHODS).map((m, i) => (
+              <Reveal key={m.name} delay={i * 60} className="h-full">
+                <SpotlightCard className="p-5">
+                  <h3 className="font-semibold">{m.name}</h3>
+                  <p className="mt-2 text-sm text-muted-foreground">{m.detail}</p>
+                </SpotlightCard>
+              </Reveal>
+            ))}
+          </div>
+        </section>
+
         {/* Use cases */}
         <section id="uses" className="mx-auto max-w-6xl scroll-mt-24 px-5 py-20">
           <Reveal>
-            <h2 className="max-w-2xl text-3xl font-semibold tracking-tight sm:text-4xl">For whatever you have to read.</h2>
-            <p className="mt-4 max-w-2xl text-lg text-muted-foreground">Class notes before an exam, the fine print in a lease, the docs you get on your first week. Hover a card to ask again.</p>
+            <h2 className="max-w-2xl text-3xl font-semibold tracking-tight sm:text-4xl">For every class.</h2>
+            <p className="mt-4 max-w-2xl text-lg text-muted-foreground">Ask your notes like you&apos;d ask a classmate who actually took them. Hover a card to ask again.</p>
           </Reveal>
           <div className="mt-10 grid gap-4 md:grid-cols-3">
             {USES.map((u, i) => (
@@ -215,26 +256,11 @@ export default function Landing() {
           </div>
         </section>
 
-        {/* The pet */}
-        <section className="mx-auto max-w-6xl px-5 py-20">
-          <div className="grid items-center gap-10 lg:grid-cols-[1fr_1.4fr]">
-            <Reveal>
-              <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">A little friend while you read.</h2>
-              <p className="mt-4 text-lg text-muted-foreground">
-                Hatch a pixel pet and keep it in a pocket handheld. Feed it, play catch with it, put it to bed. It reads along with you and levels up every time you ask a question or add a file.
-              </p>
-            </Reveal>
-            <Reveal delay={80}>
-              <ProductShot name="laptop-pet" alt="Mochi, a pixel cat in glasses, in its handheld inside Marginalia" />
-            </Reveal>
-          </div>
-        </section>
-
         {/* How it works */}
         <section id="how" className="mx-auto max-w-6xl scroll-mt-24 px-5 py-20">
           <Reveal>
             <h2 className="max-w-2xl text-3xl font-semibold tracking-tight sm:text-4xl">Start in under a minute.</h2>
-            <p className="mt-4 max-w-2xl text-lg text-muted-foreground">Three steps from sign-up to your first cited answer.</p>
+            <p className="mt-4 max-w-2xl text-lg text-muted-foreground">Three steps from sign-up to your first reviewer.</p>
           </Reveal>
           <Steps steps={STEPS} />
         </section>
@@ -250,10 +276,10 @@ export default function Landing() {
           <Reveal>
             <div className="glass rounded-2xl border border-glass-border bg-glass px-6 py-16 text-center">
               <OpeningWordmark />
-              <p className="mx-auto mt-8 max-w-md text-2xl font-semibold tracking-tight">Try it with your own documents.</p>
+              <p className="mx-auto mt-8 max-w-md text-2xl font-semibold tracking-tight">Bring your notes. Your buddy&apos;s ready.</p>
               <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
                 <Button asChild size="lg" className="group/cta h-11 px-5 text-base">
-                  <Link href="/sign-up">Get started<ArrowRight data-icon="inline-end" className="transition-transform group-hover/cta:translate-x-0.5" /></Link>
+                  <Link href="/sign-up">Start studying<ArrowRight data-icon="inline-end" className="transition-transform group-hover/cta:translate-x-0.5" /></Link>
                 </Button>
                 <Button asChild variant="ghost" size="lg" className="h-11 px-5 text-base">
                   <Link href="/sign-in">I have an account</Link>
@@ -268,14 +294,15 @@ export default function Landing() {
         <div className="mx-auto grid max-w-6xl gap-8 px-5 py-12 md:grid-cols-[1.4fr_1fr_1fr]">
           <div>
             <Wordmark className="text-2xl" />
-            <p className="mt-3 max-w-xs text-sm text-muted-foreground">Ask your documents. Every answer shows the line it came from.</p>
+            <p className="mt-3 max-w-xs text-sm text-muted-foreground">Your study buddy for your own notes. Every answer shows the line it came from.</p>
           </div>
           <div className="text-sm">
             <p className="font-medium">Product</p>
             <ul className="mt-3 space-y-2 text-muted-foreground">
               <li><a href="#features" className="transition-colors hover:text-foreground">Features</a></li>
+              <li><a href="#buddy" className="transition-colors hover:text-foreground">Your buddy</a></li>
               <li><a href="#how" className="transition-colors hover:text-foreground">How it works</a></li>
-              <li><Link href="/sign-up" className="transition-colors hover:text-foreground">Get started</Link></li>
+              <li><Link href="/sign-up" className="transition-colors hover:text-foreground">Start studying</Link></li>
               <li><Link href="/sign-in" className="transition-colors hover:text-foreground">Sign in</Link></li>
             </ul>
           </div>

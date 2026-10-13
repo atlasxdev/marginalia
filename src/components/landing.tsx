@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { ArrowUp, BookOpen, FileText, GraduationCap, House, Play, Search } from "lucide-react";
+import { ArrowUp, CircleDashed, FileText, FlaskConical, Landmark, Play, TrendingUp } from "lucide-react";
 import { motion } from "motion/react";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { DEFAULT_LOOK } from "@/lib/pet-art";
 import { cn } from "@/lib/utils";
+import { PetSprite } from "./pet/pet-sprite";
 
 /*
  * The landing page's moving parts, drawn from the app's own tokens and classes
@@ -200,38 +202,38 @@ export function AnswerNote({
 
 const EXAMPLES = [
   {
-    id: "handbook",
-    label: "Handbook",
-    meta: "Employee handbook, page 31",
-    title: "8.3 Annual leave",
+    id: "biology",
+    label: "Biology",
+    meta: "Biology notes, lecture 3",
+    title: "Cellular respiration",
     paras: [
-      "Full-time employees receive 15 days of paid annual leave a year, credited monthly.",
-      "Up to 5 unused days roll over to the next year. Anything above that is forfeited on 31 December.",
-      "Leave requests should be made at least 10 working days in advance.",
-      "Unpaid leave can be agreed with your manager for up to three months.",
+      "Cellular respiration turns glucose into ATP, the cell's energy, in three stages.",
+      "Glycolysis happens in the cytoplasm and splits one glucose into two pyruvate, for a net gain of 2 ATP.",
+      "The Krebs cycle runs in the mitochondrial matrix and releases carbon dioxide.",
+      "The electron transport chain makes most of the ATP, about 34 per glucose.",
     ],
-    q: "Does unused leave carry over?",
-    a: "Yes. Up to **5 unused days** roll over to next year.",
-    hand: "“roll over” = “carry over” ✓",
+    q: "Where does glycolysis happen?",
+    a: "In the **cytoplasm,** and it nets **2 ATP** per glucose.",
+    hand: "on the quiz ✓",
   },
   {
-    id: "lease",
-    label: "Lease",
-    meta: "Lease agreement, page 6",
-    title: "12. Pets",
+    id: "history",
+    label: "History",
+    meta: "World history reading, chapter 9",
+    title: "The French Revolution",
     paras: [
-      "The tenant keeps the property clean and free of damage.",
-      "Pets are allowed with the landlord's written permission and a $300 deposit.",
-      "Smoking is not allowed anywhere on the property.",
-      "Guests may stay for up to 14 nights in a row.",
+      "By 1788 France was deep in debt after years of war, and bread prices had doubled.",
+      "The storming of the Bastille on 14 July 1789 marked the start of the Revolution.",
+      "The National Assembly abolished feudal privileges that August.",
+      "The Declaration of the Rights of Man followed later the same month.",
     ],
-    q: "Can I have a cat?",
-    a: "Yes, with **written permission** and a $300 deposit.",
-    hand: "a cat counts as a pet ✓",
+    q: "When did the French Revolution start?",
+    a: "On **14 July 1789,** with the storming of the Bastille.",
+    hand: "date to remember ✓",
   },
   {
-    id: "lecture",
-    label: "Lecture notes",
+    id: "econ",
+    label: "Economics",
     meta: "ECON 101, lecture 4",
     title: "Why prices rise",
     paras: [
@@ -247,9 +249,9 @@ const EXAMPLES = [
 ] as const;
 const TARGET = 1;
 const EXAMPLE_ICONS: Record<string, React.ReactNode> = {
-  handbook: <BookOpen />,
-  lease: <House />,
-  lecture: <GraduationCap />,
+  biology: <FlaskConical />,
+  history: <Landmark />,
+  econ: <TrendingUp />,
 };
 
 /**
@@ -335,7 +337,7 @@ export function LiveDemo() {
       <div className="mb-5 flex justify-center">
         <Segmented
           id="example"
-          label="Example document"
+          label="Example notes"
           value={ex.id}
           onChange={(v) => {
             const n = EXAMPLES.findIndex((e) => e.id === v);
@@ -378,7 +380,7 @@ export function LiveDemo() {
           {/* The composer */}
           <div className="glass absolute inset-x-4 bottom-4 flex h-14 items-center gap-3 rounded-xl border border-glass-border bg-glass pr-2 pl-4 sm:inset-x-8 sm:bottom-6">
             <span className={cn("flex-1 truncate", !sent && typed ? "text-foreground" : "text-muted-foreground")}>
-              {!sent && typed ? typed : "Ask about your documents"}
+              {!sent && typed ? typed : "Ask about your notes"}
               {!sent && typed && <span className="ml-0.5 inline-block h-5 w-0.5 translate-y-1 animate-pulse bg-primary" />}
             </span>
             <span className={cn("raised grid size-10 place-items-center rounded-lg bg-primary text-primary-foreground transition-transform duration-150", pressed && "scale-90")}>
@@ -388,68 +390,6 @@ export function LiveDemo() {
         </div>
       </div>
       {done && !reduced && <p className="mt-3 text-center text-sm text-muted-foreground animate-in fade-in duration-300">Hover the <span className="cite" data-active>1</span> to see where it came from.</p>}
-    </div>
-  );
-}
-
-/* ---------- search vs ask: a find bar you can type into ---------- */
-
-const PASSAGE = "Up to 5 unused days roll over to the next year. Anything above that is forfeited on 31 December. Leave requests should be made at least 10 working days in advance.";
-
-export function FindPlayground() {
-  const reduced = useReducedMotion();
-  const [ref, inView] = useInView<HTMLDivElement>();
-  const [query, setQuery] = useState("");
-  const [touched, setTouched] = useState(false);
-  const [shake, setShake] = useState(0);
-
-  // Types "carry over" by itself the first time it's seen
-  useEffect(() => {
-    if (!inView || touched || reduced) return;
-    const target = "carry over";
-    let n = 0;
-    const id = setInterval(() => {
-      n++;
-      setQuery(target.slice(0, n));
-      if (n >= target.length) { clearInterval(id); setShake((s) => s + 1); }
-    }, 60);
-    return () => clearInterval(id);
-  }, [inView, touched, reduced]);
-
-  // With reduced motion the search is just filled in
-  const q = (!touched && reduced && inView ? "carry over" : query).trim().toLowerCase();
-  const hits = q ? PASSAGE.toLowerCase().split(q).length - 1 : 0;
-  const parts = q ? PASSAGE.split(new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`, "i")) : [PASSAGE];
-
-  return (
-    <div ref={ref} className="rounded-xl bg-card p-6 ring-1 ring-foreground/10">
-      <p className="text-sm font-medium text-muted-foreground">Find in page</p>
-      <label
-        key={shake}
-        className={cn(
-          "mt-4 flex items-center gap-3 rounded-lg border-2 bg-background px-4 py-3 transition-colors",
-          q && hits === 0 ? "animate-[shake_.4s_ease-in-out] border-destructive" : "border-primary",
-        )}
-      >
-        <Search className="size-4 text-muted-foreground" />
-        <input
-          value={!touched && reduced && inView ? "carry over" : query}
-          onChange={(e) => { setTouched(true); setQuery(e.target.value); }}
-          onFocus={() => setTouched(true)}
-          className="min-w-0 flex-1 bg-transparent font-medium outline-none placeholder:text-muted-foreground"
-          placeholder="Type to search"
-          aria-label="Find in page"
-        />
-        <span className={cn("text-sm font-semibold tabular-nums", hits ? "text-primary" : "text-destructive")}>
-          {q ? `${hits} result${hits === 1 ? "" : "s"}` : ""}
-        </span>
-      </label>
-      <p className="mt-5 leading-relaxed text-muted-foreground">
-        {parts.map((p, i) => (p.toLowerCase() === q && q ? <mark key={i} className="mark" data-active="true">{p}</mark> : <span key={i}>{p}</span>))}
-      </p>
-      <p className="mt-4 text-sm text-muted-foreground">
-        Exact words only. {q && !hits ? <>Try <button type="button" className="link" onClick={() => { setTouched(true); setQuery("roll over"); }}>roll over</button>.</> : "Now ask it the way you'd ask a person."}
-      </p>
     </div>
   );
 }
@@ -555,9 +495,9 @@ function SignUpCard({ front }: { front: boolean }) {
 }
 
 const DROPPED: [string, string, string][] = [
-  ["PDF", "bg-destructive", "Employee handbook.pdf"],
-  ["DOC", "bg-primary", "Lease agreement.docx"],
-  ["MD", "bg-muted-foreground", "Lecture 4 notes.md"],
+  ["PDF", "bg-destructive", "Biology lecture 3.pdf"],
+  ["DOC", "bg-primary", "History reading, ch 9.docx"],
+  ["MD", "bg-muted-foreground", "Midterm reviewer.md"],
 ];
 function FilesCard({ front }: { front: boolean }) {
   const t = useStepClock(front);
@@ -588,32 +528,37 @@ function FilesCard({ front }: { front: boolean }) {
   );
 }
 
-function AskCard({ front }: { front: boolean }) {
+// A flashcard from your notes flips, and you got it
+function StudyCard({ front }: { front: boolean }) {
   const t = useStepClock(front);
-  const q = "Does unused leave carry over?";
-  const typed = q.slice(0, Math.max(0, Math.floor((t - 150) / 28)));
-  const sent = t > 150 + q.length * 28 + 150;
-  const shown = sent ? Math.max(0, Math.floor((t - (150 + q.length * 28 + 350)) / 45)) : 0;
+  const flipped = t > 1100;
+  const rated = t > 2200;
   return (
     <div className="space-y-2.5">
-      {sent ? (
-        <AnswerNote question={q} answer="Yes. Up to **5 unused days** roll over to next year." shown={shown} className="animate-in fade-in zoom-in-95 duration-200 p-3" />
-      ) : (
-        <div className="h-[7.6rem] rounded-xl border border-dashed border-border" />
-      )}
-      <div className="flex h-10 items-center gap-2 rounded-lg border border-input bg-background pr-1 pl-3 text-sm">
-        <span className={cn("flex-1 truncate", sent || !typed ? "text-muted-foreground" : "")}>
-          {sent || !typed ? "Ask about your documents" : typed}
-        </span>
-        <span className={cn("raised grid size-8 place-items-center rounded-md bg-primary text-primary-foreground transition-transform duration-150", t > 150 + q.length * 28 && t < 150 + q.length * 28 + 200 && "scale-90")}>
-          <ArrowUp className="size-4" />
+      <div className="perspective-[900px]">
+        <div className={cn("relative grid h-[7.6rem] transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] transform-3d motion-reduce:transition-none", flipped && "rotate-y-180")}>
+          <div className="col-start-1 row-start-1 flex flex-col rounded-xl bg-card p-3 ring-1 ring-foreground/10 backface-hidden">
+            <span className="text-[10px] font-medium text-muted-foreground">Glycolysis</span>
+            <p className="my-auto text-center text-sm font-medium">Where does glycolysis happen?</p>
+          </div>
+          <div className="col-start-1 row-start-1 flex rotate-y-180 flex-col rounded-xl bg-primary/5 p-3 ring-1 ring-foreground/10 backface-hidden">
+            <span className="text-[10px] font-medium text-muted-foreground">Answer</span>
+            <p className="my-auto text-center text-sm font-medium">In the cytoplasm</p>
+            <span className="truncate text-[10px] text-muted-foreground">From Biology lecture 3</span>
+          </div>
+        </div>
+      </div>
+      <div className="grid h-10 grid-cols-2 gap-2 text-sm font-medium">
+        <span className="grid place-items-center rounded-lg border border-input bg-background">Again</span>
+        <span className={cn("raised grid place-items-center rounded-lg bg-primary text-primary-foreground transition-transform duration-150", rated && t < 2400 && "scale-95")}>
+          {rated ? <span className="animate-in fade-in zoom-in-75 duration-200">Got it ✓</span> : "Got it"}
         </span>
       </div>
     </div>
   );
 }
 
-const STEP_SCENES = [SignUpCard, FilesCard, AskCard];
+const STEP_SCENES = [SignUpCard, FilesCard, StudyCard];
 
 export function Steps({ steps }: { steps: { title: string; body: string }[] }) {
   const reduced = useReducedMotion();
@@ -778,20 +723,117 @@ export function AuthShowcase() {
   return (
     <div ref={ref} className="w-full max-w-lg">
       <div className="relative rounded-2xl bg-card p-7 text-left shadow-xl ring-1 ring-foreground/10 dark:shadow-black/40">
-        <p className="text-xs text-muted-foreground">Employee handbook, page 31</p>
-        <h3 className="mt-2 text-xl font-semibold tracking-tight">8.3 Annual leave</h3>
-        <p className="mt-3 text-sm leading-relaxed text-muted-foreground">Full-time employees receive 15 days of paid annual leave a year, credited monthly.</p>
+        <p className="text-xs text-muted-foreground">Biology notes, lecture 3</p>
+        <h3 className="mt-2 text-xl font-semibold tracking-tight">Cellular respiration</h3>
+        <p className="mt-3 text-sm leading-relaxed text-muted-foreground">Cellular respiration turns glucose into ATP, the cell&apos;s energy, in three stages.</p>
         <p className="relative mt-3 ml-5 text-sm leading-relaxed">
           <MarginBracket drawn={inView} />
-          <Marked on={inView}>Up to 5 unused days roll over to the next year. Anything above that is forfeited on 31 December.</Marked>
+          <Marked on={inView}>Glycolysis happens in the cytoplasm and splits one glucose into two pyruvate, for a net gain of 2 ATP.</Marked>
         </p>
-        <p className="mt-3 text-sm leading-relaxed text-muted-foreground">Leave requests should be made at least 10 working days in advance.</p>
+        <p className="mt-3 text-sm leading-relaxed text-muted-foreground">The Krebs cycle runs in the mitochondrial matrix and releases carbon dioxide.</p>
         <div className="mt-5 lg:absolute lg:top-full lg:-right-8 lg:-mt-8 lg:w-80">
-          <StreamedAnswer question="Does unused leave carry over?" answer="Yes. Up to **5 unused days** roll over to next year." source="Employee handbook, page 31" delay={500} />
+          <StreamedAnswer question="Where does glycolysis happen?" answer="In the **cytoplasm,** and it nets **2 ATP** per glucose." source="Biology notes, lecture 3" delay={500} />
         </div>
       </div>
-      <p className="mt-10 text-2xl font-semibold tracking-tight text-balance lg:mt-44">Ask your documents. See where every answer came from.</p>
-      <p className="mt-2 text-muted-foreground">PDFs, Word docs and your own notes, answered in the margin.</p>
+      <p className="mt-10 text-2xl font-semibold tracking-tight text-balance lg:mt-44">Study from your own notes, with a buddy that keeps you going.</p>
+      <p className="mt-2 text-muted-foreground">Flashcards, quizzes and answers, each cited to the line it came from.</p>
+    </div>
+  );
+}
+
+/* ---------- test me: a typed answer, checked against the notes ---------- */
+
+const RECALL = {
+  topic: "Krebs cycle",
+  q: "Where does the Krebs cycle take place?",
+  typed: "in the mitochondria",
+  feedback: "Close. It's the mitochondrial **matrix** specifically.",
+  source: "Biology notes › Krebs cycle",
+};
+
+export function RecallDemo() {
+  const reduced = useReducedMotion();
+  const [ref, inView] = useInView<HTMLDivElement>({ once: false, margin: "0px" });
+  const [round, setRound] = useState(0);
+  const typeEnd = 500 + RECALL.typed.length * 55;
+  const pressAt = typeEnd + 350;
+  const checkedAt = pressAt + 900;
+  const t = useClock(inView, round, checkedAt + 4200, () => setRound((r) => r + 1));
+  const now = reduced ? checkedAt + 2000 : t;
+  const typed = RECALL.typed.slice(0, Math.max(0, Math.floor((now - 500) / 55)));
+  const checking = now >= pressAt && now < checkedAt;
+  const checked = now >= checkedAt;
+  const shown = Math.max(0, Math.floor((now - checkedAt - 200) / 45));
+
+  return (
+    <div ref={ref} className="rounded-2xl bg-card p-6 text-left shadow-xl ring-1 ring-foreground/10 dark:shadow-black/40">
+      <div className="flex items-center gap-3">
+        <span className="grid size-11 shrink-0 place-items-end justify-center overflow-hidden rounded-xl bg-[#e7effc] pb-1 ring-1 ring-foreground/10 dark:bg-[#2b354a]">
+          <PetSprite
+            key={checked ? "checked" : "reading"}
+            look={DEFAULT_LOOK}
+            face={checked ? "flat" : "side"}
+            book={!checked}
+            className={cn("h-8 w-[30px] origin-bottom", checked && !reduced && "animate-[pet-squash_400ms_ease-out]")}
+          />
+        </span>
+        <div className="min-w-0">
+          <p className="font-semibold">Test me</p>
+          <p className="text-sm text-muted-foreground">{checked ? "Almost. We'll come back to it." : "Answer in your own words."}</p>
+        </div>
+      </div>
+      <p className="mt-6 text-xs font-medium text-muted-foreground">{RECALL.topic}</p>
+      <p className="mt-1 text-lg font-medium">{RECALL.q}</p>
+      <div className={cn("mt-4 flex h-12 items-center rounded-lg border bg-background px-3.5 transition-colors", checked ? "border-amber-500" : "border-input")}>
+        <span className={cn("flex-1 truncate", !typed && "text-muted-foreground")}>{typed || "Your answer"}</span>
+        {!checked && typed && now < pressAt && <span className="ml-0.5 inline-block h-5 w-0.5 animate-pulse bg-primary" />}
+        {checked && <CircleDashed aria-label="Almost" className="size-5 shrink-0 text-amber-500" />}
+      </div>
+      <div className="mt-4 min-h-[5.5rem]">
+        {checked ? (
+          <div className="animate-in fade-in slide-in-from-bottom-1 duration-200">
+            <p className="leading-relaxed">
+              {words(RECALL.feedback).slice(0, shown).map((w, i) => (
+                <span key={i} className={cn("animate-in fade-in duration-150", w.b && "font-semibold")}>{w.t} </span>
+              ))}
+            </p>
+            <p className="mt-2 text-xs text-muted-foreground">From {RECALL.source}</p>
+          </div>
+        ) : (
+          <div className="flex justify-end">
+            <span className={cn("raised inline-flex h-9 items-center rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-transform duration-150", now >= pressAt - 100 && now < pressAt + 80 && "scale-95")}>
+              {checking ? "Checking against your notes…" : "Check answer"}
+            </span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ---------- focus: your buddy reads beside the timer ---------- */
+
+export function FocusDemo() {
+  const reduced = useReducedMotion();
+  const [ref, inView] = useInView<HTMLDivElement>({ once: false, margin: "0px" });
+  const t = useClock(inView && !reduced, "focus");
+  const left = 25 * 60 - 3 - Math.floor(t / 1000);
+  const mm = Math.floor(left / 60);
+  const ss = String(left % 60).padStart(2, "0");
+  return (
+    <div ref={ref} className="rounded-2xl bg-card p-6 text-left shadow-xl ring-1 ring-foreground/10 dark:shadow-black/40">
+      <p className="font-semibold">Focus with Mochi</p>
+      <p className="text-sm text-muted-foreground">Studying with you. Phone down, one thing at a time.</p>
+      <div className="mt-5 grid justify-items-center gap-2 rounded-2xl bg-[#e7effc] px-6 pt-7 pb-5 dark:bg-[#2b354a]">
+        <PetSprite look={DEFAULT_LOOK} face="side" book className={cn("h-16 w-[60px]", !reduced && "animate-[pet-read_2.4s_ease-in-out_infinite]")} />
+        <p className="text-4xl font-semibold tracking-tight tabular-nums">
+          {mm}:{ss}
+        </p>
+        <p className="text-sm text-muted-foreground">Pomodoro, round 2</p>
+        <div className="h-1.5 w-full max-w-52 overflow-hidden rounded-full bg-foreground/10" aria-hidden>
+          <div className="h-full rounded-full bg-primary transition-[width] duration-1000 ease-linear" style={{ width: `${((25 * 60 - left) / (25 * 60)) * 100}%` }} />
+        </div>
+      </div>
     </div>
   );
 }
