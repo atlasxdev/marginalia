@@ -79,11 +79,11 @@ function FlipStep({ step, onAnswer, onNext }: Props) {
         type="button"
         onClick={() => setFlipped((f) => !f)}
         aria-label={flipped ? "Show the question" : "Show the answer"}
-        className="perspective-[1400px] rounded-3xl text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+        className="w-full perspective-[1400px] rounded-3xl text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
       >
         <div
           className={cn(
-            "relative grid min-h-72 transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] transform-3d motion-reduce:transition-none",
+            "relative grid min-h-72 grid-cols-[minmax(0,1fr)] transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] transform-3d motion-reduce:transition-none",
             flipped && "rotate-y-180"
           )}
         >
@@ -117,12 +117,12 @@ function Face({ back = false, source, children }: { back?: boolean; source?: str
   return (
     <div
       className={cn(
-        "col-start-1 row-start-1 flex flex-col rounded-3xl border border-border p-8 backface-hidden",
+        "col-start-1 row-start-1 flex flex-col rounded-3xl border border-border p-6 backface-hidden sm:p-8",
         back ? "rotate-y-180 bg-primary/5" : "bg-card"
       )}
     >
       <span className="text-xs font-medium text-muted-foreground">{back ? "Answer" : "Question"}</span>
-      <p className="my-auto py-6 text-center text-2xl leading-snug font-medium text-balance">{children}</p>
+      <p className="my-auto py-6 text-center text-xl leading-snug font-medium sm:text-2xl text-balance">{children}</p>
       {back && source && <span className="truncate text-xs text-muted-foreground">From {source}</span>}
     </div>
   );
@@ -159,8 +159,8 @@ function QuizStep({ step, onAnswer, onNext }: Props) {
 
   return (
     <>
-      <div className="rounded-3xl border border-border bg-card p-8">
-        <p className="text-2xl leading-snug font-medium text-balance">{card.front}</p>
+      <div className="rounded-3xl border border-border bg-card p-6 sm:p-8">
+        <p className="text-xl leading-snug font-medium sm:text-2xl text-balance">{card.front}</p>
       </div>
       <div className="grid gap-2" role="group" aria-label="Choices">
         {choices.map((choice) => {
@@ -234,8 +234,8 @@ function RecallStep({ step, onAnswer, onNext }: Props) {
 
   return (
     <>
-      <div className="rounded-3xl border border-border bg-card p-8">
-        <p className="text-2xl leading-snug font-medium text-balance">{card.front}</p>
+      <div className="rounded-3xl border border-border bg-card p-6 sm:p-8">
+        <p className="text-xl leading-snug font-medium sm:text-2xl text-balance">{card.front}</p>
       </div>
       {result ? (
         <div className="grid gap-3 animate-in fade-in slide-in-from-bottom-1 duration-200 motion-reduce:animate-none">

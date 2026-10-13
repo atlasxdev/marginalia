@@ -4,16 +4,18 @@ import { Fragment, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronRightIcon, LayersIcon, PlayIcon, PlusIcon, SparklesIcon, TargetIcon } from "lucide-react";
+import { CheckIcon, ChevronRightIcon, MessageSquareIcon, PlayIcon, PlusIcon, SparklesIcon, TargetIcon } from "lucide-react";
 import { streakFrom } from "@/lib/pet-care";
-import { documentsQuery, meQuery, petQuery, spacesQuery, studyQuery } from "@/lib/queries";
+import { useCardQueue } from "@/lib/auto-cards";
+import { conversationsQuery, documentsQuery, meQuery, petQuery, spacesQuery, studyQuery } from "@/lib/queries";
 import { cardCounts, dueCount, sessionHref, subjectDecks, topicsIn, waitingLine } from "@/lib/subjects";
-import type { DocumentItem, Space, StudyOverview, WeakTopic } from "@/lib/types";
+import type { ConversationSummary, DocumentItem, Pet, Space, StudyOverview, WeakTopic } from "@/lib/types";
+import { cn } from "@/lib/utils";
 import { useHydrated } from "@/lib/use-hydrated";
 import { Button } from "@/components/ui/button";
-import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
-import { Item, ItemActions, ItemContent, ItemDescription, ItemGroup, ItemSeparator, ItemTitle } from "@/components/ui/item";
+import { Item, ItemActions, ItemContent, ItemDescription, ItemGroup, ItemMedia, ItemSeparator, ItemTitle } from "@/components/ui/item";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Spinner } from "@/components/ui/spinner";
 import { Composer } from "./composer";
 import { DeckList, useMakeDeck } from "./deck";
 import { PetSprite } from "./pet/pet-sprite";
@@ -48,6 +50,7 @@ function Today({ overview, spaces, documents }: { overview: StudyOverview; space
   const router = useRouter();
   const pet = useQuery(petQuery).data;
   const name = useQuery(meQuery).data?.user_metadata?.name as string | undefined;
+  const chats = useQuery(conversationsQuery).data?.filter((c) => !c.spaceId).slice(0, 5) ?? [];
   const [creating, setCreating] = useState(false);
   const { decks, weakTopics, week, activity } = overview;
   const due = dueCount(decks);
@@ -56,8 +59,8 @@ function Today({ overview, spaces, documents }: { overview: StudyOverview; space
   const loose = decks.filter((d) => !spaces.some((s) => subjectDecks([d], s).length));
 
   const greeting =
-    spaces.length === 0
-      ? "Let's set up your first subject. Add your notes and I'll help you study them."
+    spaces.length === 0 || (decks.length === 0 && activity.length === 0)
+      ? "Let's get you set up. Three steps and we're studying."
       : due
         ? `${waitingLine(cardCounts(decks))} today. Let's get through them together.`
         : weakTopics[0]
@@ -81,25 +84,10 @@ function Today({ overview, spaces, documents }: { overview: StudyOverview; space
         </div>
       </div>
 
-      {spaces.length === 0 ? (
-        <Empty className={`${groupClass} mt-10`}>
-          <EmptyHeader>
-            <EmptyMedia variant="icon">
-              <LayersIcon />
-            </EmptyMedia>
-            <EmptyTitle>What are you studying?</EmptyTitle>
-            <EmptyDescription>
-              Make a subject for each class, like Biology or World History, and add its notes. Everything starts there: asking questions, reviewers, and study sessions.
-            </EmptyDescription>
-          </EmptyHeader>
-          <EmptyContent>
-            <Button size="lg" onClick={() => setCreating(true)}>
-              <PlusIcon />
-              Add your first subject
-            </Button>
-          </EmptyContent>
-        </Empty>
-      ) : (
+      {/* Until the first session, three steps show the way */}
+      {activity.length === 0 && <GettingStarted spaces={spaces} decks={decks} documents={documents} pet={pet} onCreate={() => setCreating(true)} />}
+
+      {spaces.length > 0 && (
         <>
           {due > 0 && (
             <div className="mt-6">
@@ -162,13 +150,14 @@ function Today({ overview, spaces, documents }: { overview: StudyOverview; space
           <div className="mt-4">
             <Composer placeholder="Ask anything from your notes" className="max-w-none" />
           </div>
+          {chats.length > 0 && <RecentChats chats={chats} />}
         </section>
       )}
 
       {loose.length > 0 && (
         <section aria-labelledby="loose-decks" className="mt-14">
           <h2 id="loose-decks" className="text-xl font-semibold">
-            Other reviewers
+            Other flashcards
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">Made outside a subject.</p>
           <div className="mt-4">
@@ -191,12 +180,14 @@ function SubjectRow({ space, overview, documents }: { space: Space; overview: St
   const files = documents.filter((d) => space.documentIds.includes(d.id));
   const readyFiles = files.filter((d) => d.status === "ready").length;
   const cards = decks.reduce((n, d) => n + d.payload.cards.length, 0);
+  const queue = useCardQueue();
+  const preparing = files.some((d) => queue.includes(d.id) || d.status === "pending" || d.status === "processing");
 
   const status =
     files.length === 0
       ? "No notes yet"
       : decks.length === 0
-        ? `${files.length} ${files.length === 1 ? "file" : "files"}, no reviewer yet`
+        ? `${files.length} ${files.length === 1 ? "file" : "files"}, no flashcards yet`
         : [due ? waitingLine(cardCounts(decks)) : "All caught up", weak && `${weak.topic} is weak`].filter(Boolean).join(", ");
 
   return (
@@ -221,14 +212,21 @@ function SubjectRow({ space, overview, documents }: { space: Space; overview: St
             </Link>
           </Button>
         ) : decks.length === 0 ? (
-          <Button
-            variant="outline"
-            disabled={readyFiles === 0 || makeDeck.isPending}
-            onClick={() => makeDeck.mutate({ body: { spaceId: space.id }, name: space.name })}
-          >
-            <SparklesIcon />
-            Make a reviewer
-          </Button>
+          preparing ? (
+            <Button variant="outline" disabled>
+              <Spinner />
+              Making flashcards…
+            </Button>
+          ) : (
+            <Button
+              variant="outline"
+              disabled={readyFiles === 0 || makeDeck.isPending}
+              onClick={() => makeDeck.mutate({ body: { spaceId: space.id }, name: space.name })}
+            >
+              <SparklesIcon />
+              Make flashcards
+            </Button>
+          )
         ) : (
           <Button variant={due ? "default" : "outline"} asChild>
             <Link href={sessionHref({ subject: space.id })}>
@@ -244,6 +242,136 @@ function SubjectRow({ space, overview, documents }: { space: Space; overview: St
         </Button>
       </ItemActions>
     </Item>
+  );
+}
+
+/** The way in: make a subject, add its notes, study. Each step ticks off as it's done. */
+function GettingStarted({
+  spaces,
+  decks,
+  documents,
+  pet,
+  onCreate,
+}: {
+  spaces: Space[];
+  decks: StudyOverview["decks"];
+  documents: DocumentItem[];
+  pet: Pet | null | undefined;
+  onCreate: () => void;
+}) {
+  const queue = useCardQueue();
+  const withNotes = spaces.find((s) => s.documentIds.length > 0);
+  const withCards = spaces.find((s) => subjectDecks(decks, s).length > 0);
+  const preparing = documents.some((d) => queue.includes(d.id) || d.status === "pending" || d.status === "processing");
+  const buddy = pet?.name ?? "your buddy";
+
+  const steps = [
+    {
+      title: "Add a subject",
+      detail: "One for each class, like Biology or World History.",
+      done: spaces.length > 0,
+      action: (
+        <Button onClick={onCreate}>
+          <PlusIcon />
+          Add a subject
+        </Button>
+      ),
+    },
+    {
+      title: "Add your notes",
+      detail: `Upload lecture notes, readings or handouts. ${buddy} turns them into flashcards.`,
+      done: !!withNotes,
+      action: spaces[0] && (
+        <Button asChild>
+          <Link href={`/spaces/${spaces[0].id}`}>
+            <PlusIcon />
+            Add notes to {spaces[0].name}
+          </Link>
+        </Button>
+      ),
+    },
+    {
+      title: `Study with ${buddy}`,
+      detail: "A focus session: flashcards, quick quizzes and typed answers, with breaks.",
+      done: false,
+      action: withCards ? (
+        <Button asChild>
+          <Link href={sessionHref({ subject: withCards.id })}>
+            <PlayIcon />
+            Study {withCards.name}
+          </Link>
+        </Button>
+      ) : preparing ? (
+        <Button disabled>
+          <Spinner />
+          Making your flashcards…
+        </Button>
+      ) : (
+        withNotes && (
+          <Button asChild>
+            <Link href={`/spaces/${withNotes.id}`}>Open {withNotes.name}</Link>
+          </Button>
+        )
+      ),
+    },
+  ];
+  const current = steps.findIndex((s) => !s.done);
+
+  return (
+    <section aria-labelledby="getting-started" className={`${groupClass} mt-8 p-6`}>
+      <h2 id="getting-started" className="text-xl font-semibold">
+        Get started in three steps
+      </h2>
+      <ol className="mt-5 grid gap-5">
+        {steps.map((step, i) => (
+          <li key={step.title} className="flex gap-4">
+            <span
+              className={cn(
+                "grid size-7 shrink-0 place-items-center rounded-full text-sm font-semibold",
+                step.done ? "bg-success text-white" : i === current ? "bg-primary text-primary-foreground" : "bg-foreground/10 text-muted-foreground"
+              )}
+            >
+              {step.done ? <CheckIcon className="size-4" /> : i + 1}
+            </span>
+            <div className="grid min-w-0 flex-1 gap-1">
+              <p className={cn("font-medium", step.done && "text-muted-foreground line-through", i > current && "text-muted-foreground")}>{step.title}</p>
+              {i === current && (
+                <>
+                  <p className="text-sm text-muted-foreground">{step.detail}</p>
+                  {step.action && <div className="mt-2">{step.action}</div>}
+                </>
+              )}
+            </div>
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
+
+/** Chats asked across all notes, for picking back up. */
+function RecentChats({ chats }: { chats: ConversationSummary[] }) {
+  return (
+    <ItemGroup className={`${groupClass} mt-4 gap-0`}>
+      {chats.map((c, i) => (
+        <Fragment key={c.id}>
+          {i > 0 && <ItemSeparator className="my-0 bg-glass-divider" />}
+          <Item asChild className="rounded-none px-5 py-3.5 first:rounded-t-xl last:rounded-b-xl hover:bg-glass-strong">
+            <Link href={`/chat/${c.id}`}>
+              <ItemMedia>
+                <MessageSquareIcon className="size-4 text-muted-foreground" />
+              </ItemMedia>
+              <ItemContent>
+                <ItemTitle className="text-[15px]">{c.title}</ItemTitle>
+              </ItemContent>
+              <ItemActions>
+                <ChevronRightIcon className="size-4 text-muted-foreground" />
+              </ItemActions>
+            </Link>
+          </Item>
+        </Fragment>
+      ))}
+    </ItemGroup>
   );
 }
 

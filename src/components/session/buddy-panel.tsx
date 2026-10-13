@@ -23,8 +23,8 @@ export function BuddyPanel({ reaction, step, spaceId, resting = false }: { react
 
   return (
     <aside className="glass flex flex-col gap-4 rounded-3xl border border-glass-border bg-glass p-5">
-      <div className="flex items-center gap-4 lg:flex-col lg:items-stretch">
-        <div className="grid size-16 shrink-0 place-items-end justify-center overflow-hidden rounded-2xl bg-[#e7effc] pb-1.5 ring-1 ring-foreground/10 lg:h-40 lg:w-full lg:pb-5 dark:bg-[#2b354a]">
+      <div className="flex items-center gap-4 xl:flex-col xl:items-stretch">
+        <div className="grid size-16 shrink-0 place-items-end justify-center overflow-hidden rounded-2xl bg-[#e7effc] pb-1.5 ring-1 ring-foreground/10 xl:h-40 xl:w-full xl:pb-5 dark:bg-[#2b354a]">
           {pet && (
             <PetSprite
               key={reaction?.seq ?? 0}
@@ -32,7 +32,7 @@ export function BuddyPanel({ reaction, step, spaceId, resting = false }: { react
               face={face}
               book={face === "side"}
               className={cn(
-                "h-[50px] w-12 origin-bottom lg:h-24 lg:w-[90px]",
+                "h-[50px] w-12 origin-bottom xl:h-24 xl:w-[90px]",
                 face === "happy" && "animate-[pet-hop_400ms_ease-out] motion-reduce:animate-none",
                 face === "flat" && "animate-[pet-squash_400ms_ease-out] motion-reduce:animate-none",
                 face === "side" && "animate-[pet-read_2.4s_ease-in-out_infinite] motion-reduce:animate-none"

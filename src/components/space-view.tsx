@@ -23,6 +23,7 @@ import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTi
 import { Item, ItemActions, ItemContent, ItemGroup, ItemMedia, ItemSeparator, ItemTitle } from "@/components/ui/item";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
+import { queueCards, useCardQueue } from "@/lib/auto-cards";
 import { fileLabel, petSignal } from "@/lib/pet-events";
 import { conversationsQuery, documentsQuery, spaceQuery, studyQuery } from "@/lib/queries";
 import { ACCEPTED_TYPES } from "@/lib/schemas";
@@ -101,6 +102,9 @@ function SpaceDetail({ space }: { space: Space }) {
   const weak = overview ? topicsIn(overview.weakTopics, decks) : [];
   const cards = decks.reduce((n, d) => n + d.payload.cards.length, 0);
   const fileRef = useRef<HTMLInputElement>(null);
+  // Files still being read, or waiting for their flashcards
+  const queue = useCardQueue();
+  const preparing = inSpace.some((d) => queue.includes(d.id) || d.status === "pending" || d.status === "processing");
 
   // Uploading here adds the file to this subject
   const upload = useMutation({
@@ -108,10 +112,11 @@ function SpaceDetail({ space }: { space: Space }) {
       const { id } = await uploadFile(file);
       const result = await saveSpace({ id: space.id, name: space.name, instructions: space.instructions, documentIds: [...space.documentIds, id] });
       if (!result.ok) throw new Error(result.message ?? "Uploaded, but couldn't add it to this subject.");
+      queueCards([id]);
       return file;
     },
     onSuccess: (file) => {
-      toast.success(`Added ${file.name}. It'll be ready in a moment.`);
+      toast.success(`Added ${file.name}. Making flashcards from it…`);
       petSignal({ kind: "notes", label: fileLabel(file.name) });
       queryClient.invalidateQueries({ queryKey: ["documents"] });
       queryClient.invalidateQueries({ queryKey: ["spaces"] });
@@ -141,35 +146,50 @@ function SpaceDetail({ space }: { space: Space }) {
     </Button>
   );
 
-  // The one next step for this subject
+  // The one next step for this subject: add notes, wait for the cards, study
   const next =
     inSpace.length === 0
-      ? { line: "Start by adding the notes for this class: lecture slides, readings, handouts.", action: uploadButton("default") }
-      : decks.length === 0
+      ? { line: "Add the notes for this class: lecture slides, readings, handouts. Your buddy turns them into flashcards.", action: uploadButton("default") }
+      : decks.length === 0 && (preparing || makeDeck.isPending)
         ? {
-            line: readyFiles ? "Your notes are in. Make a reviewer and your buddy will write the flashcards." : "Your notes are being read. This takes a moment.",
+            line: "Reading your notes and writing flashcards. This takes a few seconds.",
             action: (
-              <Button disabled={!readyFiles || makeDeck.isPending} onClick={() => makeDeck.mutate({ body: { spaceId: space.id }, name: space.name })}>
-                <SparklesIcon />
-                Make a reviewer
+              <Button disabled>
+                <Spinner />
+                Making your flashcards…
               </Button>
             ),
           }
-        : {
-            line: due
-              ? `${waitingLine(cardCounts(decks))}${weak[0] ? `, and ${weak[0].topic} needs work` : ""}.`
-              : weak[0]
-                ? `All caught up. ${weak[0].topic} could use another go.`
-                : "All caught up. Practise to stay sharp.",
-            action: (
-              <Button size="lg" asChild>
-                <Link href={sessionHref({ subject: space.id })}>
-                  <PlayIcon />
-                  Start a study session
-                </Link>
-              </Button>
-            ),
-          };
+        : decks.length === 0
+          ? {
+              line: "Your notes are in. Make flashcards from them to start studying.",
+              action: (
+                <Button disabled={!readyFiles} onClick={() => makeDeck.mutate({ body: { spaceId: space.id }, name: space.name })}>
+                  <SparklesIcon />
+                  Make flashcards
+                </Button>
+              ),
+            }
+          : {
+              line: [
+                due
+                  ? `${waitingLine(cardCounts(decks))}${weak[0] ? `, and ${weak[0].topic} needs work` : ""}.`
+                  : weak[0]
+                    ? `All caught up. ${weak[0].topic} could use another go.`
+                    : "All caught up. Practise to stay sharp.",
+                preparing && "More cards are on the way from your new notes.",
+              ]
+                .filter(Boolean)
+                .join(" "),
+              action: (
+                <Button size="lg" asChild>
+                  <Link href={sessionHref({ subject: space.id })}>
+                    <PlayIcon />
+                    Study
+                  </Link>
+                </Button>
+              ),
+            };
 
   return (
     <>
@@ -272,7 +292,7 @@ function SpaceDetail({ space }: { space: Space }) {
         <section aria-labelledby="space-decks" className="mt-14">
           <div className="flex items-center justify-between gap-3">
             <h2 id="space-decks" className="text-xl font-semibold">
-              Reviewers
+              Flashcards
             </h2>
             <Button
               variant="ghost"
@@ -281,7 +301,7 @@ function SpaceDetail({ space }: { space: Space }) {
               onClick={() => makeDeck.mutate({ body: { spaceId: space.id }, name: space.name })}
             >
               <SparklesIcon />
-              Make another
+              Make more cards
             </Button>
           </div>
           <div className="mt-4">

@@ -53,7 +53,19 @@ export async function POST(req: Request) {
     );
   }
 
-  const known = await knownCardFronts(supabase, "spaceId" in body.data ? body.data.spaceId : null, documentIds);
+  // What's already there: the subject's cards, or for a file, the cards of every subject it's in
+  let known: string[];
+  if ("spaceId" in body.data) {
+    known = await knownCardFronts(supabase, body.data.spaceId, documentIds);
+  } else {
+    const { data: links } = await supabase.from("space_documents").select("space_id").eq("document_id", body.data.documentId);
+    const spaces = await Promise.all((links ?? []).map((l) => getSpace(supabase, l.space_id as string)));
+    const lists = await Promise.all([
+      knownCardFronts(supabase, null, documentIds),
+      ...spaces.filter((s) => s !== null).map((s) => knownCardFronts(supabase, s.id, s.documentIds)),
+    ]);
+    known = [...new Set(lists.flat())];
+  }
 
   let payload;
   try {

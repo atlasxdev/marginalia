@@ -52,17 +52,15 @@ import {
   spacesQuery,
   studyQuery,
 } from "@/lib/queries";
-import type { ConversationSummary } from "@/lib/types";
 import { getBrowserClient } from "@/lib/supabase/client";
 import { useHydrated } from "@/lib/use-hydrated";
 import { cn } from "@/lib/utils";
 import { Wordmark } from "./logo";
-import { DeleteConversation, RenameConversation } from "./conversation-actions";
-import { ConversationGroups } from "./conversation-list";
 import { SearchChats } from "./search-chats";
 import { PetWidget } from "./pet/pet-widget";
 import { openPet } from "@/lib/pet-events";
 import { SpaceDialog } from "./space-dialog";
+import { AutoCards } from "@/lib/auto-cards";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   return (
@@ -82,6 +80,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </SidebarInset>
       </SidebarProvider>
+      <AutoCards />
     </>
   );
 }
@@ -107,7 +106,6 @@ function AppSidebar() {
   const conversations = hydrated ? conversationsResult.data : undefined;
   const documents = hydrated ? documentsResult.data : undefined;
   const spaces = hydrated ? spacesResult.data : undefined;
-  const isPending = !hydrated || conversationsResult.isPending;
   const readyCount = documents?.filter((d) => d.status === "ready").length;
   const studyResult = useQuery(studyQuery);
   const dueCount = hydrated
@@ -131,8 +129,6 @@ function AppSidebar() {
   const name = me?.user_metadata?.name as string | undefined;
   const { resolvedTheme, setTheme } = useTheme();
   const [creating, setCreating] = useState(false);
-  const [deleting, setDeleting] = useState<ConversationSummary | null>(null);
-  const [renaming, setRenaming] = useState<ConversationSummary | null>(null);
   const [searching, setSearching] = useState(false);
   // ⌘K / Ctrl+K opens search from anywhere in the app
   useEffect(() => {
@@ -149,7 +145,6 @@ function AppSidebar() {
   const close = () => setOpenMobile(false);
   // Only items added while you're here slide in, not the whole list on load
   const freshSpace = useFresh(spaces?.map((s) => s.id));
-  const freshChat = useFresh(conversations?.map((c) => c.id));
 
   return (
     <Sidebar
@@ -251,15 +246,6 @@ function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        <ConversationGroups
-          conversations={conversations}
-          isPending={isPending}
-          pathname={pathname}
-          close={close}
-          onRename={setRenaming}
-          onDelete={setDeleting}
-          fresh={freshChat}
-        />
       </SidebarContent>
 
       <SidebarFooter className="border-t border-glass-divider p-2">
@@ -339,17 +325,6 @@ function AppSidebar() {
         onOpenChange={setSearching}
         conversations={conversations}
         onNavigate={close}
-      />
-      <RenameConversation
-        conversation={renaming}
-        onClose={() => setRenaming(null)}
-      />
-      <DeleteConversation
-        conversation={deleting}
-        onClose={() => setDeleting(null)}
-        onDeleted={(id) => {
-          if (pathname === `/chat/${id}`) router.push("/chat");
-        }}
       />
     </Sidebar>
   );

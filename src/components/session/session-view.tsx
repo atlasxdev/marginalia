@@ -227,7 +227,7 @@ function Session({ overview, space, scope }: { overview: StudyOverview; space?: 
     <div className="flex min-h-dvh flex-col">
       {/* Top bar: where you are, the timer, how far along */}
       <header className="glass sticky top-0 z-10 border-b border-glass-border bg-glass">
-        <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3 sm:px-6">
+        <div className="flex items-center gap-3 px-4 py-3 sm:px-6">
           <Button variant="ghost" size="icon" onClick={finish} aria-label="End session" className="text-muted-foreground">
             <XIcon />
           </Button>
@@ -256,8 +256,9 @@ function Session({ overview, space, scope }: { overview: StudyOverview; space?: 
         </div>
       </header>
 
-      <main className="mx-auto grid w-full max-w-6xl flex-1 items-start gap-6 px-4 py-8 sm:px-6 lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-10 lg:py-12">
-        <div className="order-2 mx-auto w-full max-w-2xl lg:order-1">
+      {/* The card sits in the middle of the screen; your buddy sits beside it on wide screens, below it on narrow ones */}
+      <main className="grid w-full flex-1 grid-cols-[minmax(0,1fr)] content-start gap-6 px-4 py-8 sm:px-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,38rem)_minmax(0,1fr)] xl:content-center xl:items-center xl:gap-8 xl:py-12">
+        <div className="mx-auto w-full max-w-2xl xl:col-start-2">
           {phase === "break" ? (
             <BreakRecap
               results={results.filter((r) => r.block === block)}
@@ -295,7 +296,7 @@ function Session({ overview, space, scope }: { overview: StudyOverview; space?: 
             </>
           ) : null}
         </div>
-        <div className="order-1 lg:sticky lg:top-24 lg:order-2">
+        <div className="mx-auto w-full max-w-2xl xl:col-start-3 xl:mx-0 xl:max-w-xs">
           <BuddyPanel reaction={reaction} step={phase === "focus" && !paused ? current : undefined} spaceId={space?.id} resting={phase === "break"} />
         </div>
       </main>
@@ -331,7 +332,7 @@ function Setup({
 
   return (
     <div className="mx-auto flex min-h-dvh max-w-lg flex-col justify-center px-5 py-12">
-      <Button variant="ghost" size="sm" asChild className="mb-8 self-start text-muted-foreground">
+      <Button variant="ghost" size="sm" asChild className="-ml-2.5 mb-8 self-start text-muted-foreground">
         <Link href={backHref}>
           <XIcon />
           Close

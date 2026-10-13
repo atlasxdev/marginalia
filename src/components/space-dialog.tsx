@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { fileLabel, petSignal } from "@/lib/pet-events";
 import { ChevronsUpDownIcon, FileTextIcon, PlusIcon, XIcon } from "lucide-react";
 import { saveSpace } from "@/app/actions/spaces";
+import { queueCards } from "@/lib/auto-cards";
 import { Button } from "@/components/ui/button";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -15,7 +16,7 @@ import { Item, ItemActions, ItemContent, ItemGroup, ItemMedia, ItemSeparator, It
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
-import { documentsQuery } from "@/lib/queries";
+import { documentsQuery, studyQuery } from "@/lib/queries";
 import { ACCEPTED_TYPES, MAX_SPACE_INSTRUCTIONS } from "@/lib/schemas";
 import type { DocumentItem, Space } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -50,6 +51,7 @@ export function SpaceDialog({
 function SpaceForm({ space, onDone }: { space?: Space; onDone: (id: string) => void }) {
   const queryClient = useQueryClient();
   const library = useQuery(documentsQuery).data ?? [];
+  const decks = useQuery(studyQuery).data?.decks;
   const [name, setName] = useState(space?.name ?? "");
   const [instructions, setInstructions] = useState(space?.instructions ?? "");
   const [picked, setPicked] = useState<Set<string>>(new Set(space?.documentIds));
@@ -81,6 +83,9 @@ function SpaceForm({ space, onDone }: { space?: Space; onDone: (id: string) => v
         queryClient.invalidateQueries({ queryKey: ["conversations"] });
       }
       if (result.ok && result.id) {
+        // Files new to this subject, without cards of their own yet, get them made
+        const added = [...picked].filter((id) => !space?.documentIds.includes(id) && !decks?.some((d) => d.documentId === id));
+        if (added.length) queueCards(added);
         toast.success(space ? "Subject saved" : `“${name.trim()}” created`);
         onDone(result.id);
       }
