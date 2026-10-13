@@ -1178,7 +1178,7 @@ export function FeatureTour() {
       </div>
 
       {/* Phones and tablets */}
-      <div className="grid gap-16 lg:hidden">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-16 lg:hidden">
         <h2 className="text-3xl font-semibold tracking-tight text-balance">Everything you need to study, in one place.</h2>
         {TOUR.map((t, i) => {
           const Inline = t.Demo;
