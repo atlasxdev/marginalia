@@ -17,7 +17,7 @@ const LONG_DESCRIPTION =
   "Add your lecture notes and they turn into flashcards on their own. Study in focus sessions with a pixel buddy that checks your answers against your notes, explains what you miss, runs practice exams and plays your own study music.";
 
 export const metadata: Metadata = {
-  title: { absolute: "Marginalia · Your study buddy for your own notes" },
+  title: { absolute: "Marginalia - Notes in Margin" },
   description: DESCRIPTION,
   alternates: { canonical: "/" },
   openGraph: {
@@ -35,6 +35,15 @@ export const metadata: Metadata = {
     description: DESCRIPTION,
     images: ["/product/og.png"],
   },
+};
+
+// What Google reads for the site name above the result. Without it, it fell
+// back to the parent domain, aceguevarra.xyz.
+const SITE_LD = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: "Marginalia",
+  url: `${SITE_URL}/`,
 };
 
 const JSON_LD = {
@@ -130,6 +139,7 @@ const LinkedInIcon = () => (
 export default function Landing() {
   return (
     <div className="min-h-dvh overflow-x-clip">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(SITE_LD) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(VIDEO_LD) }} />
       {/* Drifting colour behind the glass */}
