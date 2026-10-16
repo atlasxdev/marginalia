@@ -38,7 +38,7 @@ export function ExamsView() {
 
   return (
     <div className="h-full overflow-y-auto">
-      <div className="mx-auto max-w-5xl px-5 pt-14 pb-24 sm:px-8 lg:px-12">
+      <div className="mx-auto max-w-6xl px-5 pt-14 pb-24 sm:px-8 lg:px-12">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <h1 className="text-4xl font-bold tracking-tight">Exams</h1>

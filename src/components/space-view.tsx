@@ -72,7 +72,7 @@ export function SpaceView({ id }: { id: string }) {
 
   return (
     <div className="h-full overflow-y-auto">
-      <div className="mx-auto max-w-5xl px-5 sm:px-8 lg:px-12 pt-14 pb-24">
+      <div className="mx-auto max-w-6xl px-5 sm:px-8 lg:px-12 pt-14 pb-24">
         {space ? (
           <SpaceDetail key={space.id} space={space} />
         ) : (

@@ -35,7 +35,7 @@ export function SettingsView() {
 
   return (
     <div className="h-full overflow-y-auto">
-      <div className="mx-auto max-w-5xl px-5 pt-14 pb-24 sm:px-8 lg:px-12">
+      <div className="mx-auto max-w-6xl px-5 pt-14 pb-24 sm:px-8 lg:px-12">
         <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
 
         <div className="mt-10 grid gap-12">

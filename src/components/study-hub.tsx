@@ -41,7 +41,7 @@ export function StudyHub() {
 
   return (
     <div className="h-full overflow-y-auto">
-      <div className="mx-auto max-w-5xl px-5 pt-14 pb-24 sm:px-8 lg:px-12">
+      <div className="mx-auto max-w-6xl px-5 pt-14 pb-24 sm:px-8 lg:px-12">
         {ready ? <Today overview={study.data!} spaces={spaces.data!} documents={documents.data!} /> : <TodaySkeleton />}
       </div>
     </div>

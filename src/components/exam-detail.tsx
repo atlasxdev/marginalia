@@ -60,7 +60,7 @@ export function ExamDetailView({ id }: { id: string }) {
 
   return (
     <div className="h-full overflow-y-auto">
-      <div className="mx-auto max-w-5xl px-5 pt-10 pb-24 sm:px-8 lg:px-12">
+      <div className="mx-auto max-w-6xl px-5 pt-10 pb-24 sm:px-8 lg:px-12">
         {ready && exam ? (
           <ExamDetail key={exam.id} exam={exam} overview={study.data!} spaces={spaces.data!} documents={documents.data!} />
         ) : (
