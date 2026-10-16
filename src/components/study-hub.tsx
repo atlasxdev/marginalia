@@ -8,6 +8,7 @@ import { CheckIcon, PlayIcon, PlusIcon, SparklesIcon, TargetIcon } from "lucide-
 import { streakFrom } from "@/lib/pet-care";
 import { useCardQueue } from "@/lib/auto-cards";
 import { useDailyGoal } from "@/lib/daily-goal";
+import { activeExams, daysUntil, useExams, whenLine } from "@/lib/exams";
 import { documentsQuery, meQuery, petQuery, spacesQuery, studyQuery } from "@/lib/queries";
 import { cardCounts, dueCount, rankSubjects, sessionHref, subjectDecks, topicsIn, waitingLine } from "@/lib/subjects";
 import type { DocumentItem, Pet, Space, StudyOverview, WeakTopic } from "@/lib/types";
@@ -18,6 +19,7 @@ import { Item, ItemActions, ItemContent, ItemDescription, ItemGroup, ItemSeparat
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { DeckList, useMakeDeck } from "./deck";
+import { ExamCard, ExamOutcome } from "./exam-countdown";
 import { PetSprite } from "./pet/pet-sprite";
 import { SpaceDialog } from "./space-dialog";
 
@@ -67,6 +69,10 @@ function Today({ overview, spaces, documents }: { overview: StudyOverview; space
   const plan = pick
     ? [waitingLine(pick.counts), pick.weak[0] && `${pick.weak[0].topic} needs work`].filter(Boolean).join(", and ")
     : null;
+  // An exam coming up leads the day: its countdown and plan take over from today's pick
+  const exams = activeExams(useExams(), spaces);
+  const finished = exams.filter((e) => e.days < 0);
+  const upcoming = exams.find((e) => e.days >= 0);
 
   return (
     <>
@@ -85,12 +91,16 @@ function Today({ overview, spaces, documents }: { overview: StudyOverview; space
             <p className="mt-1.5 text-lg text-muted-foreground text-balance">
               {spaces.length === 0 || (decks.length === 0 && activity.length === 0)
                 ? "Let's get you set up. Three steps and we're studying."
-                : pick
+                : upcoming
+                  ? upcoming.days === 0
+                    ? `It's ${upcoming.exam.name} day. ${pet?.name ?? "Your buddy"} is rooting for you.`
+                    : `${upcoming.exam.name} is ${whenLine(upcoming.days)}. ${pet?.name ?? "Your buddy"} has today's plan ready.`
+                  : pick
                   ? `${pet?.name ?? "Your buddy"} suggests ${pick.space.name}: ${plan}.`
                   : "You're all caught up. Nice work."}
             </p>
           </div>
-          {pick && (
+          {pick && !upcoming && (
             <div className="flex shrink-0 flex-col gap-2">
               <Button size="lg" asChild className="h-12 px-6 text-base">
                 <Link href={sessionHref({ subject: pick.space.id })}>
@@ -129,6 +139,11 @@ function Today({ overview, spaces, documents }: { overview: StudyOverview; space
           </dl>
         )}
       </section>
+
+      {finished.map((e) => (
+        <ExamOutcome key={e.space.id} space={e.space} exam={e.exam} days={e.days} className="mt-8" />
+      ))}
+      {upcoming && <ExamCard space={upcoming.space} exam={upcoming.exam} days={upcoming.days} overview={overview} />}
 
       {/* Until the first session, three steps show the way */}
       {activity.length === 0 && <GettingStarted spaces={spaces} decks={decks} documents={documents} pet={pet} onCreate={() => setCreating(true)} />}
@@ -193,6 +208,8 @@ function SubjectCard({ space, overview, documents }: { space: Space; overview: S
   const cards = decks.reduce((n, d) => n + d.payload.cards.length, 0);
   const learned = Math.max(0, cards - counts.review - counts.fresh);
   const preparing = files.some((d) => queue.includes(d.id) || d.status === "pending" || d.status === "processing");
+  const exam = useExams()[space.id];
+  const examIn = exam && !exam.outcome ? daysUntil(exam.date) : null;
 
   const status =
     files.length === 0
@@ -208,7 +225,14 @@ function SubjectCard({ space, overview, documents }: { space: Space; overview: S
   return (
     <div className={`${groupClass} group/card relative flex min-h-44 flex-col rounded-2xl p-5 transition-colors duration-150 hover:bg-glass-strong`}>
       <Link href={`/spaces/${space.id}`} className="absolute inset-0 rounded-2xl" aria-label={`Open ${space.name}`} />
-      <p className="truncate text-lg font-semibold">{space.name}</p>
+      <div className="flex items-baseline gap-3">
+        <p className="min-w-0 flex-1 truncate text-lg font-semibold">{space.name}</p>
+        {examIn !== null && examIn >= 0 && (
+          <span className={cn("shrink-0 text-sm font-medium tabular-nums", examIn <= 7 ? "text-primary" : "text-muted-foreground")}>
+            {examIn === 0 ? "Exam today" : `${examIn} ${examIn === 1 ? "day" : "days"}`}
+          </span>
+        )}
+      </div>
       <p className="mt-0.5 text-sm text-muted-foreground">
         {files.length} {files.length === 1 ? "file" : "files"}
         {cards > 0 && `, ${cards} cards`}

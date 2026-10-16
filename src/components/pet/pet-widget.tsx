@@ -6,6 +6,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { addPetXp } from "@/lib/writes";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Drawer, DrawerContent, DrawerDescription, DrawerTitle } from "@/components/ui/drawer";
+import { activeExams, useExams } from "@/lib/exams";
 import { petLevel, petMood, studyStatus, type StudyStatus } from "@/lib/pet-care";
 import { onOpenPet, onPetSignal } from "@/lib/pet-events";
 import { petQuery, spacesQuery, studyQuery } from "@/lib/queries";
@@ -39,6 +40,10 @@ export function PetWidget({ onOpen }: { onOpen?: () => void }) {
   const status = studyStatus(overview, due);
   const spaces = useQuery(spacesQuery).data;
   const pick = overview && spaces ? rankSubjects(spaces, overview.decks, overview.weakTopics)[0]?.space : undefined;
+  // Your buddy mentions an exam once it's two weeks out
+  const exams = useExams();
+  const soon = spaces ? activeExams(exams, spaces).find((e) => e.days >= 0 && e.days <= 14) : undefined;
+  const examNote = soon && (soon.days === 0 ? "Exam day!" : `${soon.days}d to ${soon.exam.name}`);
 
   // "Your pet" in the account menu
   useEffect(() => onOpenPet(() => (queryClient.getQueryData(["pet"]) ? setDevice(true) : setBuilding(true))), [queryClient]);
@@ -119,7 +124,7 @@ export function PetWidget({ onOpen }: { onOpen?: () => void }) {
         <span className="grid min-w-0 flex-1 gap-1">
           <span className="truncate text-sm font-medium">{data ? data.name : "Hatch a study buddy"}</span>
           {data ? (
-            <Progress pet={data} status={status} />
+            <Progress pet={data} status={status} examNote={examNote} />
           ) : (
             <span className="truncate text-xs text-muted-foreground">Your study buddy</span>
           )}
@@ -149,10 +154,10 @@ export function PetWidget({ onOpen }: { onOpen?: () => void }) {
   );
 }
 
-/** Its level, and the next thing to do: cards due, or your streak. */
-function Progress({ pet, status }: { pet: Pet; status: StudyStatus }) {
+/** Its level, and the next thing to do: cards due, an exam coming, or your streak. */
+function Progress({ pet, status, examNote }: { pet: Pet; status: StudyStatus; examNote?: string }) {
   const { level } = petLevel(pet.xp);
-  const note = status.due > 0 ? `${status.due} due` : status.streak > 0 ? `${status.streak}-day streak` : petMood(status);
+  const note = status.due > 0 ? `${status.due} due` : examNote ? examNote : status.streak > 0 ? `${status.streak}-day streak` : petMood(status);
   return (
     <span className="flex items-center gap-1.5 text-xs">
       <span className="font-semibold text-muted-foreground">Lv {level}</span>

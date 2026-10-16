@@ -155,6 +155,25 @@ export async function setDailyGoal(goal: number): Promise<ActionState> {
   return { ok: true };
 }
 
+const examSchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  name: z.string().trim().max(40, "Keep the name under 40 characters.").transform((n) => n || "Exam"),
+  outcome: z.enum(["good", "rough"]).optional(),
+});
+
+/** Sets a subject's exam date, or clears it with null. Kept with your account, beside your other exams. */
+export async function setExam(spaceId: string, exam: z.input<typeof examSchema> | null): Promise<ActionState & { exams?: Record<string, unknown> }> {
+  const parsed = exam ? examSchema.safeParse(exam) : null;
+  if (parsed && !parsed.success) return { ok: false, message: parsed.error.issues[0].message };
+  const current = (await sb().auth.getSession()).data.session?.user.user_metadata?.exams;
+  const exams: Record<string, unknown> = { ...(current && typeof current === "object" ? current : {}) };
+  if (parsed) exams[spaceId] = parsed.data;
+  else delete exams[spaceId];
+  const { error } = await sb().auth.updateUser({ data: { exams } });
+  if (error) return { ok: false, message: "Couldn't save the exam date. Try again." };
+  return { ok: true, exams };
+}
+
 const methodSchema = z.object({ method: z.enum(["recall", "feynman", "socratic", "answer"]), spaceId: z.uuid().optional() });
 
 // Sets how your buddy teaches: for one subject, or your default (used by new subjects)
