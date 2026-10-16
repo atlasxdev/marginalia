@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -8,9 +8,10 @@ import { CheckIcon, ChevronLeftIcon, ChevronRightIcon, CircleDashedIcon, FlagIco
 import { addPetXp, saveActionState, saveAttempts } from "@/lib/writes";
 import { rate as schedule } from "@/lib/leitner";
 import { makeClaim, makeSelectAll, pickedAllRight, shuffle, type Claim, type SelectAll } from "@/lib/questions";
-import { petQuery, spacesQuery, studyQuery } from "@/lib/queries";
-import { deckInSubject, sessionHref } from "@/lib/subjects";
-import type { AttemptResult, CardProgress, CheckResult, Pet, Space, StudyOverview } from "@/lib/types";
+import { meQuery, petQuery, spacesQuery, studyQuery } from "@/lib/queries";
+import { decksIn, examSubjects, lastExamKey, useExams } from "@/lib/exams";
+import { deckInSubject, sessionHref, type SessionScope } from "@/lib/subjects";
+import type { AttemptResult, CardProgress, CheckResult, Deck, Pet } from "@/lib/types";
 import { useHydrated } from "@/lib/use-hydrated";
 import { useStudy, type StudyItem } from "@/lib/use-study";
 import { cn } from "@/lib/utils";
@@ -63,14 +64,16 @@ const clock = (seconds: number) => {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 };
 
-export const lastExamKey = (subjectId: string) => `marginalia:exam:${subjectId}`;
+export { lastExamKey };
 
 export function ExamView() {
   const hydrated = useHydrated();
   const params = useSearchParams();
   const study = useQuery(studyQuery);
   const spaces = useQuery(spacesQuery);
-  if (!hydrated || !study.data || !spaces.data) {
+  const exams = useExams();
+  const me = useQuery(meQuery);
+  if (!hydrated || !study.data || !spaces.data || (params.get("exam") && !me.isSuccess)) {
     return (
       <div className="mx-auto grid max-w-xl gap-4 px-5 pt-24">
         <Skeleton className="h-10 w-2/3" />
@@ -78,8 +81,15 @@ export function ExamView() {
       </div>
     );
   }
+  // A paper from one subject, or from every subject an exam covers
   const space = spaces.data.find((s) => s.id === params.get("subject"));
-  if (!space) {
+  const exam = exams.find((e) => e.id === params.get("exam"));
+  const paper: Paper | null = space
+    ? { id: space.id, name: space.name, href: `/spaces/${space.id}`, scope: { subject: space.id }, decks: study.data.decks.filter((d) => deckInSubject(d, space)) }
+    : exam
+      ? { id: exam.id, name: exam.name, href: `/exams/${exam.id}`, scope: { exam: exam.id }, decks: decksIn(study.data.decks, examSubjects(exam, spaces.data)) }
+      : null;
+  if (!paper) {
     return (
       <div className="mx-auto grid max-w-md justify-items-center gap-4 px-5 pt-32 text-center">
         <p className="text-xl font-semibold">Pick a subject first</p>
@@ -90,11 +100,14 @@ export function ExamView() {
       </div>
     );
   }
-  return <Exam key={space.id} overview={study.data} space={space} />;
+  return <Exam key={paper.id} paper={paper} />;
 }
 
-function Exam({ overview, space }: { overview: StudyOverview; space: Space }) {
-  const decks = useMemo(() => overview.decks.filter((d) => deckInSubject(d, space)), [overview.decks, space]);
+/** What a practice exam is made from, and where it leads back to. */
+type Paper = { id: string; name: string; href: string; scope: SessionScope; decks: Deck[] };
+
+function Exam({ paper }: { paper: Paper }) {
+  const decks = paper.decks;
   const study = useStudy(decks);
   const [items] = useState(() => study.items());
   const [phase, setPhase] = useState<"setup" | "exam" | "grading" | "results">("setup");
@@ -179,7 +192,7 @@ function Exam({ overview, space }: { overview: StudyOverview; space: Space }) {
         saves.push(addPetXp(xp));
       }
       try {
-        localStorage.setItem(lastExamKey(space.id), JSON.stringify({ right, total: marked.length, at: new Date().toISOString() }));
+        localStorage.setItem(lastExamKey(paper.id), JSON.stringify({ right, total: marked.length, at: new Date().toISOString() }));
       } catch {
         // The last score is a convenience; the attempts are saved either way
       }
@@ -205,8 +218,8 @@ function Exam({ overview, space }: { overview: StudyOverview; space: Space }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, now, endsAt]);
 
-  if (phase === "setup") return <Setup space={space} available={items.length} length={length} setLength={setLength} onStart={start} />;
-  if (phase === "results") return <Results space={space} graded={graded} usedSeconds={usedSeconds} />;
+  if (phase === "setup") return <Setup paper={paper} available={items.length} length={length} setLength={setLength} onStart={start} />;
+  if (phase === "results") return <Results paper={paper} graded={graded} usedSeconds={usedSeconds} />;
 
   const q = questions[at];
   const answered = questions.filter((x) => (answers[x.key] ?? "").trim()).length;
@@ -216,7 +229,7 @@ function Exam({ overview, space }: { overview: StudyOverview; space: Space }) {
       <header className="sticky top-0 z-10 bg-background/60 backdrop-blur-xl">
         <div className="grid grid-cols-[1fr_auto] items-center gap-3 px-4 py-3 sm:grid-cols-[1fr_auto_1fr] sm:px-6">
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold">Practice exam: {space.name}</p>
+            <p className="truncate text-sm font-semibold">Practice exam: {paper.name}</p>
             <p className="text-xs text-muted-foreground">No hints until you hand it in</p>
           </div>
           <p className="hidden text-sm text-muted-foreground tabular-nums sm:block">
@@ -390,7 +403,7 @@ function Exam({ overview, space }: { overview: StudyOverview; space: Space }) {
   );
 }
 
-function Setup({ space, available, length, setLength, onStart }: { space: Space; available: number; length: number; setLength: (n: number) => void; onStart: () => void }) {
+function Setup({ paper, available, length, setLength, onStart }: { paper: Paper; available: number; length: number; setLength: (n: number) => void; onStart: () => void }) {
   const pet = useQuery(petQuery).data;
   const options = [10, 20, 30].filter((n) => n <= available);
   const lengths = options.length ? options : [available];
@@ -398,7 +411,7 @@ function Setup({ space, available, length, setLength, onStart }: { space: Space;
     <div className="relative flex min-h-dvh flex-col">
       <div className="p-4 sm:p-6">
         <Button variant="ghost" size="sm" asChild className="text-muted-foreground">
-          <Link href={`/spaces/${space.id}`}>
+          <Link href={paper.href}>
             <XIcon />
             Close
           </Link>
@@ -410,18 +423,18 @@ function Setup({ space, available, length, setLength, onStart }: { space: Space;
             <PetSprite look={pet} face="open" className="h-20 w-[75px]" />
           </span>
         )}
-        <h1 className="mt-6 text-3xl font-bold tracking-tight text-balance">Practice exam: {space.name}</h1>
+        <h1 className="mt-6 text-3xl font-bold tracking-tight text-balance">Practice exam: {paper.name}</h1>
         {available < 3 ? (
           <>
-            <p className="mt-2 text-muted-foreground">There aren&apos;t enough flashcards in this subject yet. Add more notes and come back.</p>
+            <p className="mt-2 text-muted-foreground">There aren&apos;t enough flashcards here yet. Add more notes and come back.</p>
             <Button asChild size="lg" className="mt-8">
-              <Link href={`/spaces/${space.id}`}>Go back</Link>
+              <Link href={paper.href}>Go back</Link>
             </Button>
           </>
         ) : (
           <>
             <p className="mt-2 text-muted-foreground text-balance">
-              Mixed questions from across {space.name}: multiple choice, true or false, select all that apply, and typed. It&apos;s timed, with no hints until you hand it in, like the real thing.
+              Mixed questions from across {paper.name}: multiple choice, true or false, select all that apply, and typed. It&apos;s timed, with no hints until you hand it in, like the real thing.
             </p>
             <p className="mt-10 text-sm font-medium">Questions</p>
             <ToggleGroup type="single" value={String(length)} onValueChange={(v) => v && setLength(Number(v))} className="mt-2 grid w-full gap-2" style={{ gridTemplateColumns: `repeat(${lengths.length}, minmax(0, 1fr))` }} spacing={2}>
@@ -447,7 +460,7 @@ function Setup({ space, available, length, setLength, onStart }: { space: Space;
   );
 }
 
-function Results({ space, graded, usedSeconds }: { space: Space; graded: Graded[]; usedSeconds: number }) {
+function Results({ paper, graded, usedSeconds }: { paper: Paper; graded: Graded[]; usedSeconds: number }) {
   const pet = useQuery(petQuery).data;
   const right = graded.filter((g) => g.result === "right").length;
   const score = graded.length ? right / graded.length : 0;
@@ -474,7 +487,7 @@ function Results({ space, graded, usedSeconds }: { space: Space; graded: Graded[
             <PetSprite look={pet} face={good ? "happy" : "open"} className="h-[70px] w-[66px] origin-bottom animate-[pet-hop_500ms_ease-out] motion-reduce:animate-none" />
           </span>
         )}
-        <p className="mt-6 text-sm text-muted-foreground">Practice exam: {space.name}</p>
+        <p className="mt-6 text-sm text-muted-foreground">Practice exam: {paper.name}</p>
         <h1 className="mt-1 text-5xl font-bold tracking-tight tabular-nums">{Math.round(score * 100)}%</h1>
         <p className="mt-2 text-lg">
           {right} of {graded.length} right in {clock(usedSeconds)}. {good ? "You're in good shape." : "Now you know what to work on."}
@@ -482,14 +495,14 @@ function Results({ space, graded, usedSeconds }: { space: Space; graded: Graded[
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           {missed.length > 0 && (
             <Button size="lg" asChild>
-              <Link href={sessionHref({ subject: space.id, cards: review })}>
+              <Link href={sessionHref({ ...paper.scope, cards: review })}>
                 <PlayIcon />
                 Study the {missed.length} you missed
               </Link>
             </Button>
           )}
           <Button size="lg" variant="glass" asChild>
-            <Link href={`/spaces/${space.id}`}>Back to {space.name}</Link>
+            <Link href={paper.href}>Back to {paper.name}</Link>
           </Button>
         </div>
       </div>

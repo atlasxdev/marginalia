@@ -2,33 +2,44 @@
 
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { lastExamKey } from "@/components/exam/exam-view";
 import { meQuery } from "./queries";
-import { cardCounts, sessionHref, subjectDecks, topicsIn } from "./subjects";
+import { cardCounts, deckInSubject, sessionHref, topicsIn, type SessionScope } from "./subjects";
 import type { Deck, Space, WeakTopic } from "./types";
 
-/* Exam dates: one per subject, kept with your account like your daily goal.
-   The countdown doesn't make anything new. It spreads what the subject already
-   has over the days left: new cards first, weak topics as they show up, and
-   practice exams in the last few days. It works from where you are each day,
-   so a missed day or a bad quiz just reshuffles the rest. */
+/* Exams: a name, a day, and the subjects it covers, kept with your account like
+   your daily goal. The countdown doesn't make anything new. It spreads what the
+   subjects already have over the days left: new cards first, weak topics as they
+   show up, and practice exams in the last few days. It works from where you are
+   each day, so a missed day or a bad quiz just reshuffles the rest. */
 
-export type ExamDate = {
+export type Exam = {
+  id: string;
+  name: string;
   /** The exam's day, "YYYY-MM-DD", in your own time zone. */
   date: string;
-  name: string;
+  spaceIds: string[];
   /** Set once you've said how it went; the countdown is over then. */
   outcome?: "good" | "rough";
 };
-export type Exams = Record<string, ExamDate>;
+
+/** Where the last practice exam score is kept in this browser, for a subject or an exam. */
+export const lastExamKey = (id: string) => `marginalia:exam:${id}`;
 
 /** The last few days before the exam are for practice exams. */
 const FINAL_DAYS = 3;
 
-/** Your exam dates, by subject. */
-export function useExams(): Exams {
-  const saved = useQuery(meQuery).data?.user_metadata?.exams;
-  return saved && typeof saved === "object" ? (saved as Exams) : {};
+/* Saved exams, read from the account. The first version kept one exam per
+   subject, keyed by the subject; those read as exams covering that one subject. */
+export function readExams(saved: unknown): Exam[] {
+  if (Array.isArray(saved)) return saved.filter((e): e is Exam => !!e && typeof e.id === "string" && typeof e.date === "string" && Array.isArray(e.spaceIds));
+  if (saved && typeof saved === "object")
+    return Object.entries(saved as Record<string, Omit<Exam, "id" | "spaceIds">>).map(([spaceId, e]) => ({ ...e, id: spaceId, spaceIds: [spaceId] }));
+  return [];
+}
+
+/** Your exams. */
+export function useExams(): Exam[] {
+  return readExams(useQuery(meQuery).data?.user_metadata?.exams);
 }
 
 const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
@@ -54,15 +65,29 @@ export function whenLine(days: number) {
 export const examDateLabel = (date: string) =>
   fromDateKey(date).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
 
-/** Subjects with an exam still to come (or just past and waiting to hear how it went), soonest first. */
-export function activeExams(exams: Exams, spaces: Space[], now = new Date()) {
-  return spaces
-    .flatMap((space) => {
-      const exam = exams[space.id];
-      return exam && !exam.outcome ? [{ space, exam, days: daysUntil(exam.date, now) }] : [];
-    })
+export const examHref = (exam: Exam) => `/exams/${exam.id}`;
+
+/** The subjects an exam covers that still exist. */
+export const examSubjects = (exam: Exam, spaces: Space[]) => spaces.filter((s) => exam.spaceIds.includes(s.id));
+
+/** Decks in any of these subjects. */
+export const decksIn = (decks: Deck[], spaces: Space[]) => decks.filter((d) => spaces.some((s) => deckInSubject(d, s)));
+
+/** Where an exam's sessions and practice exams draw from: its subject, or the exam itself when it covers several. */
+export const examScope = (exam: Exam): SessionScope => (exam.spaceIds.length === 1 ? { subject: exam.spaceIds[0] } : { exam: exam.id });
+export const practiceHref = (scope: SessionScope) => `/exam?${scope.exam ? `exam=${scope.exam}` : `subject=${scope.subject}`}`;
+
+/** Exams still to come (or just past and waiting to hear how they went), soonest first. */
+export function activeExams(exams: Exam[], now = new Date()) {
+  return exams
+    .filter((e) => !e.outcome)
+    .map((exam) => ({ exam, days: daysUntil(exam.date, now) }))
     .sort((a, b) => a.days - b.days);
 }
+
+/** The soonest exam still to come that covers a subject. */
+export const nextExamFor = (exams: Exam[], spaceId: string) =>
+  activeExams(exams).find((e) => e.days >= 0 && e.exam.spaceIds.includes(spaceId));
 
 /* ---------- today's plan ---------- */
 
@@ -85,14 +110,14 @@ export type DayPlan = {
 
 type Counts = { review: number; fresh: number };
 
-/* A subject's new and due cards as they were this morning, kept in this browser,
-   so today's share stays put as you work through it. New notes during the day add to it. */
-function useMorning(spaceId: string, now: Counts): Counts {
-  const key = `marginalia:plan:${spaceId}`;
+/* New and due cards as they were this morning, kept in this browser, so today's
+   share stays put as you work through it. New notes during the day add to it. */
+function useMorning(key: string, now: Counts): Counts {
+  const storageKey = `marginalia:plan:${key}`;
   const today = toDateKey(new Date());
   const [start, setStart] = useState<Counts>(() => {
     try {
-      const saved = JSON.parse(localStorage.getItem(key) ?? "null");
+      const saved = JSON.parse(localStorage.getItem(storageKey) ?? "null");
       if (saved?.day === today && typeof saved.fresh === "number" && typeof saved.review === "number")
         return { review: saved.review, fresh: saved.fresh };
     } catch {
@@ -106,34 +131,32 @@ function useMorning(spaceId: string, now: Counts): Counts {
   if (review !== start.review || fresh !== start.fresh) setStart({ review, fresh });
   useEffect(() => {
     try {
-      localStorage.setItem(key, JSON.stringify({ day: today, review, fresh }));
+      localStorage.setItem(storageKey, JSON.stringify({ day: today, review, fresh }));
     } catch {
       // Private windows can refuse storage; the plan still works for this visit
     }
-  }, [key, today, review, fresh]);
+  }, [storageKey, today, review, fresh]);
   return { review, fresh };
 }
 
-/** Whether a practice exam in this subject was finished today, in this browser. */
-function examTakenToday(spaceId: string) {
+/** Whether a practice exam was finished today, in this browser. */
+function examTakenToday(id: string) {
   try {
-    const saved = JSON.parse(localStorage.getItem(lastExamKey(spaceId)) ?? "null");
+    const saved = JSON.parse(localStorage.getItem(lastExamKey(id)) ?? "null");
     return !!saved?.at && new Date(saved.at).toDateString() === new Date().toDateString();
   } catch {
     return false;
   }
 }
 
-/** Today's plan for a subject with an exam coming. */
-export function useDayPlan(space: Space, exam: ExamDate, decks: Deck[], weakTopics: WeakTopic[]): DayPlan {
-  const own = subjectDecks(decks, space);
-  const { review, fresh } = cardCounts(own);
-  const morning = useMorning(space.id, { review, fresh });
-  const days = daysUntil(exam.date);
-  const weak = topicsIn(weakTopics, own)[0];
-  const cards = own.reduce((n, d) => n + d.payload.cards.length, 0);
-  const study = sessionHref({ subject: space.id });
-  const examHref = `/exam?subject=${space.id}`;
+/** Today's plan toward an exam, over the given decks: the exam's, or one subject's share of it. */
+export function useDayPlan({ key, date, scope, decks, weakTopics }: { key: string; date: string; scope: SessionScope; decks: Deck[]; weakTopics: WeakTopic[] }): DayPlan {
+  const { review, fresh } = cardCounts(decks);
+  const morning = useMorning(key, { review, fresh });
+  const days = daysUntil(date);
+  const weak = topicsIn(weakTopics, decks)[0];
+  const cards = decks.reduce((n, d) => n + d.payload.cards.length, 0);
+  const study = sessionHref(scope);
 
   if (days < 0) return { days, stage: "over", tasks: [], next: null };
 
@@ -170,9 +193,10 @@ export function useDayPlan(space: Space, exam: ExamDate, decks: Deck[], weakTopi
       done: learned >= target,
       href: study,
     });
-  if (weak) tasks.push({ key: "weak", label: `Practice ${weak.topic}`, done: false, href: sessionHref({ topic: weak.topic, subject: space.id }) });
+  if (weak) tasks.push({ key: "weak", label: `Practice ${weak.topic}`, done: false, href: sessionHref({ ...scope, topic: weak.topic }) });
   // Practice exams in the final stretch, or sooner once every card has been met
-  if (cards >= 3 && (final || fresh === 0)) tasks.push({ key: "exam", label: "Take a practice exam", done: examTakenToday(space.id), href: examHref });
+  if (cards >= 3 && (final || fresh === 0))
+    tasks.push({ key: "exam", label: "Take a practice exam", done: examTakenToday(scope.exam ?? scope.subject ?? ""), href: practiceHref(scope) });
 
   return { days, stage: final ? "final" : "learn", tasks, next: tasks.find((t) => !t.done) ?? null };
 }

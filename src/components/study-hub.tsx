@@ -8,7 +8,7 @@ import { CheckIcon, PlayIcon, PlusIcon, SparklesIcon, TargetIcon } from "lucide-
 import { streakFrom } from "@/lib/pet-care";
 import { useCardQueue } from "@/lib/auto-cards";
 import { useDailyGoal } from "@/lib/daily-goal";
-import { activeExams, daysUntil, useExams, whenLine } from "@/lib/exams";
+import { activeExams, examHref, nextExamFor, useExams, whenLine } from "@/lib/exams";
 import { documentsQuery, meQuery, petQuery, spacesQuery, studyQuery } from "@/lib/queries";
 import { cardCounts, dueCount, rankSubjects, sessionHref, subjectDecks, topicsIn, waitingLine } from "@/lib/subjects";
 import type { DocumentItem, Pet, Space, StudyOverview, WeakTopic } from "@/lib/types";
@@ -19,7 +19,7 @@ import { Item, ItemActions, ItemContent, ItemDescription, ItemGroup, ItemSeparat
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { DeckList, useMakeDeck } from "./deck";
-import { ExamCard, ExamOutcome } from "./exam-countdown";
+import { ExamCountdown, ExamOutcome, ExamPrompt } from "./exam-countdown";
 import { PetSprite } from "./pet/pet-sprite";
 import { SpaceDialog } from "./space-dialog";
 
@@ -70,9 +70,9 @@ function Today({ overview, spaces, documents }: { overview: StudyOverview; space
     ? [waitingLine(pick.counts), pick.weak[0] && `${pick.weak[0].topic} needs work`].filter(Boolean).join(", and ")
     : null;
   // An exam coming up leads the day: its countdown and plan take over from today's pick
-  const exams = activeExams(useExams(), spaces);
+  const exams = activeExams(useExams());
   const finished = exams.filter((e) => e.days < 0);
-  const upcoming = exams.find((e) => e.days >= 0);
+  const [upcoming, ...later] = exams.filter((e) => e.days >= 0);
 
   return (
     <>
@@ -141,9 +141,33 @@ function Today({ overview, spaces, documents }: { overview: StudyOverview; space
       </section>
 
       {finished.map((e) => (
-        <ExamOutcome key={e.space.id} space={e.space} exam={e.exam} days={e.days} className="mt-8" />
+        <ExamOutcome key={e.exam.id} exam={e.exam} days={e.days} className="mt-8" />
       ))}
-      {upcoming && <ExamCard space={upcoming.space} exam={upcoming.exam} days={upcoming.days} overview={overview} />}
+      {upcoming ? (
+        <>
+          <ExamCountdown exam={upcoming.exam} days={upcoming.days} overview={overview} spaces={spaces} linked className="mt-8" />
+          {later.length > 0 && (
+            <p className="mt-3 px-1 text-sm text-muted-foreground">
+              Also coming up:{" "}
+              {later.slice(0, 2).map((e, i) => (
+                <Fragment key={e.exam.id}>
+                  {i > 0 && ", "}
+                  <Link href={examHref(e.exam)} className="font-medium text-foreground hover:underline">
+                    {e.exam.name}
+                  </Link>{" "}
+                  {whenLine(e.days)}
+                </Fragment>
+              ))}
+              .{" "}
+              <Link href="/exams" className="font-medium text-primary hover:underline">
+                All exams
+              </Link>
+            </p>
+          )}
+        </>
+      ) : (
+        decks.length > 0 && finished.length === 0 && <ExamPrompt className={`${groupClass} mt-8 rounded-2xl px-6 py-5`} />
+      )}
 
       {/* Until the first session, three steps show the way */}
       {activity.length === 0 && <GettingStarted spaces={spaces} decks={decks} documents={documents} pet={pet} onCreate={() => setCreating(true)} />}
@@ -197,7 +221,7 @@ function Today({ overview, spaces, documents }: { overview: StudyOverview; space
 }
 
 /** A subject as a card: its progress, and the one thing it needs next. */
-function SubjectCard({ space, overview, documents }: { space: Space; overview: StudyOverview; documents: DocumentItem[] }) {
+export function SubjectCard({ space, overview, documents }: { space: Space; overview: StudyOverview; documents: DocumentItem[] }) {
   const makeDeck = useMakeDeck();
   const queue = useCardQueue();
   const decks = subjectDecks(overview.decks, space);
@@ -208,8 +232,7 @@ function SubjectCard({ space, overview, documents }: { space: Space; overview: S
   const cards = decks.reduce((n, d) => n + d.payload.cards.length, 0);
   const learned = Math.max(0, cards - counts.review - counts.fresh);
   const preparing = files.some((d) => queue.includes(d.id) || d.status === "pending" || d.status === "processing");
-  const exam = useExams()[space.id];
-  const examIn = exam && !exam.outcome ? daysUntil(exam.date) : null;
+  const examIn = nextExamFor(useExams(), space.id)?.days ?? null;
 
   const status =
     files.length === 0

@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
+  CalendarIcon,
   HouseIcon,
   LayersIcon,
   LibraryIcon,
@@ -41,6 +42,7 @@ import {
 import { getBrowserClient } from "@/lib/supabase/client";
 import { useHydrated } from "@/lib/use-hydrated";
 import { cn } from "@/lib/utils";
+import { activeExams, useExams } from "@/lib/exams";
 import { Wordmark } from "./logo";
 import { SearchChats } from "./search-chats";
 import { PetWidget } from "./pet/pet-widget";
@@ -86,6 +88,8 @@ function AppSidebar() {
   const router = useRouter();
   const hydrated = useHydrated();
   const { setOpenMobile } = useSidebar();
+  // The soonest exam's countdown, beside Exams
+  const nextExam = activeExams(useExams()).find((e) => e.days >= 0);
   const conversationsResult = useQuery(conversationsQuery);
   const documentsResult = useQuery(documentsQuery);
   const spacesResult = useQuery(spacesQuery);
@@ -158,6 +162,19 @@ function AppSidebar() {
                   aria-label={`${dueCount} cards due`}
                 >
                   {dueCount}
+                </SidebarMenuBadge>
+              )}
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild isActive={pathname === "/exams" || pathname.startsWith("/exams/")}>
+                <Link href="/exams" onClick={close}>
+                  <CalendarIcon className="text-primary" />
+                  <span>Exams</span>
+                </Link>
+              </SidebarMenuButton>
+              {hydrated && nextExam && (
+                <SidebarMenuBadge className="tabular-nums" aria-label={`${nextExam.exam.name} ${nextExam.days === 0 ? "today" : `in ${nextExam.days} days`}`}>
+                  {nextExam.days === 0 ? "Today" : `${nextExam.days}d`}
                 </SidebarMenuBadge>
               )}
             </SidebarMenuItem>

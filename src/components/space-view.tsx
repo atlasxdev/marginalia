@@ -28,7 +28,7 @@ import { queueCards, useCardQueue } from "@/lib/auto-cards";
 import { fileLabel, petSignal } from "@/lib/pet-events";
 import { conversationsQuery, documentsQuery, spaceQuery, studyQuery } from "@/lib/queries";
 import { ACCEPTED_TYPES } from "@/lib/schemas";
-import { daysUntil, useExams } from "@/lib/exams";
+import { nextExamFor, useExams } from "@/lib/exams";
 import { cardCounts, dueCount, sessionHref, subjectDecks, topicsIn, waitingLine } from "@/lib/subjects";
 import type { DocumentItem, Space } from "@/lib/types";
 import { useHydrated } from "@/lib/use-hydrated";
@@ -37,7 +37,7 @@ import { Composer } from "./composer";
 import { DeckList, useMakeDeck } from "./deck";
 import { MethodPicker } from "./method-picker";
 import { lastExamKey } from "./exam/exam-view";
-import { ExamChip, ExamDateDialog, ExamOutcome, ExamPlan } from "./exam-countdown";
+import { ExamChip, ExamPlan, ExamPrompt } from "./exam-countdown";
 import { KindIcon, SpaceDialog } from "./space-dialog";
 import { WeakTopicList } from "./study-hub";
 import { uploadFile } from "./upload-form";
@@ -99,9 +99,7 @@ function SpaceDetail({ space }: { space: Space }) {
   const chats = (hydrated ? allConversations : undefined)?.filter((c) => c.spaceId === space.id) ?? [];
   const [editing, setEditing] = useState(false);
   const [confirming, setConfirming] = useState(false);
-  const [settingExam, setSettingExam] = useState(false);
-  const exam = useExams()[space.id];
-  const examIn = exam && !exam.outcome ? daysUntil(exam.date) : null;
+  const exam = nextExamFor(useExams(), space.id)?.exam;
   const makeDeck = useMakeDeck();
   const study = useQuery(studyQuery).data;
   const overview = hydrated ? study : undefined;
@@ -212,7 +210,7 @@ function SpaceDetail({ space }: { space: Space }) {
 
   const counts = cardCounts(decks);
   // With an exam coming, the day's plan is the next step
-  const planning = !!exam && examIn !== null && examIn >= 0 && decks.length > 0 && !!overview;
+  const planning = !!exam && decks.length > 0 && !!overview;
   const learned = Math.max(0, cards - counts.review - counts.fresh);
 
   return (
@@ -227,7 +225,7 @@ function SpaceDetail({ space }: { space: Space }) {
               : `${inSpace.length} ${inSpace.length === 1 ? "file" : "files"}${cards ? `, ${cards} flashcards` : ""}`}
           </p>
           <div className="mt-2">
-            <ExamChip exam={exam} onClick={() => setSettingExam(true)} />
+            <ExamChip space={space} />
           </div>
         </div>
         <Button variant="ghost" size="icon" aria-label="Edit subject" onClick={() => setEditing(true)} className="text-muted-foreground">
@@ -261,8 +259,6 @@ function SpaceDetail({ space }: { space: Space }) {
         }}
       />
 
-      {exam && examIn !== null && examIn < 0 && <ExamOutcome space={space} exam={exam} days={examIn} className="mt-8" />}
-
       <section aria-label="Next step" className={`${groupClass} mt-8 rounded-2xl p-6`}>
         <div className="flex flex-wrap items-center gap-x-8 gap-y-5">
           <div className="min-w-60 flex-1">
@@ -280,13 +276,14 @@ function SpaceDetail({ space }: { space: Space }) {
               </div>
             )}
             {planning ? (
-              <ExamPlan space={space} exam={exam!} overview={overview!} />
+              <ExamPlan exam={exam!} overview={overview!} spaces={[space]} subject={space} />
             ) : (
               <p className="text-lg font-medium text-balance">{next.line}</p>
             )}
           </div>
           {!planning && next.action}
         </div>
+        {!exam && decks.length > 0 && <ExamPrompt subjectId={space.id} className="mt-6 border-t border-glass-divider pt-5" />}
       </section>
 
       <Tabs defaultValue={inSpace.length === 0 ? "notes" : "study"} className="mt-10 gap-6">
@@ -433,7 +430,6 @@ function SpaceDetail({ space }: { space: Space }) {
       </Tabs>
 
       <SpaceDialog open={editing} onOpenChange={setEditing} space={space} />
-      <ExamDateDialog open={settingExam} onOpenChange={setSettingExam} space={space} exam={exam} />
       <AlertDialog open={confirming} onOpenChange={setConfirming}>
         <AlertDialogContent className="border border-glass-border bg-popover">
           <AlertDialogHeader>

@@ -42,7 +42,7 @@ export function PetWidget({ onOpen }: { onOpen?: () => void }) {
   const pick = overview && spaces ? rankSubjects(spaces, overview.decks, overview.weakTopics)[0]?.space : undefined;
   // Your buddy mentions an exam once it's two weeks out
   const exams = useExams();
-  const soon = spaces ? activeExams(exams, spaces).find((e) => e.days >= 0 && e.days <= 14) : undefined;
+  const soon = activeExams(exams).find((e) => e.days >= 0 && e.days <= 14);
   const examNote = soon && (soon.days === 0 ? "Exam day!" : `${soon.days}d to ${soon.exam.name}`);
 
   // "Your pet" in the account menu

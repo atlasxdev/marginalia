@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { readExams, type Exam } from "@/lib/exams";
 import { noteJsonPath } from "@/lib/note";
 import { ACCESSORIES, EYES, SPECIES } from "@/lib/pet-art";
 import { questionSchema, spaceSchema } from "@/lib/schemas";
@@ -156,21 +157,36 @@ export async function setDailyGoal(goal: number): Promise<ActionState> {
 }
 
 const examSchema = z.object({
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  id: z.uuid().optional(),
   name: z.string().trim().max(40, "Keep the name under 40 characters.").transform((n) => n || "Exam"),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Pick the exam's date."),
+  spaceIds: z.array(z.uuid()).min(1, "Pick the subjects it covers.").max(30),
   outcome: z.enum(["good", "rough"]).optional(),
 });
+export type ExamInput = z.input<typeof examSchema>;
 
-/** Sets a subject's exam date, or clears it with null. Kept with your account, beside your other exams. */
-export async function setExam(spaceId: string, exam: z.input<typeof examSchema> | null): Promise<ActionState & { exams?: Record<string, unknown> }> {
-  const parsed = exam ? examSchema.safeParse(exam) : null;
-  if (parsed && !parsed.success) return { ok: false, message: parsed.error.issues[0].message };
-  const current = (await sb().auth.getSession()).data.session?.user.user_metadata?.exams;
-  const exams: Record<string, unknown> = { ...(current && typeof current === "object" ? current : {}) };
-  if (parsed) exams[spaceId] = parsed.data;
-  else delete exams[spaceId];
+// Exams live with your account, all together, so each change rewrites the list
+async function writeExams(change: (exams: Exam[]) => Exam[]) {
+  const current = readExams((await sb().auth.getSession()).data.session?.user.user_metadata?.exams);
+  const exams = change(current);
   const { error } = await sb().auth.updateUser({ data: { exams } });
-  if (error) return { ok: false, message: "Couldn't save the exam date. Try again." };
+  return error ? null : exams;
+}
+
+/** Adds an exam, or saves changes to one. */
+export async function saveExam(input: ExamInput): Promise<ActionState & { exam?: Exam; exams?: Exam[] }> {
+  const parsed = examSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, message: parsed.error.issues[0].message };
+  const exam: Exam = { ...parsed.data, id: parsed.data.id ?? crypto.randomUUID() };
+  if (!exam.outcome) delete exam.outcome;
+  const exams = await writeExams((list) => (list.some((e) => e.id === exam.id) ? list.map((e) => (e.id === exam.id ? exam : e)) : [...list, exam]));
+  if (!exams) return { ok: false, message: "Couldn't save the exam. Try again." };
+  return { ok: true, exam, exams };
+}
+
+export async function deleteExam(id: string): Promise<ActionState & { exams?: Exam[] }> {
+  const exams = await writeExams((list) => list.filter((e) => e.id !== id));
+  if (!exams) return { ok: false, message: "Couldn't delete the exam. Try again." };
   return { ok: true, exams };
 }
 

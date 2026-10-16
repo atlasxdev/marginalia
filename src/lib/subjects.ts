@@ -55,7 +55,7 @@ export function rankSubjects(spaces: Space[], decks: Deck[], weakTopics: WeakTop
 }
 
 /** Where to study: a subject, one deck, or one weak topic (optionally within a subject). */
-export type SessionScope = { subject?: string; deck?: string; topic?: string; /** "deckId:index" pairs, comma separated. */ cards?: string };
+export type SessionScope = { subject?: string; /** An exam covering several subjects. */ exam?: string; deck?: string; topic?: string; /** "deckId:index" pairs, comma separated. */ cards?: string };
 
 export function sessionHref(scope: SessionScope) {
   const params = new URLSearchParams(Object.entries(scope).filter(([, v]) => v) as [string, string][]);

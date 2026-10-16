@@ -6,7 +6,8 @@ import { useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CoffeeIcon, HourglassIcon, InfinityIcon, MessageCircleQuestionIcon, PauseIcon, PlayIcon, TimerIcon, XIcon } from "lucide-react";
 import { addPetXp, saveStudySession } from "@/lib/writes";
-import { petQuery, spacesQuery, studyQuery } from "@/lib/queries";
+import { meQuery, petQuery, spacesQuery, studyQuery } from "@/lib/queries";
+import { decksIn, examSubjects, useExams } from "@/lib/exams";
 import { deckInSubject, topicsIn } from "@/lib/subjects";
 import type { AttemptResult, Deck, FocusMethod, MissKind, Pet, Space, StudyOverview } from "@/lib/types";
 import { useDailyGoal } from "@/lib/daily-goal";
@@ -55,14 +56,18 @@ export function SessionView() {
   const params = useSearchParams();
   const study = useQuery(studyQuery);
   const spaces = useQuery(spacesQuery);
+  const exams = useExams();
+  const me = useQuery(meQuery);
   const scope = {
     subject: params.get("subject") ?? undefined,
+    exam: params.get("exam") ?? undefined,
     deck: params.get("deck") ?? undefined,
     topic: params.get("topic") ?? undefined,
     cards: params.get("cards") ?? undefined,
   };
 
-  if (!hydrated || !study.data || !spaces.data) {
+  // An exam's subjects come with your account, so wait for it before fixing the plan
+  if (!hydrated || !study.data || !spaces.data || (scope.exam && !me.isSuccess)) {
     return (
       <div className="mx-auto grid max-w-xl gap-4 px-5 pt-24">
         <Skeleton className="h-10 w-2/3" />
@@ -71,19 +76,34 @@ export function SessionView() {
     );
   }
   const space = spaces.data.find((s) => s.id === scope.subject);
-  return <Session key={params.toString()} overview={study.data} space={space} scope={scope} />;
+  // An exam covering several subjects studies them all
+  const found = exams.find((e) => e.id === scope.exam);
+  const exam = found && { id: found.id, name: found.name, spaces: examSubjects(found, spaces.data) };
+  return <Session key={params.toString()} overview={study.data} space={space} exam={exam} scope={scope} />;
 }
 
-function Session({ overview, space, scope }: { overview: StudyOverview; space?: Space; scope: { subject?: string; deck?: string; topic?: string; cards?: string } }) {
+function Session({
+  overview,
+  space,
+  exam,
+  scope,
+}: {
+  overview: StudyOverview;
+  space?: Space;
+  exam?: { id: string; name: string; spaces: Space[] };
+  scope: { subject?: string; exam?: string; deck?: string; topic?: string; cards?: string };
+}) {
   const queryClient = useQueryClient();
   const decks = useMemo<Deck[]>(() => {
     if (scope.deck) return overview.decks.filter((d) => d.id === scope.deck);
     if (space) return overview.decks.filter((d) => deckInSubject(d, space));
+    if (exam) return decksIn(overview.decks, exam.spaces);
     return overview.decks;
-  }, [overview.decks, scope.deck, space]);
+  }, [overview.decks, scope.deck, space, exam]);
   const study = useStudy(decks);
-  const title = scope.cards ? `${space?.name ?? "Exam"}: the ones you missed` : (scope.topic ?? (scope.deck ? decks[0]?.payload.title : space?.name) ?? "All subjects");
-  const backHref = space ? `/spaces/${space.id}` : "/study";
+  const name = space?.name ?? exam?.name;
+  const title = scope.cards ? `${name ?? "Exam"}: the ones you missed` : (scope.topic ?? (scope.deck ? decks[0]?.payload.title : name) ?? "All subjects");
+  const backHref = space ? `/spaces/${space.id}` : exam ? `/exams/${exam.id}` : "/study";
 
   // The plan is fixed when the session opens
   const [plan] = useState<Step[]>(() => {
@@ -263,6 +283,7 @@ function Session({ overview, space, scope }: { overview: StudyOverview; space?: 
         method={method}
         startedAt={startedAt}
         space={space}
+        backLabel={exam ? `Back to ${exam.name}` : undefined}
         backHref={backHref}
         onSaved={() => queryClient.invalidateQueries({ queryKey: ["study"] })}
       />
@@ -634,6 +655,7 @@ function Summary({
   startedAt,
   space,
   backHref,
+  backLabel,
   onSaved,
 }: {
   title: string;
@@ -643,6 +665,7 @@ function Summary({
   startedAt: string | null;
   space?: Space;
   backHref: string;
+  backLabel?: string;
   onSaved: () => void;
 }) {
   const queryClient = useQueryClient();
@@ -742,7 +765,7 @@ function Summary({
 
       <div className="mt-10 flex w-full flex-col gap-2 sm:flex-row sm:justify-center">
         <Button size="lg" asChild>
-          <Link href={backHref}>{space ? `Back to ${space.name}` : "Back to Today"}</Link>
+          <Link href={backHref}>{backLabel ?? (space ? `Back to ${space.name}` : "Back to Today")}</Link>
         </Button>
         {space && (
           <Button size="lg" variant="glass" asChild>
