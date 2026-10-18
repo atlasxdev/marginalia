@@ -161,7 +161,10 @@ function Sidebar({
   variant?: "sidebar" | "floating" | "inset"
   collapsible?: "offcanvas" | "icon" | "none"
 }) {
-  const { isMobile, state, openMobile, setOpenMobile } = useSidebar()
+  const { state, openMobile, setOpenMobile } = useSidebar()
+  // Read here rather than from context, so a sidebar still hydrating inside Suspense
+  // matches the server render instead of getting the live value early
+  const isMobile = useIsMobile()
 
   if (collapsible === "none") {
     return (
