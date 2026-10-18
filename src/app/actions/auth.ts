@@ -21,7 +21,7 @@ export async function signIn(_prev: ActionState, formData: FormData): Promise<Ac
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword(parsed.data);
+  const { data, error } = await supabase.auth.signInWithPassword(parsed.data);
   if (error) {
     return {
       ok: false,
@@ -31,7 +31,7 @@ export async function signIn(_prev: ActionState, formData: FormData): Promise<Ac
           : "Email or password is incorrect.",
     };
   }
-  redirect("/study");
+  redirect(data.user.user_metadata?.onboarded === true ? "/study" : "/welcome");
 }
 
 export async function signUp(_prev: ActionState, formData: FormData): Promise<ActionState> {
@@ -63,7 +63,8 @@ export async function signUp(_prev: ActionState, formData: FormData): Promise<Ac
   if (!data.session) {
     return { ok: true, message: `Check ${email} for a link to confirm your account.` };
   }
-  redirect("/study");
+  // A new account starts with the welcome
+  redirect("/welcome");
 }
 
 export async function signOut() {

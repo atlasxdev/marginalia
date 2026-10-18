@@ -87,7 +87,7 @@ export function ExamView() {
   const paper: Paper | null = space
     ? { id: space.id, name: space.name, href: `/spaces/${space.id}`, scope: { subject: space.id }, decks: study.data.decks.filter((d) => deckInSubject(d, space)) }
     : exam
-      ? { id: exam.id, name: exam.name, href: `/exams/${exam.id}`, scope: { exam: exam.id }, decks: decksIn(study.data.decks, examSubjects(exam, spaces.data)) }
+      ? { id: exam.id, name: exam.name, href: `/events/${exam.id}`, scope: { exam: exam.id }, decks: decksIn(study.data.decks, examSubjects(exam, spaces.data)) }
       : null;
   if (!paper) {
     return (

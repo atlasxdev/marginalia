@@ -6,8 +6,9 @@ import { meQuery } from "./queries";
 import { cardCounts, deckInSubject, sessionHref, topicsIn, type SessionScope } from "./subjects";
 import type { Deck, Space, WeakTopic } from "./types";
 
-/* Exams: a name, a day, and the subjects it covers, kept with your account like
-   your daily goal. The countdown doesn't make anything new. It spreads what the
+/* Events (still Exam in the code): a name and a day, kept with your account like
+   your daily goal, and the subjects it covers if you link any. Without subjects
+   it's a countdown. With them, the countdown plans each day: it spreads what the
    subjects already have over the days left: new cards first, weak topics as they
    show up, and practice exams in the last few days. It works from where you are
    each day, so a missed day or a bad quiz just reshuffles the rest. */
@@ -15,8 +16,10 @@ import type { Deck, Space, WeakTopic } from "./types";
 export type Exam = {
   id: string;
   name: string;
-  /** The exam's day, "YYYY-MM-DD", in your own time zone. */
+  /** The first day, "YYYY-MM-DD", in your own time zone. */
   date: string;
+  /** The last day, for an event over several days (an exam week, a trip). */
+  end?: string;
   spaceIds: string[];
   /** Set once you've said how it went; the countdown is over then. */
   outcome?: "good" | "rough";
@@ -65,7 +68,28 @@ export function whenLine(days: number) {
 export const examDateLabel = (date: string) =>
   fromDateKey(date).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
 
-export const examHref = (exam: Exam) => `/exams/${exam.id}`;
+/** The event's last day: its end, or its one day. */
+export const lastDay = (exam: Exam) => exam.end ?? exam.date;
+
+/** "Thu, Nov 5", or "Thu, Nov 5 – Mon, Nov 9" over several days. */
+export const eventDateLabel = (exam: Exam) =>
+  exam.end && exam.end !== exam.date ? `${examDateLabel(exam.date)} – ${examDateLabel(exam.end)}` : examDateLabel(exam.date);
+
+/** Days to the event's first day; 0 all through it, and negative from its last day once it's over. */
+export function eventDays(exam: Exam, now = new Date()) {
+  const start = daysUntil(exam.date, now);
+  if (start >= 0) return start;
+  const end = daysUntil(lastDay(exam), now);
+  return end >= 0 ? 0 : end;
+}
+
+/** Whether a several-day event has started and isn't over yet. */
+export const onNow = (exam: Exam, now = new Date()) => daysUntil(exam.date, now) < 0 && daysUntil(lastDay(exam), now) >= 0;
+
+/** Like whenLine, but "on now" through an event's days. */
+export const eventWhen = (exam: Exam, now = new Date()) => (onNow(exam, now) ? `on now, until ${examDateLabel(lastDay(exam))}` : whenLine(eventDays(exam, now)));
+
+export const examHref = (exam: Exam) => `/events/${exam.id}`;
 
 /** The subjects an exam covers that still exist. */
 export const examSubjects = (exam: Exam, spaces: Space[]) => spaces.filter((s) => exam.spaceIds.includes(s.id));
@@ -81,7 +105,7 @@ export const practiceHref = (scope: SessionScope) => `/exam?${scope.exam ? `exam
 export function activeExams(exams: Exam[], now = new Date()) {
   return exams
     .filter((e) => !e.outcome)
-    .map((exam) => ({ exam, days: daysUntil(exam.date, now) }))
+    .map((exam) => ({ exam, days: eventDays(exam, now) }))
     .sort((a, b) => a.days - b.days);
 }
 
@@ -150,10 +174,9 @@ function examTakenToday(id: string) {
 }
 
 /** Today's plan toward an exam, over the given decks: the exam's, or one subject's share of it. */
-export function useDayPlan({ key, date, scope, decks, weakTopics }: { key: string; date: string; scope: SessionScope; decks: Deck[]; weakTopics: WeakTopic[] }): DayPlan {
+export function useDayPlan({ key, days, scope, decks, weakTopics }: { key: string; days: number; scope: SessionScope; decks: Deck[]; weakTopics: WeakTopic[] }): DayPlan {
   const { review, fresh } = cardCounts(decks);
   const morning = useMorning(key, { review, fresh });
-  const days = daysUntil(date);
   const weak = topicsIn(weakTopics, decks)[0];
   const cards = decks.reduce((n, d) => n + d.payload.cards.length, 0);
   const study = sessionHref(scope);

@@ -35,8 +35,17 @@ export async function proxy(request: NextRequest) {
     }
     return NextResponse.redirect(new URL("/sign-in", request.url));
   }
-  if (signedIn && (path === "/" || path === "/sign-in" || path === "/sign-up")) {
+  // A new account sees the welcome before anything else; once done, /welcome goes home
+  const onboarded = data?.claims?.user_metadata?.onboarded === true;
+  const page = !path.startsWith("/api/") && !isPublic;
+  if (signedIn && !onboarded && page && path !== "/welcome") {
+    return NextResponse.redirect(new URL("/welcome", request.url));
+  }
+  if (signedIn && onboarded && path === "/welcome") {
     return NextResponse.redirect(new URL("/study", request.url));
+  }
+  if (signedIn && (path === "/" || path === "/sign-in" || path === "/sign-up")) {
+    return NextResponse.redirect(new URL(onboarded ? "/study" : "/welcome", request.url));
   }
   return response;
 }

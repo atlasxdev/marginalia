@@ -40,10 +40,10 @@ export function PetWidget({ onOpen }: { onOpen?: () => void }) {
   const status = studyStatus(overview, due);
   const spaces = useQuery(spacesQuery).data;
   const pick = overview && spaces ? rankSubjects(spaces, overview.decks, overview.weakTopics)[0]?.space : undefined;
-  // Your buddy mentions an exam once it's two weeks out
+  // Your buddy mentions an event once it's two weeks out
   const exams = useExams();
   const soon = activeExams(exams).find((e) => e.days >= 0 && e.days <= 14);
-  const examNote = soon && (soon.days === 0 ? "Exam day!" : `${soon.days}d to ${soon.exam.name}`);
+  const examNote = soon && (soon.days === 0 ? `${soon.exam.name} today!` : `${soon.days}d to ${soon.exam.name}`);
 
   // "Your pet" in the account menu
   useEffect(() => onOpenPet(() => (queryClient.getQueryData(["pet"]) ? setDevice(true) : setBuilding(true))), [queryClient]);
@@ -103,6 +103,7 @@ export function PetWidget({ onOpen }: { onOpen?: () => void }) {
     <>
       <button
         type="button"
+        data-tour="buddy"
         onClick={open}
         className="group/pet flex w-full items-center gap-3 rounded-xl p-2 text-left transition-colors duration-150 hover:bg-sidebar-accent"
         aria-label={

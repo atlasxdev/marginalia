@@ -156,16 +156,26 @@ export async function setDailyGoal(goal: number): Promise<ActionState> {
   return { ok: true };
 }
 
+/** Marks the first-run welcome as done, so it doesn't open again. */
+export async function finishOnboarding(): Promise<ActionState> {
+  const { error } = await sb().auth.updateUser({ data: { onboarded: true } });
+  if (error) return { ok: false };
+  // A fresh token carries the new flag, so the server stops sending you to /welcome
+  await sb().auth.refreshSession();
+  return { ok: true };
+}
+
 const examSchema = z.object({
   id: z.uuid().optional(),
-  name: z.string().trim().max(40, "Keep the name under 40 characters.").transform((n) => n || "Exam"),
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Pick the exam's date."),
-  spaceIds: z.array(z.uuid()).min(1, "Pick the subjects it covers.").max(30),
+  name: z.string().trim().max(40, "Keep the name under 40 characters.").transform((n) => n || "Event"),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Pick the day."),
+  end: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  spaceIds: z.array(z.uuid()).max(30),
   outcome: z.enum(["good", "rough"]).optional(),
-});
+}).refine((e) => !e.end || e.end >= e.date, "The last day can't be before the first.");
 export type ExamInput = z.input<typeof examSchema>;
 
-// Exams live with your account, all together, so each change rewrites the list
+// Events live with your account, all together, so each change rewrites the list
 async function writeExams(change: (exams: Exam[]) => Exam[]) {
   const current = readExams((await sb().auth.getSession()).data.session?.user.user_metadata?.exams);
   const exams = change(current);
@@ -173,20 +183,21 @@ async function writeExams(change: (exams: Exam[]) => Exam[]) {
   return error ? null : exams;
 }
 
-/** Adds an exam, or saves changes to one. */
+/** Adds an event, or saves changes to one. */
 export async function saveExam(input: ExamInput): Promise<ActionState & { exam?: Exam; exams?: Exam[] }> {
   const parsed = examSchema.safeParse(input);
   if (!parsed.success) return { ok: false, message: parsed.error.issues[0].message };
   const exam: Exam = { ...parsed.data, id: parsed.data.id ?? crypto.randomUUID() };
   if (!exam.outcome) delete exam.outcome;
+  if (!exam.end || exam.end === exam.date) delete exam.end;
   const exams = await writeExams((list) => (list.some((e) => e.id === exam.id) ? list.map((e) => (e.id === exam.id ? exam : e)) : [...list, exam]));
-  if (!exams) return { ok: false, message: "Couldn't save the exam. Try again." };
+  if (!exams) return { ok: false, message: "Couldn't save the event. Try again." };
   return { ok: true, exam, exams };
 }
 
 export async function deleteExam(id: string): Promise<ActionState & { exams?: Exam[] }> {
   const exams = await writeExams((list) => list.filter((e) => e.id !== id));
-  if (!exams) return { ok: false, message: "Couldn't delete the exam. Try again." };
+  if (!exams) return { ok: false, message: "Couldn't delete the event. Try again." };
   return { ok: true, exams };
 }
 

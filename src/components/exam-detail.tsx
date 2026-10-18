@@ -5,9 +5,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { CalendarIcon, ChevronLeftIcon, MoreHorizontalIcon, PencilIcon, Trash2Icon } from "lucide-react";
-import { daysUntil, decksIn, examDateLabel, examSubjects, useExams, whenLine, type Exam } from "@/lib/exams";
-import { documentsQuery, meQuery, spacesQuery, studyQuery } from "@/lib/queries";
+import { CalendarIcon, ChevronLeftIcon, LinkIcon, MoreHorizontalIcon, PencilIcon, Trash2Icon } from "lucide-react";
+import { decksIn, eventDateLabel, eventDays, examSubjects, onNow, useExams, type Exam } from "@/lib/exams";
+import { documentsQuery, meQuery, petQuery, spacesQuery, studyQuery } from "@/lib/queries";
 import { subjectDecks, topicsIn } from "@/lib/subjects";
 import type { DocumentItem, Space, StudyOverview } from "@/lib/types";
 import { useHydrated } from "@/lib/use-hydrated";
@@ -46,12 +46,12 @@ export function ExamDetailView({ id }: { id: string }) {
           <EmptyMedia variant="icon">
             <CalendarIcon />
           </EmptyMedia>
-          <EmptyTitle>This exam isn&apos;t available</EmptyTitle>
+          <EmptyTitle>This event isn&apos;t available</EmptyTitle>
           <EmptyDescription>It may have been deleted.</EmptyDescription>
         </EmptyHeader>
         <EmptyContent>
           <Button asChild>
-            <Link href="/exams">Back to Exams</Link>
+            <Link href="/events">Back to Events</Link>
           </Button>
         </EmptyContent>
       </Empty>
@@ -64,7 +64,7 @@ export function ExamDetailView({ id }: { id: string }) {
         {ready && exam ? (
           <ExamDetail key={exam.id} exam={exam} overview={study.data!} spaces={spaces.data!} documents={documents.data!} />
         ) : (
-          <div className="space-y-4 pt-4" aria-label="Loading exam">
+          <div className="space-y-4 pt-4" aria-label="Loading event">
             <Skeleton className="h-9 w-1/2" />
             <Skeleton className="h-56 w-full rounded-2xl" />
           </div>
@@ -79,17 +79,18 @@ function ExamDetail({ exam, overview, spaces, documents }: { exam: Exam; overvie
   const remove = useDeleteExam();
   const [editing, setEditing] = useState(false);
   const [confirming, setConfirming] = useState(false);
-  const days = daysUntil(exam.date);
+  const days = eventDays(exam);
   const covered = examSubjects(exam, spaces);
   const decks = decksIn(overview.decks, covered);
   const weak = topicsIn(overview.weakTopics, decks);
+  const buddy = useQuery(petQuery).data?.name ?? "your buddy";
 
   return (
     <>
       <Button variant="ghost" size="sm" asChild className="-ml-2.5 text-muted-foreground">
-        <Link href="/exams">
+        <Link href="/events">
           <ChevronLeftIcon />
-          Exams
+          Events
         </Link>
       </Button>
 
@@ -97,22 +98,23 @@ function ExamDetail({ exam, overview, spaces, documents }: { exam: Exam; overvie
         <div className="min-w-0 flex-1">
           <h1 className="text-4xl font-bold tracking-tight wrap-anywhere">{exam.name}</h1>
           <p className="mt-1.5 text-muted-foreground">
-            {examDateLabel(exam.date)}, {whenLine(days)}
+            {eventDateLabel(exam)}
+            {covered.length > 0 && ` · ${covered.map((s) => s.name).join(", ")}`}
           </p>
         </div>
-        <Button variant="ghost" size="icon" aria-label="Edit exam" onClick={() => setEditing(true)} className="text-muted-foreground">
+        <Button variant="ghost" size="icon" aria-label="Edit event" onClick={() => setEditing(true)} className="text-muted-foreground">
           <PencilIcon />
         </Button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" aria-label="More options for this exam" className="text-muted-foreground">
+            <Button variant="ghost" size="icon" aria-label="More options for this event" className="text-muted-foreground">
               <MoreHorizontalIcon />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-auto min-w-48">
             <DropdownMenuItem variant="destructive" className="gap-2.5 px-2.5 py-2" onSelect={() => setConfirming(true)}>
               <Trash2Icon />
-              Delete exam
+              Delete event
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -128,30 +130,54 @@ function ExamDetail({ exam, overview, spaces, documents }: { exam: Exam; overvie
           </Button>
         </section>
       ) : days < 0 ? (
-        <ExamOutcome exam={exam} days={days} className="mt-8" />
-      ) : (
+        <ExamOutcome exam={exam} className="mt-8" />
+      ) : covered.length ? (
         <ExamCountdown exam={exam} days={days} overview={overview} spaces={spaces} className="mt-8" />
+      ) : (
+        // No subjects: the countdown, and an offer of a plan
+        <section aria-labelledby="exam-countdown" className={`${groupClass} mt-8 rounded-2xl p-6 sm:p-8`}>
+          <div className="flex flex-col gap-6 sm:flex-row sm:items-center">
+            <h2 id="exam-countdown" className="shrink-0 sm:w-44">
+              {days === 0 ? (
+                <span className="block text-4xl font-bold tracking-tight">{onNow(exam) ? "On now" : "Today"}</span>
+              ) : (
+                <>
+                  <span className="block text-5xl font-bold tracking-tight tabular-nums">{days}</span>
+                  <span className="mt-1 block text-muted-foreground">{days === 1 ? "day to go" : "days to go"}</span>
+                </>
+              )}
+            </h2>
+            <div className="min-w-0 flex-1 border-glass-divider max-sm:border-t max-sm:pt-5 sm:border-l sm:pl-8">
+              <p className="text-lg font-semibold">Want a plan for this?</p>
+              <p className="mt-1 text-muted-foreground text-pretty">
+                Link the subjects it covers and {buddy} spreads your flashcards over the days left, with practice exams near the end.
+              </p>
+              <Button className="mt-4" onClick={() => setEditing(true)}>
+                <LinkIcon />
+                Link subjects
+              </Button>
+            </div>
+          </div>
+        </section>
       )}
 
-      <section aria-labelledby="exam-subjects" className="mt-12">
-        <div className="flex items-center justify-between gap-3">
-          <h2 id="exam-subjects" className="text-xl font-semibold">
-            Subjects
-          </h2>
-          <Button variant="glass" size="sm" onClick={() => setEditing(true)}>
-            Change
-          </Button>
-        </div>
-        {covered.length ? (
+      {covered.length > 0 && (
+        <section aria-labelledby="exam-subjects" className="mt-12">
+          <div className="flex items-center justify-between gap-3">
+            <h2 id="exam-subjects" className="text-xl font-semibold">
+              Subjects
+            </h2>
+            <Button variant="glass" size="sm" onClick={() => setEditing(true)}>
+              Change
+            </Button>
+          </div>
           <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {covered.map((s) => (
               <SubjectCard key={s.id} space={s} overview={overview} documents={documents} />
             ))}
           </div>
-        ) : (
-          <p className="mt-2 text-muted-foreground">This exam doesn&apos;t cover any subjects yet.</p>
-        )}
-      </section>
+        </section>
+      )}
 
       {weak.length > 0 && (
         <section aria-labelledby="exam-weak" className="mt-12">
@@ -177,7 +203,7 @@ function ExamDetail({ exam, overview, spaces, documents }: { exam: Exam; overvie
                 remove.mutate(exam.id, {
                   onSuccess: () => {
                     toast.success(`“${exam.name}” deleted`);
-                    router.push("/exams");
+                    router.push("/events");
                   },
                 })
               }

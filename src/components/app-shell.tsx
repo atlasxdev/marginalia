@@ -49,6 +49,7 @@ import { PetWidget } from "./pet/pet-widget";
 import { SpaceDialog } from "./space-dialog";
 import { AccountMenu } from "./account-menu";
 import { AutoCards } from "@/lib/auto-cards";
+import { Tour } from "./tour";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   return (
@@ -59,7 +60,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </Suspense>
         <SidebarInset className="min-w-0 bg-transparent">
           <header className="glass flex items-center gap-2 border-b border-glass-border bg-glass px-3 py-2 md:hidden">
-            <SidebarTrigger aria-label="Open menu" />
+            <SidebarTrigger data-tour="menu" aria-label="Open menu" />
             <Wordmark className="text-[22px]" />
           </header>
           {/* Pages render from client data, so they stream in after the shell */}
@@ -69,6 +70,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </SidebarInset>
       </SidebarProvider>
       <AutoCards />
+      <Tour />
     </>
   );
 }
@@ -88,7 +90,7 @@ function AppSidebar() {
   const router = useRouter();
   const hydrated = useHydrated();
   const { setOpenMobile } = useSidebar();
-  // The soonest exam's countdown, beside Exams
+  // The soonest event's countdown, beside Events
   const nextExam = activeExams(useExams()).find((e) => e.days >= 0);
   const conversationsResult = useQuery(conversationsQuery);
   const documentsResult = useQuery(documentsQuery);
@@ -150,7 +152,7 @@ function AppSidebar() {
         <SidebarGroup className="py-0">
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={pathname === "/study"}>
+              <SidebarMenuButton data-tour="nav-today" asChild isActive={pathname === "/study"}>
                 <Link href="/study" onClick={close}>
                   <HouseIcon className="text-primary" />
                   <span>Today</span>
@@ -166,10 +168,10 @@ function AppSidebar() {
               )}
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={pathname === "/exams" || pathname.startsWith("/exams/")}>
-                <Link href="/exams" onClick={close}>
+              <SidebarMenuButton data-tour="nav-exams" asChild isActive={pathname === "/events" || pathname.startsWith("/events/")}>
+                <Link href="/events" onClick={close}>
                   <CalendarIcon className="text-primary" />
-                  <span>Exams</span>
+                  <span>Events</span>
                 </Link>
               </SidebarMenuButton>
               {hydrated && nextExam && (
@@ -216,7 +218,7 @@ function AppSidebar() {
           </SidebarMenu>
         </SidebarGroup>
 
-        <SidebarGroup>
+        <SidebarGroup data-tour="nav-subjects">
           <SidebarGroupLabel>Subjects</SidebarGroupLabel>
           <SidebarGroupAction
             aria-label="New subject"

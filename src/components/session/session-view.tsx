@@ -103,7 +103,7 @@ function Session({
   const study = useStudy(decks);
   const name = space?.name ?? exam?.name;
   const title = scope.cards ? `${name ?? "Exam"}: the ones you missed` : (scope.topic ?? (scope.deck ? decks[0]?.payload.title : name) ?? "All subjects");
-  const backHref = space ? `/spaces/${space.id}` : exam ? `/exams/${exam.id}` : "/study";
+  const backHref = space ? `/spaces/${space.id}` : exam ? `/events/${exam.id}` : "/study";
 
   // The plan is fixed when the session opens
   const [plan] = useState<Step[]>(() => {

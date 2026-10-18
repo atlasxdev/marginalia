@@ -8,7 +8,7 @@ import { CheckIcon, PlayIcon, PlusIcon, SparklesIcon, TargetIcon } from "lucide-
 import { streakFrom } from "@/lib/pet-care";
 import { useCardQueue } from "@/lib/auto-cards";
 import { useDailyGoal } from "@/lib/daily-goal";
-import { activeExams, examHref, nextExamFor, useExams, whenLine } from "@/lib/exams";
+import { activeExams, eventWhen, nextExamFor, onNow, useExams } from "@/lib/exams";
 import { documentsQuery, meQuery, petQuery, spacesQuery, studyQuery } from "@/lib/queries";
 import { cardCounts, dueCount, rankSubjects, sessionHref, subjectDecks, topicsIn, waitingLine } from "@/lib/subjects";
 import type { DocumentItem, Pet, Space, StudyOverview, WeakTopic } from "@/lib/types";
@@ -19,7 +19,7 @@ import { Item, ItemActions, ItemContent, ItemDescription, ItemGroup, ItemSeparat
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { DeckList, useMakeDeck } from "./deck";
-import { ExamCountdown, ExamOutcome, ExamPrompt } from "./exam-countdown";
+import { ComingUp, ExamOutcome, ExamPrompt } from "./exam-countdown";
 import { PetSprite } from "./pet/pet-sprite";
 import { SpaceDialog } from "./space-dialog";
 
@@ -69,15 +69,17 @@ function Today({ overview, spaces, documents }: { overview: StudyOverview; space
   const plan = pick
     ? [waitingLine(pick.counts), pick.weak[0] && `${pick.weak[0].topic} needs work`].filter(Boolean).join(", and ")
     : null;
-  // An exam coming up leads the day: its countdown and plan take over from today's pick
+  // Events coming up, soonest first. The next one with subjects has a plan, which takes over from today's pick.
   const exams = activeExams(useExams());
   const finished = exams.filter((e) => e.days < 0);
-  const [upcoming, ...later] = exams.filter((e) => e.days >= 0);
+  const ahead = exams.filter((e) => e.days >= 0);
+  const upcoming = ahead[0];
+  const planned = ahead.find((e) => e.exam.spaceIds.length);
 
   return (
     <>
       {/* Hero: your buddy, today's pick, your week */}
-      <section aria-labelledby="today-title" className={`${groupClass} rounded-2xl p-6 sm:p-8`}>
+      <section data-tour="today" aria-labelledby="today-title" className={`${groupClass} rounded-2xl p-6 sm:p-8`}>
         <div className="flex flex-col gap-6 sm:flex-row sm:items-center">
           {pet && (
             <span className="grid h-24 w-28 shrink-0 place-items-end justify-center overflow-hidden rounded-[22px] bg-[#e7effc] pb-3 ring-1 ring-foreground/10 dark:bg-[#2b354a]">
@@ -92,15 +94,15 @@ function Today({ overview, spaces, documents }: { overview: StudyOverview; space
               {spaces.length === 0 || (decks.length === 0 && activity.length === 0)
                 ? "Let's get you set up. Three steps and we're studying."
                 : upcoming
-                  ? upcoming.days === 0
+                  ? upcoming.days === 0 && !onNow(upcoming.exam)
                     ? `It's ${upcoming.exam.name} day. ${pet?.name ?? "Your buddy"} is rooting for you.`
-                    : `${upcoming.exam.name} is ${whenLine(upcoming.days)}. ${pet?.name ?? "Your buddy"} has today's plan ready.`
+                    : `${upcoming.exam.name} is ${eventWhen(upcoming.exam)}.${planned ? ` ${pet?.name ?? "Your buddy"} has today's plan for ${planned.exam.name} ready.` : ""}`
                   : pick
                   ? `${pet?.name ?? "Your buddy"} suggests ${pick.space.name}: ${plan}.`
                   : "You're all caught up. Nice work."}
             </p>
           </div>
-          {pick && !upcoming && (
+          {pick && !planned && (
             <div className="flex shrink-0 flex-col gap-2">
               <Button size="lg" asChild className="h-12 px-6 text-base">
                 <Link href={sessionHref({ subject: pick.space.id })}>
@@ -141,30 +143,10 @@ function Today({ overview, spaces, documents }: { overview: StudyOverview; space
       </section>
 
       {finished.map((e) => (
-        <ExamOutcome key={e.exam.id} exam={e.exam} days={e.days} className="mt-8" />
+        <ExamOutcome key={e.exam.id} exam={e.exam} className="mt-8" />
       ))}
       {upcoming ? (
-        <>
-          <ExamCountdown exam={upcoming.exam} days={upcoming.days} overview={overview} spaces={spaces} linked className="mt-8" />
-          {later.length > 0 && (
-            <p className="mt-3 px-1 text-sm text-muted-foreground">
-              Also coming up:{" "}
-              {later.slice(0, 2).map((e, i) => (
-                <Fragment key={e.exam.id}>
-                  {i > 0 && ", "}
-                  <Link href={examHref(e.exam)} className="font-medium text-foreground hover:underline">
-                    {e.exam.name}
-                  </Link>{" "}
-                  {whenLine(e.days)}
-                </Fragment>
-              ))}
-              .{" "}
-              <Link href="/exams" className="font-medium text-primary hover:underline">
-                All exams
-              </Link>
-            </p>
-          )}
-        </>
+        <ComingUp events={ahead} overview={overview} spaces={spaces} className="mt-8" />
       ) : (
         decks.length > 0 && finished.length === 0 && <ExamPrompt className={`${groupClass} mt-8 rounded-2xl px-6 py-5`} />
       )}
@@ -252,7 +234,7 @@ export function SubjectCard({ space, overview, documents }: { space: Space; over
         <p className="min-w-0 flex-1 truncate text-lg font-semibold">{space.name}</p>
         {examIn !== null && examIn >= 0 && (
           <span className={cn("shrink-0 text-sm font-medium tabular-nums", examIn <= 7 ? "text-primary" : "text-muted-foreground")}>
-            {examIn === 0 ? "Exam today" : `${examIn} ${examIn === 1 ? "day" : "days"}`}
+            {examIn === 0 ? "Today" : `${examIn} ${examIn === 1 ? "day" : "days"}`}
           </span>
         )}
       </div>

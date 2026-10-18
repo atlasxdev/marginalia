@@ -259,7 +259,7 @@ function SpaceDetail({ space }: { space: Space }) {
         }}
       />
 
-      <section aria-label="Next step" className={`${groupClass} mt-8 rounded-2xl p-6`}>
+      <section data-tour="subject-next" aria-label="Next step" className={`${groupClass} mt-8 rounded-2xl p-6`}>
         <div className="flex flex-wrap items-center gap-x-8 gap-y-5">
           <div className="min-w-60 flex-1">
             {cards > 0 && (
@@ -287,7 +287,7 @@ function SpaceDetail({ space }: { space: Space }) {
       </section>
 
       <Tabs defaultValue={inSpace.length === 0 ? "notes" : "study"} className="mt-10 gap-6">
-        <TabsList variant="line" className="h-10 w-full justify-start gap-6 border-b border-glass-divider p-0">
+        <TabsList data-tour="subject-tabs" variant="line" className="h-10 w-full justify-start gap-6 border-b border-glass-divider p-0">
           <TabsTrigger value="study" className="flex-none px-0 text-base">
             Study
           </TabsTrigger>
