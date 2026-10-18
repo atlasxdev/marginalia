@@ -31,7 +31,7 @@ export async function signIn(_prev: ActionState, formData: FormData): Promise<Ac
           : "Email or password is incorrect.",
     };
   }
-  redirect(data.user.user_metadata?.onboarded === true ? "/study" : "/welcome");
+  redirect(data.user.user_metadata?.onboarded === false ? "/welcome" : "/study");
 }
 
 export async function signUp(_prev: ActionState, formData: FormData): Promise<ActionState> {
@@ -45,7 +45,7 @@ export async function signUp(_prev: ActionState, formData: FormData): Promise<Ac
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
-    options: { data: { name }, emailRedirectTo: `${env.NEXT_PUBLIC_SITE_URL}/auth/confirm` },
+    options: { data: { name, onboarded: false }, emailRedirectTo: `${env.NEXT_PUBLIC_SITE_URL}/auth/confirm` },
   });
   if (error) {
     return {

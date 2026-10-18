@@ -36,7 +36,8 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL("/sign-in", request.url));
   }
   // A new account sees the welcome before anything else; once done, /welcome goes home
-  const onboarded = data?.claims?.user_metadata?.onboarded === true;
+  // Only accounts made since the welcome existed carry onboarded: false; older ones count as done
+  const onboarded = data?.claims?.user_metadata?.onboarded !== false;
   const page = !path.startsWith("/api/") && !isPublic;
   if (signedIn && !onboarded && page && path !== "/welcome") {
     return NextResponse.redirect(new URL("/welcome", request.url));
