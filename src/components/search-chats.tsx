@@ -81,7 +81,7 @@ export function SearchChats({
       onOpenChange={reset}
       title="Search chats"
       description="Find a conversation by its title or anything said in it"
-      className="glass border border-glass-border bg-glass-strong sm:max-w-xl"
+      className="glass border border-glass-border bg-glass-strong sm:max-w-2xl"
     >
       <Command shouldFilter={false} className="bg-transparent">
         <CommandInput value={query} onValueChange={type} placeholder="Search chats" />

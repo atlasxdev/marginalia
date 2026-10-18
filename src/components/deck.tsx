@@ -154,7 +154,7 @@ export function MakeDeckDialog({ open, onOpenChange }: { open: boolean; onOpenCh
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="glass gap-4 border border-glass-border bg-glass-strong sm:max-w-md">
+      <DialogContent className="glass gap-4 border border-glass-border bg-glass-strong sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>Make a reviewer</DialogTitle>
           <DialogDescription>Your buddy reads it and writes flashcards on what you&apos;d be tested on.</DialogDescription>

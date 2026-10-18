@@ -283,7 +283,7 @@ function Lists({ view, setView }: { view: string; setView: (v: string) => void }
       </div>
 
       <Dialog open={creating} onOpenChange={setCreating}>
-        <DialogContent className="border border-glass-border bg-popover sm:max-w-sm">
+        <DialogContent className="border border-glass-border bg-popover sm:max-w-xl">
           <DialogHeader>
             <DialogTitle>New playlist</DialogTitle>
             <DialogDescription>A list for a mood, like Rainy focus or Exam week.</DialogDescription>
@@ -517,7 +517,7 @@ function AddSongs({ playlistId }: { playlistId: string }) {
         Add songs
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="gap-4 border border-glass-border bg-popover sm:max-w-md">
+        <DialogContent className="gap-4 border border-glass-border bg-popover sm:max-w-xl">
           <DialogHeader>
             <DialogTitle>Add songs to {playlist.name}</DialogTitle>
             <DialogDescription>Tick a song to add it, untick to take it out.</DialogDescription>

@@ -136,7 +136,7 @@ export function sortConversations(list: ConversationSummary[], sort: ChatSort) {
 export function RenameConversation({ conversation, onClose }: { conversation: { id: string; title: string } | null; onClose: () => void }) {
   return (
     <Dialog open={!!conversation} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="glass border border-glass-border bg-glass-strong sm:max-w-md">
+      <DialogContent className="glass border border-glass-border bg-glass-strong sm:max-w-xl">
         {conversation && <RenameForm key={conversation.id} conversation={conversation} onClose={onClose} />}
       </DialogContent>
     </Dialog>

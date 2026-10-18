@@ -40,7 +40,7 @@ export function SpaceDialog({
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="glass flex max-h-[90dvh] flex-col gap-0 border border-glass-border bg-glass-strong p-0 sm:max-w-lg">
+      <DialogContent className="glass flex max-h-[90dvh] flex-col gap-0 border border-glass-border bg-glass-strong p-0 sm:max-w-2xl">
         {/* Remounted on each open, so the fields start from the saved space */}
         {open && <SpaceForm space={space} onDone={(id) => (onOpenChange(false), onSaved?.(id))} />}
       </DialogContent>

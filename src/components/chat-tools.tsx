@@ -123,7 +123,7 @@ function FilesInChat({ open, onOpenChange, docs }: { open: boolean; onOpenChange
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="glass border border-glass-border bg-glass-strong sm:max-w-lg">
+        <DialogContent className="glass border border-glass-border bg-glass-strong sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>Files in this chat</DialogTitle>
             <DialogDescription>The documents these answers came from.</DialogDescription>
